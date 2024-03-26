@@ -35,7 +35,9 @@ object FOL {
     require(arity >= 0)
   }
 
-  case class FunctionLabel(id: Identifier, arity: Int) extends TermLabel
+  case class FunctionLabel(id: Identifier, arity: Int) extends TermLabel{
+    def apply(args: Seq[Term]): Term = Term(this, args)
+  }
 
   case class VariableLabel(id: Identifier) extends TermLabel {
     val name: Identifier = id
@@ -54,6 +56,7 @@ object FOL {
   object Variable {
 
     def apply(label: VariableLabel): Term = Term(label, Seq())
+    def apply(name: String): Term = Term(VariableLabel(Identifier(name)), Seq())
     def unapply(t: Term): Option[VariableLabel] = t.label match {
       case l: VariableLabel => Some(l)
       case _ => None
@@ -68,14 +71,18 @@ object FOL {
 
 
 
-  sealed case class AtomicLabel(id: Identifier, arity: Int) extends Label
+  sealed case class AtomicLabel(id: Identifier, arity: Int) extends Label{
+    def apply(args: Seq[Term]): AtomicFormula = AtomicFormula(this, args)
+  }
 
   val equality: AtomicLabel = AtomicLabel(Identifier("="), 2)
   val top: AtomicLabel = AtomicLabel(Identifier("⊤"), 0)
   val bot: AtomicLabel = AtomicLabel(Identifier("⊥"), 0)
 
 
-  sealed abstract class ConnectorLabel(val id: Identifier, val arity: Int) extends Label
+  sealed abstract class ConnectorLabel(val id: Identifier, val arity: Int) extends Label{
+    def apply(args: Seq[Formula]): ConnectorFormula = ConnectorFormula(this, args)
+  }
 
   case object Neg extends ConnectorLabel(Identifier("¬"), 1)
 
@@ -90,6 +97,7 @@ object FOL {
 
   sealed abstract class BinderLabel(val id: Identifier) extends Label {
     val arity = 1
+    def apply(bound: VariableLabel, inner: Formula): BinderFormula = BinderFormula(this, bound, inner)
   }
 
   case object Forall extends BinderLabel(Identifier("∀"))
@@ -151,5 +159,53 @@ object FOL {
         BinderFormula(label, newBoundVariable, substituteVariablesInFormula(newInner, newSubst, newTaken))
       } else BinderFormula(label, bound, substituteVariablesInFormula(inner, newSubst, newTaken))
   }
+
+
+
+
+  val === = equality
+  extension (t: Term) {
+    infix def ===(u: Term): Formula = equality(List(t, u))
+  }
+
+  val ⊤ : top.type = top
+
+  val ⊥ : bot.type = bot
+
+  val neg: Neg.type = Neg
+  val ¬ : Neg.type = Neg
+  val ! : Neg.type = Neg
+
+  val and: And.type = And
+  val /\ : And.type = And
+  val ∧ : And.type = And
+
+  val or: Or.type = Or
+  val \/ : Or.type = Or
+  val ∨ : Or.type = Or
+
+  val implies: Implies.type = Implies
+  val ==> : Implies.type = Implies
+
+  val iff: Iff.type = Iff
+  val <=> : Iff.type = Iff
+
+  val forall: Forall.type = Forall
+  val ∀ : Forall.type = forall
+
+  val exists: Exists.type = Exists
+  val ∃ : Exists.type = exists
+
+  extension (f: Formula) {
+    def unary_! = Neg(Seq(f))
+    infix inline def ==>(g: Formula): Formula = Implies(Seq(f, g))
+    infix inline def <=>(g: Formula): Formula = Iff(Seq(f, g))
+    infix inline def /\(g: Formula): Formula = And(Seq(f, g))
+    infix inline def ∧(g: Formula): Formula = And(Seq(f, g))
+    infix inline def \/(g: Formula): Formula = Or(Seq(f, g))
+    infix inline def ∨(g: Formula): Formula = Or(Seq(f, g))
+  }
+
+
 
 }

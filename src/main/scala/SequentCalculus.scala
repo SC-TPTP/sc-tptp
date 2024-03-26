@@ -3,7 +3,9 @@ import FOL.*
 
 object SequentCalculus {
   
-  case class Sequent(left: Seq[Formula], right: Seq[Formula])
+  case class Sequent(left: Seq[Formula], right: Seq[Formula]) {
+    override def toString: String = left.foldLeft(("[", 0))((acc, param) => (acc._1 + param.toString() + (if (acc._2 != left.length - 1) then "," else ""), acc._2 + 1))._1 + "]" + " --> " + right.foldLeft(("[", 0))((acc, param) => (acc._1 + param.toString() + (if (acc._2 != right.length - 1) then "," else ""), acc._2 + 1))._1 + "]"
+  }
 
   sealed trait SCProofStep {
       val bot: Sequent
@@ -48,7 +50,6 @@ object SequentCalculus {
       if steps.isEmpty then throw new NoSuchElementException("conclusion of an empty proof")
       else this.getSequent(length - 1)
     }
-
   }
 
 
@@ -61,6 +62,8 @@ object SequentCalculus {
     */
   case class Axiom(bot:Sequent) extends SCProofStep {
     val premises = Seq()
+
+     override def toString: String = left.foldLeft(("[", 0))((acc, param) => (acc._1 + param.toString() + (if (acc._2 != left.length - 1) then "," else ""), acc._2 + 1))._1 + "]" + " ⊢ " + right.foldLeft(("[", 0))((acc, param) => (acc._1 + param.toString() + (if (acc._2 != right.length - 1) then "," else ""), acc._2 + 1))._1 + "]"
   }
 
 

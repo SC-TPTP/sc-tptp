@@ -19,7 +19,7 @@ object FOL {
     def apply(name: String, no: Int): Identifier = new Identifier(name, no)
 
     val counterSeparator: Char = '_'
-    def isValidIdentifier(s: String): Boolean = s.nonEmpty && s.forall(_.isLetterOrDigit) && s.head.isUpper
+    def isValidIdentifier(s: String): Boolean = s.nonEmpty // && s.forall(_.isLetterOrDigit) && s.head.isUpper
   }
 
   def freshId(taken: Iterable[Identifier], base: Identifier): Identifier = {
@@ -35,19 +35,30 @@ object FOL {
     require(arity >= 0)
   }
 
-  case class FunctionLabel(id: Identifier, arity: Int) extends TermLabel
+  case class FunctionLabel(id: Identifier, arity: Int) extends TermLabel {
+     override def toString(): String = id.name
+  }
 
   case class VariableLabel(id: Identifier) extends TermLabel {
     val name: Identifier = id
     val arity = 0
+
+    override def toString(): String = name.name
   }
 
-  sealed case class Term(label: TermLabel, args: Seq[Term]){
+  sealed case class Term(label: TermLabel, args: Seq[Term]) {
     require(label.arity == args.size)
 
     def freeVariables: Set[VariableLabel] = label match {
       case l: VariableLabel => Set(l)
       case _ => args.foldLeft(Set.empty[VariableLabel])((prev, next) => prev union next.freeVariables)
+    }
+
+    override def toString(): String = label match {
+      case vl: VariableLabel => vl.name.toString()
+      case fl: FunctionLabel =>
+        if (args.length == 0) then fl.id.name
+        else fl.toString() + args.foldLeft(("(", 0))((acc, param) => (acc._1 + param.toString() + (if (acc._2 != args.length - 1) then "," else ""), acc._2 + 1))._1 + ")"
     }
   }
 
@@ -60,20 +71,15 @@ object FOL {
     }
   }
 
-
   //////////////////////////
   /////// Formulas /////////
   //////////////////////////
-
-
-
 
   sealed case class AtomicLabel(id: Identifier, arity: Int) extends Label
 
   val equality: AtomicLabel = AtomicLabel(Identifier("="), 2)
   val top: AtomicLabel = AtomicLabel(Identifier("⊤"), 0)
   val bot: AtomicLabel = AtomicLabel(Identifier("⊥"), 0)
-
 
   sealed abstract class ConnectorLabel(val id: Identifier, val arity: Int) extends Label
 
@@ -87,7 +93,6 @@ object FOL {
 
   case object Or extends ConnectorLabel(Identifier("∨"), -1)
 
-
   sealed abstract class BinderLabel(val id: Identifier) extends Label {
     val arity = 1
   }
@@ -98,18 +103,23 @@ object FOL {
 
   case object ExistsOne extends BinderLabel(Identifier("∃!"))
 
-
   sealed trait Formula {
     def freeVariables: Set[VariableLabel]
   }
-
 
   sealed case class AtomicFormula(label: AtomicLabel, args: Seq[Term]) extends Formula {
     require(label.arity == args.size)
 
     def freeVariables: Set[VariableLabel] =
       args.foldLeft(Set.empty[VariableLabel])((prev, next) => prev union next.freeVariables)
-    
+
+    override def toString(): String = label match {
+      case `equality` => s"${args(0).toString()} ${equality.id.name} ${args(1).toString()}"
+      case `top` => top.id.name
+      case `bot` => bot.id.name
+      case al: AtomicLabel => al.id.name
+    }
+
   }
 
   /**
@@ -118,10 +128,17 @@ object FOL {
   sealed case class ConnectorFormula(label: ConnectorLabel, args: Seq[Formula]) extends Formula {
     require(label.arity == args.size || label.arity == -1)
     require(label.arity != 0)
-    
+
     override def freeVariables: Set[VariableLabel] =
       args.foldLeft(Set.empty[VariableLabel])((prev, next) => prev union next.freeVariables)
-    
+
+    override def toString(): String = label match {
+      case Neg => s"${Neg.id.name}${args(0).toString()}"
+      case Implies => s"${args(0).toString()} ${Implies.id.name} ${args(1).toString()}"
+      case Iff => s"${args(0).toString()} ${Iff.id.name} ${args(1).toString()}"
+      case And => args.foldLeft(("", 0))((acc, param) => (acc._1 + param.toString() + (if (acc._2 != args.length - 1) then s" ${And.id.name} " else ""), acc._2 + 1))._1
+      case Or => args.foldLeft(("", 0))((acc, param) => (acc._1 + param.toString() + (if (acc._2 != args.length - 1) then s" ${Or.id.name} " else ""), acc._2 + 1))._1
+    }
   }
 
   /**
@@ -129,14 +146,18 @@ object FOL {
    */
   sealed case class BinderFormula(label: BinderLabel, bound: VariableLabel, inner: Formula) extends Formula {
     override def freeVariables: Set[VariableLabel] = inner.freeVariables - bound
-  }
 
+    override def toString(): String = label match {
+      case Forall => Forall.id.name + bound.toString() + "." + inner.toString()
+      case Exists => Exists.id.name + bound.toString() + "." + inner.toString()
+      case ExistsOne => ExistsOne.id.name + bound.toString() + "." + inner.toString()
+    }
+  }
 
   def substituteVariablesInTerm(t: Term, m: Map[VariableLabel, Term]): Term = t match {
     case Term(label: VariableLabel, _) => m.getOrElse(label, t)
     case Term(label, args) => Term(label, args.map(substituteVariablesInTerm(_, m)))
   }
-
 
   def substituteVariablesInFormula(phi: Formula, m: Map[VariableLabel, Term], takenIds: Seq[Identifier] = Seq[Identifier]()): Formula = phi match {
     case AtomicFormula(label, args) => AtomicFormula(label, args.map(substituteVariablesInTerm(_, m)))
@@ -151,5 +172,4 @@ object FOL {
         BinderFormula(label, newBoundVariable, substituteVariablesInFormula(newInner, newSubst, newTaken))
       } else BinderFormula(label, bound, substituteVariablesInFormula(inner, newSubst, newTaken))
   }
-
 }

@@ -10,6 +10,59 @@ object SequentCalculus {
       val premises: Seq[Int]
     }
 
+  case class SCProof(steps: IndexedSeq[SCProofStep]) {
+
+    /**
+     * Fetches the <code>i</code>th step of the proof.
+     * @param i the index
+     * @return a step
+     */
+    def apply(i: Int): SCProofStep = 
+      if (i >= 0 && i < steps.length) then
+        steps(i)
+      else throw new IndexOutOfBoundsException(s"index $i is out of bounds of the steps Seq")
+    
+
+    /**
+     * Get the ith sequent of the proof. If the index is positive, give the bottom sequent of proof step number i.
+     * If the index is negative, return the <code>(-i-1)</code>th imported sequent.
+     *
+     * @param i The reference number of a sequent in the proof
+     * @return A sequent, either imported or reached during the proof.
+     */
+    def getSequent(i: Int): Sequent =
+     apply(i).bot
+    
+
+    /**
+     * The length of the proof in terms of top-level steps, without including the imports.
+     */
+    def length: Int = steps.length
+
+
+    /**
+     * The conclusion of the proof, namely the bottom sequent of the last proof step.
+     * Throw an error if the proof is empty.
+     */
+    def conclusion: Sequent = {
+      if steps.isEmpty then throw new NoSuchElementException("conclusion of an empty proof")
+      else this.getSequent(length - 1)
+    }
+
+  }
+
+
+
+  /**
+    * --------------
+    *    Γ |- Δ
+    *
+    * @param bot Resulting formula
+    */
+  case class Axiom(bot:Sequent) extends SCProofStep {
+    val premises = Seq()
+  }
+
 
   /**
     * -----------------
@@ -411,56 +464,4 @@ object SequentCalculus {
     val premises = Seq(p1)
   }
 
-
-
-
-
-
 }
-
-
-/*
-\begin{table}
-    \centering
-
-    \begin{tabular}{|c|c|r@{\hskip3pt}c@{\hskip3pt}l@{\hskip3pt}|l|}
-         \hline
-        Rule name & Premises & \multicolumn{3}{c}{Shape of conclusion} & Parameters \\ \hline    
-        \texttt{hyp}       &  0 & $ \Gamma, A $ & $ \vdash $&$ A, \Delta $        & \makecell[l]{\texttt{i:Int}: Index of $A$ on the left  \\ \texttt{j:Int}: Index of $A$ on the right} \\ \hline
-        \texttt{leftHyp}  & 0 & $ \Gamma, A, \neg A $&$ \vdash $&$ \Delta $    & \makecell[l]{\texttt{i:Int}: Index of $A$ on the left  \\ \texttt{j:Int}: Index of $\neg A$ on the left.} \\ \hline
-        \texttt{leftWeaken}  & 1 & $ \Gamma, A $&$ \vdash $&$ \Delta $            & \texttt{i:Int}: Index of $A$ on the left  \\ \hline 
-        \texttt{rightWeaken} & 1 & $ \Gamma $&$ \vdash $&$ A, \Delta $            & \texttt{i:Int}: Index of $A$ on the right \\ \hline 
-        \texttt{cut}         & 2 & $ \Gamma $&$ \vdash $&$ \Delta $               & \makecell[l]{\texttt{i:Int}: Index of cut on the right of first premise \\ \texttt{j:Int}: Index of cut on the left of second premise} \\ \hline \hline 
-        \texttt{leftAnd}     & 1 & $ \Gamma, A \land B $&$ \vdash $&$ \Delta $    & \texttt{i:Int}: Index of $A \land B$ on the left    \\ \hline
-        \texttt{leftOr}      & 2 & $ \Gamma, A \lor B $&$ \vdash $&$ \Delta $     & \texttt{i:Int}: Index of $A \lor B$ on the left     \\ \hline
-        \texttt{leftImp1}     & 2 & $ \Gamma, A \implies B $&$ \vdash $&$ \Delta $ & \texttt{i:Int}: Index of $A \implies B$ on the left \\ \hline
-        \texttt{leftImp2}     & 2 & $ \Gamma, A \implies B $&$ \vdash $&$ \Delta $ & \texttt{i:Int}: Index of $A \implies B$ on the left \\ \hline
-        \texttt{leftIff}     & 1 & $ \Gamma, A \iff B $&$ \vdash $&$ \Delta $     & \texttt{i:Int}: Index of $A \iff B$ on the left     \\ \hline
-        \texttt{leftNot}     & 1 & $ \Gamma, \neg A $&$ \vdash $&$ \Delta $       & \texttt{i:Int}: Index of $\neg A$ on the left       \\ \hline
-        \texttt{leftEx}      & 1 & $ \Gamma, \exists x. A $&$ \vdash $&$ \Delta $ & \makecell[l]{\texttt{i:Int}: Index of $\exists x. A$ on the left      \\ \texttt{y:Var}: Variable in place of $x$ in the premise} \\ \hline
-        \texttt{leftAll}     & 1 & $ \Gamma, \forall x. A $&$ \vdash $&$ \Delta $ & \makecell[l]{\texttt{i:Int}: Index of $\forall x. A$ on the left      \\ \texttt{t:Term}: Term in in place of $x$ in the premise} \\ \hline \hline
-        \texttt{rightAnd}    & 2 & $ \Gamma $&$ \vdash $&$ A \land B, \Delta $    & \texttt{i:Int}: Index of $A \land B$ on the right    \\ \hline
-        \texttt{rightOr}     & 1 & $ \Gamma $&$ \vdash $&$ A \lor B, \Delta $     & \texttt{i:Int}: Index of $A \lor B$ on the right     \\ \hline
-        \texttt{rightImp}    & 1 & $ \Gamma $&$ \vdash $&$ A \implies B, \Delta $ & \texttt{i:Int}: Index of $A \implies B$ on the right \\ \hline
-        \texttt{rightIff}    & 2 & $ \Gamma $&$ \vdash $&$ A \iff B, \Delta $     & \texttt{i:Int}: Index of $A \iff B$ on the right     \\ \hline
-        \texttt{rightNot}    & 1 & $ \Gamma $&$ \vdash $&$ \neg A, \Delta $       & \texttt{i:Int}: Index of $\neg A$ on the right       \\ \hline
-        \texttt{rightEx}     & 1 & $ \Gamma $&$ \vdash $&$ \exists x. A, \Delta $ & \makecell[l]{\texttt{i:Int}: Index of $\exists x. A$ on the right     \\ \texttt{t:Term}: Term in place of $x$ in the premise}    \\ \hline
-        \texttt{rightAll}    & 1 & $ \Gamma $&$ \vdash $&$ \forall x. A, \Delta $ & \makecell[l]{\texttt{i:Int}: Index of $\forall x. A$ on the right     \\ \texttt{y:Var}: Variable in place of $x$ in the premise} \\ \hline \hline
-        \texttt{leftNotAnd}  & 2 & $ \Gamma, \neg(A \land B) $&$ \vdash $&$ \Delta $    & \texttt{i:Int}: Index of $\neg(A \land B)$ on the left     \\ \hline
-        \texttt{leftNotOr}   & 1 & $ \Gamma, \neg(A \lor B) $&$ \vdash $&$ \Delta $     & \texttt{i:Int}: Index of $\neg(A \lor B)$ on the left      \\ \hline
-        \texttt{leftNotImp}  & 1 & $ \Gamma, \neg(A \implies B) $&$ \vdash $&$ \Delta $ & \texttt{i:Int}: Index of $\neg(A \implies B)$ on the left  \\ \hline
-        \texttt{leftNotIff}  & 2 & $ \Gamma, \neg(A \iff B) $&$ \vdash $&$ \Delta $     & \texttt{i:Int}: Index of $\neg(A \iff B)$ on the left      \\ \hline
-        \texttt{leftNotNot}  & 1 & $ \Gamma, \neg \neg A $&$ \vdash $&$ \Delta $        & \texttt{i:Int}: Index of $\neg \neg A$ on the left         \\ \hline
-        \texttt{leftNotEx}   & 1 & $ \Gamma, \neg \exists x. A $&$ \vdash $&$ \Delta $  & \makecell[l]{\texttt{i:Int}: Index of $\neg \exists x. A$ on the right     \\  \texttt{t:Term}: Term in place of $x$ in the premise}   \\ \hline
-        \texttt{leftNotAll}  & 1 & $ \Gamma, \neg \exists x. A $&$ \vdash $&$ \Delta $  & \texttt{i:Int}: Index of $\neg \forall x. A$ on the right     \\
-                             &   &              &          &                            & \texttt{y:Var}: Variable in place of $x$ in the premise \\ \hline \hline
-        \texttt{rightRefl}  & 1 & $ \Gamma $&$ \vdash $&$ t = t, \Delta$  & \texttt{i:Int}: Index of $ t = t $ on the right. \\ \hline
-        \texttt{rightSubst}  & 2 & $ \Gamma, t = u $&$ \vdash $&$ P(t), \Delta$  & \makecell[l]{\texttt{i:Int}: Index of $t = u$ on the left  \\ \texttt{j:Int}: Index of $P(t)$ on the right \\ \texttt{P(Z):Var}: Shape of the predicate on the right \\ \texttt{Z:Var}: unifiable sub-term in the predicate} \\ \hline                   
-        \texttt{leftSubst}  & 2 & $ \Gamma, t = u,  P(t) $&$ \vdash $&$\Delta$  & \makecell[l]{\texttt{i:Int}: Index of $t = u$ on the left  \\ \texttt{j:Int}: Index of $P(t)$ on the left  \\ \texttt{P(Z):Var}: Shape of the predicate on the left \\ 
-        \texttt{Z:Var}: unifiable subterm in the predicate } \\\hline    
-
-    \end{tabular}
-    \caption{Level 1 rules of SC-TPTP, for one-sided and two-sided sequent calculus.}
-    \label{tab:SCTPTP_rules_lvl_1}
-\end{table}
-*/

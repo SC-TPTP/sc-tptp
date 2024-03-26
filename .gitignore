@@ -2,8 +2,9 @@
 .idea
 .metals
 .vscode
-project/*/metals.sbt
+project/*metals.sbt
 sbt-launch.jar
+src/main/scala/.scala-build/
 
 # build-related
 .bsp

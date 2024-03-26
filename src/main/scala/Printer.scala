@@ -1,5 +1,5 @@
 import FOL.*
-import SequentCalculus.Sequent
+import SequentCalculus.*
 
 object Printer {
   def main(args: Array[String]) = {
@@ -27,10 +27,14 @@ object Printer {
     val af_top = AtomicFormula(top, Seq())
     val af_bot = AtomicFormula(bot, Seq())
     val eq_a_a = AtomicFormula(equality, Seq(a_term, a_term))
+    val p_id = Identifier("p")
+    val p_atomic_label = AtomicLabel(p_id, 2)
+    val p_a_x = AtomicFormula(p_atomic_label, Seq(a_term, x))
 
     println("a.toString: " + a.toString())
+    println("p_a_x.toString: " + p_a_x.toString())
     println("af_top.toString: " + af_top.toString())
-    println("af_bot.toString: " + af_top.toString())
+    println("af_bot.toString: " + af_bot.toString())
     println("eq_a_a.toString: " + eq_a_a.toString())
     
     // Connector formulas
@@ -49,11 +53,9 @@ object Printer {
     // Binder formulas
     val forall_x = BinderFormula(Forall, x_label, a)
     val exists_x = BinderFormula(Exists, x_label, a)
-    val exists_one_x = BinderFormula(ExistsOne, x_label, a)
 
     println("forall_x.toString: " + forall_x.toString())
     println("exists_x.toString: " + exists_x.toString())
-    println("exists_one_x.toString: " + exists_one_x.toString())
 
 
     // Sequents
@@ -62,7 +64,29 @@ object Printer {
     println("s1: " + s1.toString())
 
     // Proof step
-    // val ps1 = SCProofStep()
+    val ax1 = Axiom("ax1", s1)
+    val hyp = Hyp("hyp", s1, 0, 1)
+    val leftHyp = LeftHyp("leftHyp", s1, 0, 1)
+    val leftWeaken = LeftWeakening("leftWeaken", s1, 0, "p1")
+    val rightWeaken = RightWeakening("rightWeaken", s1, 0, "p1")
+    val cut = Cut("cut", s1, 0, 1, "p1", "p2")
+    val leftAnd = LeftAnd("leftAnd", s1, 0, "p1")
+    val leftOr = LeftOr("leftOr", s1, 0, "p1", "p2")
+    val leftImp1 = LeftImp1("leftImp1", s1, 0, "p1", "p2")
+    val leftImp2 = LeftImp2("leftImp2", s1, 0, "p1", "p2")
+    val leftIff = LeftIff("leftIff", s1, 0, "p1")
+    val leftNot = LeftNot("leftNot", s1, 0, "p1")
+    val leftEx = LeftEx("leftEx", s1, 0, x_label, "p1")
+
+
+    println("ax1: " + ax1.toString())
+    println("hyp: " + hyp.toString())
+    println("leftHyp: " + leftHyp.toString())
+    println("leftWeakening: " + leftWeaken.toString())
+    println("rightWeakening: " + rightWeaken.toString())
+    println("cut: " + cut.toString())
+
+
 
     // val myseq = SCProof
 

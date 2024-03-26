@@ -59,7 +59,7 @@ object FOL {
       case vl: VariableLabel => vl.name.toString()
       case fl: FunctionLabel =>
         if (args.length == 0) then fl.id.name
-        else fl.toString() + args.foldLeft(("(", 0))((acc, param) => (acc._1 + param.toString() + (if (acc._2 != args.length - 1) then "," else ""), acc._2 + 1))._1 + ")"
+        else s"${fl.toString()}(${args.mkString(",")})"
     }
   }
 
@@ -82,37 +82,36 @@ object FOL {
 
   sealed case class AtomicLabel(id: Identifier, arity: Int) extends Label{
     def apply(args: Seq[Term]): AtomicFormula = AtomicFormula(this, args)
+     override def toString(): String = id.name
   }
 
   val equality: AtomicLabel = AtomicLabel(Identifier("="), 2)
-  val top: AtomicLabel = AtomicLabel(Identifier("⊤"), 0)
-  val bot: AtomicLabel = AtomicLabel(Identifier("⊥"), 0)
+  val top: AtomicLabel = AtomicLabel(Identifier("$true"), 0)
+  val bot: AtomicLabel = AtomicLabel(Identifier("$false"), 0)
 
 
   sealed abstract class ConnectorLabel(val id: Identifier, val arity: Int) extends Label{
     def apply(args: Seq[Formula]): ConnectorFormula = ConnectorFormula(this, args)
   }
 
-  case object Neg extends ConnectorLabel(Identifier("¬"), 1)
+  case object Neg extends ConnectorLabel(Identifier("~"), 1)
 
-  case object Implies extends ConnectorLabel(Identifier("⇒"), 2)
+  case object Implies extends ConnectorLabel(Identifier("=>"), 2)
 
-  case object Iff extends ConnectorLabel(Identifier("⇔"), 2)
+  case object Iff extends ConnectorLabel(Identifier("<=>"), 2)
 
-  case object And extends ConnectorLabel(Identifier("∧"), -1)
+  case object And extends ConnectorLabel(Identifier("&"), -1)
 
-  case object Or extends ConnectorLabel(Identifier("∨"), -1)
+  case object Or extends ConnectorLabel(Identifier("|"), -1)
 
   sealed abstract class BinderLabel(val id: Identifier) extends Label {
     val arity = 1
     def apply(bound: VariableLabel, inner: Formula): BinderFormula = BinderFormula(this, bound, inner)
   }
 
-  case object Forall extends BinderLabel(Identifier("∀"))
+  case object Forall extends BinderLabel(Identifier("!"))
 
-  case object Exists extends BinderLabel(Identifier("∃"))
-
-  case object ExistsOne extends BinderLabel(Identifier("∃!"))
+  case object Exists extends BinderLabel(Identifier("?"))
 
   sealed trait Formula {
     def freeVariables: Set[VariableLabel]
@@ -125,10 +124,12 @@ object FOL {
       args.foldLeft(Set.empty[VariableLabel])((prev, next) => prev union next.freeVariables)
 
     override def toString(): String = label match {
-      case `equality` => s"${args(0).toString()} ${equality.id.name} ${args(1).toString()}"
+      case `equality` => s"(${args(0).toString()} ${equality.id.name} ${args(1).toString()})"
       case `top` => top.id.name
       case `bot` => bot.id.name
-      case al: AtomicLabel => al.id.name
+      case al: AtomicLabel => 
+        if (al.arity == 0) then al.id.name
+        else s"${al.toString()}(${args.mkString(",")})"
     }
 
   }
@@ -145,10 +146,10 @@ object FOL {
 
     override def toString(): String = label match {
       case Neg => s"${Neg.id.name}${args(0).toString()}"
-      case Implies => s"${args(0).toString()} ${Implies.id.name} ${args(1).toString()}"
-      case Iff => s"${args(0).toString()} ${Iff.id.name} ${args(1).toString()}"
-      case And => args.foldLeft(("", 0))((acc, param) => (acc._1 + param.toString() + (if (acc._2 != args.length - 1) then s" ${And.id.name} " else ""), acc._2 + 1))._1
-      case Or => args.foldLeft(("", 0))((acc, param) => (acc._1 + param.toString() + (if (acc._2 != args.length - 1) then s" ${Or.id.name} " else ""), acc._2 + 1))._1
+      case Implies => s"(${args(0).toString()} ${Implies.id.name} ${args(1).toString()})"
+      case Iff => s"(${args(0).toString()} ${Iff.id.name} ${args(1).toString()})"
+      case And => s"( ${args.mkString(s" ${and.id.name} ")})"
+      case Or => s"( ${args.mkString(s" ${or.id.name} ")})"
     }
   }
 
@@ -159,9 +160,8 @@ object FOL {
     override def freeVariables: Set[VariableLabel] = inner.freeVariables - bound
 
     override def toString(): String = label match {
-      case Forall => Forall.id.name + bound.toString() + "." + inner.toString()
-      case Exists => Exists.id.name + bound.toString() + "." + inner.toString()
-      case ExistsOne => ExistsOne.id.name + bound.toString() + "." + inner.toString()
+      case Forall => s"${Forall.id.name} [${bound.toString()}]: ${inner.toString()}" 
+      case Exists => s"${Exists.id.name} [${bound.toString()}]: ${inner.toString()}" 
     }
   }
 

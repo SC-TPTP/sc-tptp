@@ -3,6 +3,7 @@
 .metals
 .vscode
 project/*metals.sbt
+project/project
 sbt-launch.jar
 src/main/scala/.scala-build/
 

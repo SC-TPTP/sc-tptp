@@ -16,16 +16,16 @@ object SequentCalculus {
 
   object SCProofStep {
     def outputSingleIndex(name: String, rule: String, bot: Sequent, i: Int, premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, param(${i}), [${premises.toString()}]))"
+      s"fof(${name}, plain, ${bot}, inference(${rule}, param(${i}), [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
     
     def outputDoubleIndexes(name: String, rule: String, bot: Sequent, i: Int, j: Int, premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, param(${i}, ${j}), [${premises.mkString(", ")}]))"
+      s"fof(${name}, plain, ${bot}, inference(${rule}, param(${i}, ${j}), [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
 
     def outputWithTerm(name: String, rule: String, bot: Sequent, i: Int, term: String, premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, param(${i}, $$fot(${term})), [${premises.toString()}]))"
+      s"fof(${name}, plain, ${bot}, inference(${rule}, param(${i}, $$fot(${term})), [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
 
     def outputWithSubst(name: String, rule: String, bot: Sequent, i: Int, j: Int, term: String, subterm: String, premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, param(${i}, ${j}, $$fof(${term})) $$fot(${subterm})), [${premises.toString()}]))"
+      s"fof(${name}, plain, ${bot}, inference(${rule}, param(${i}, ${j}, $$fof(${term})) $$fot(${subterm})), [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
   }
 
   case class SCProof(steps: IndexedSeq[SCProofStep]) {
@@ -62,6 +62,8 @@ object SequentCalculus {
       if steps.isEmpty then throw new NoSuchElementException("conclusion of an empty proof")
       else this.getSequent(length - 1)
     }
+
+    override def toString(): String = steps.foldLeft("")((acc, e) => acc + "\n" + e.toString())
   }
 
   /**

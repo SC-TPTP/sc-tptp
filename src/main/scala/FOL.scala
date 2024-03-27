@@ -148,8 +148,8 @@ object FOL {
       case Neg => s"${Neg.id.name}${args(0).toString()}"
       case Implies => s"(${args(0).toString()} ${Implies.id.name} ${args(1).toString()})"
       case Iff => s"(${args(0).toString()} ${Iff.id.name} ${args(1).toString()})"
-      case And => s"( ${args.mkString(s" ${and.id.name} ")})"
-      case Or => s"( ${args.mkString(s" ${or.id.name} ")})"
+      case And => s"(${args.mkString(s" ${and.id.name} ")})"
+      case Or => s"(${args.mkString(s" ${or.id.name} ")})"
     }
   }
 

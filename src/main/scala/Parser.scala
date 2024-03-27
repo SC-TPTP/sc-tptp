@@ -66,7 +66,7 @@ object Parser {
 
 
 
-  def reconstructProof(file: File): SCProof = {
+  def reconstructProof(file: File): SCProof[?] = {
     val problem = TPTPParser.problem(io.Source.fromFile(file)) 
     val nameMap = scala.collection.mutable.Map[String, Sequent]()
     var steps = List[SCProofStep]()
@@ -91,7 +91,8 @@ object Parser {
             }
       case _ => throw new Exception("Only FOF statements are supported")
     }
-    SCProof(steps.reverse.toIndexedSeq) //TODO
+    if steps.forall(_.isInstanceOf[LVL1ProofStep]) then LVL1Proof(steps.reverse.toIndexedSeq.asInstanceOf[IndexedSeq[LVL1ProofStep]])
+    else throw new Exception("Some proof steps could not be reconstructed")
   }
 
   def annotatedStatementToProofStep(ann: FOFAnnotated, sequentmap: String => Sequent): Option[SCProofStep] = {

@@ -1,7 +1,46 @@
 import FOL.*
 import scala.compiletime.ops.int
+import SequentCalculus.RulesName.*
 
 object SequentCalculus {
+
+    /**
+   * Rule's name
+   */
+
+  object RulesName extends Enumeration {
+    type RulesName = Value
+    val HypRuleName = "hyp"
+    val LeftHypRuleName = "leftHyp"
+    val LeftWeakeningRuleName = "leftWeaken"
+    val RightWeakeningRuleName = "rightWeaken"
+    val CutRuleName = "cut"
+    val LeftAndRuleName = "leftAnd"
+    val LeftOrRuleName = "leftOr"
+    val LeftImp1RuleName = "leftImp1"
+    val LeftImp2RuleName = "leftImp2"
+    val LeftIffRuleName = "leftIff"
+    val LeftNotRuleName = "leftNot"
+    val LeftExRuleName = "leftEx"
+    val LeftAllRuleName = "leftAll"
+    val RightAndRuleName = "rightAnd"
+    val RightOrRuleName = "rightOr"
+    val RightImpRuleName = "rightImp"
+    val RightIffRuleName = "rightIff"
+    val RightNotRuleName = "rightNot"
+    val RightExRuleName = "rightEx"
+    val RightAllRuleName = "rightAll"
+    val LeftNotAndRuleName = "leftNotAnd"
+    val LeftNotOrRuleName = "leftNotOr"
+    val LeftNotImpRuleName = "leftNotImp"
+    val LeftNotIffRuleName = "leftNotIff"
+    val LeftNotNotRuleName = "leftNotNot"
+    val LeftNotExRuleName = "leftNotEx"
+    val LeftNotAllRuleName = "leftNotAll"
+    val RightReflRuleName = "rightRefl"
+    val LeftSubstRuleName = "leftSubst"
+    val RightSubstRuleName = "rightSubst"
+  }
 
   case class Sequent(left: Seq[Formula], right: Seq[Formula]) {
     override def toString: String =
@@ -98,7 +137,7 @@ object SequentCalculus {
    */
   case class Hyp(name: String, bot: Sequent, i: Int, j: Int) extends LVL1ProofStep {
     val premises = Seq()
-    override def toString: String = SCProofStep.outputDoubleIndexes(name, "hyp", bot, i, j, premises)
+    override def toString: String = SCProofStep.outputDoubleIndexes(name, HypRuleName, bot, i, j, premises)
   }
 
   /**
@@ -111,7 +150,7 @@ object SequentCalculus {
    */
   case class LeftHyp(name: String, bot: Sequent, i: Int, j: Int) extends LVL1ProofStep {
     val premises = Seq()
-    override def toString: String = SCProofStep.outputDoubleIndexes(name, "leftHyp", bot, i, j, premises)
+    override def toString: String = SCProofStep.outputDoubleIndexes(name, LeftHypRuleName, bot, i, j, premises)
   }
 
   /**
@@ -124,7 +163,7 @@ object SequentCalculus {
    */
   case class LeftWeakening(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "leftWeaken", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftWeakeningRuleName, bot, i, premises)
   }
 
   /**
@@ -137,7 +176,7 @@ object SequentCalculus {
    */
   case class RightWeakening(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "rightWeaken", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, RightWeakeningRuleName, bot, i, premises)
   }
 
   /**
@@ -151,7 +190,7 @@ object SequentCalculus {
    */
   case class Cut(name: String, bot: Sequent, i: Int, j: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputDoubleIndexes(name, "cut", bot, i, j, premises)
+    override def toString: String = SCProofStep.outputDoubleIndexes(name, CutRuleName, bot, i, j, premises)
   }
 
   /**
@@ -164,7 +203,7 @@ object SequentCalculus {
    */
   case class LeftAnd(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "leftAnd", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftAndRuleName, bot, i, premises)
   }
 
   /**
@@ -177,7 +216,7 @@ object SequentCalculus {
    */
   case class LeftOr(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "leftOr", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftOrRuleName, bot, i, premises)
   }
 
   /**
@@ -190,7 +229,7 @@ object SequentCalculus {
    */
   case class LeftImp1(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "leftImp1", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftImp1RuleName, bot, i, premises)
   }
 
   /**
@@ -203,7 +242,7 @@ object SequentCalculus {
    */
   case class LeftImp2(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "leftImp2", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftImp2RuleName, bot, i, premises)
   }
 
   /**
@@ -216,7 +255,7 @@ object SequentCalculus {
    */
   case class LeftIff(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "leftIff", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftIffRuleName, bot, i, premises)
   }
 
   /**
@@ -229,7 +268,7 @@ object SequentCalculus {
    */
   case class LeftNot(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "leftNot", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotRuleName, bot, i, premises)
   }
 
   /**
@@ -243,7 +282,7 @@ object SequentCalculus {
    */
   case class LeftEx(name: String, bot: Sequent, i: Int, y: VariableLabel, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithTerm(name, "leftEx", bot, i, y.toString(), premises)
+    override def toString: String = SCProofStep.outputWithTerm(name, LeftExRuleName, bot, i, y.toString(), premises)
   }
 
   /**
@@ -257,7 +296,7 @@ object SequentCalculus {
    */
   case class LeftAll(name: String, bot: Sequent, i: Int, t: Term, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithTerm(name, "leftAll", bot, i, t.toString(), premises)
+    override def toString: String = SCProofStep.outputWithTerm(name, LeftAllRuleName, bot, i, t.toString(), premises)
   }
 
   /**
@@ -270,7 +309,7 @@ object SequentCalculus {
    */
   case class RightAnd(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "rightAnd", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name,RightAndRuleName, bot, i, premises)
   }
 
   /**
@@ -282,7 +321,7 @@ object SequentCalculus {
    */
   case class RightOr(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "rightOr", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, RightOrRuleName, bot, i, premises)
   }
 
   /**
@@ -295,7 +334,7 @@ object SequentCalculus {
    */
   case class RightImp(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "rightImp", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, RightImpRuleName, bot, i, premises)
   }
 
   /**
@@ -308,7 +347,7 @@ object SequentCalculus {
    */
   case class RightIff(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "rightIff", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, RightIffRuleName, bot, i, premises)
   }
 
   /**
@@ -321,7 +360,7 @@ object SequentCalculus {
    */
   case class RightNot(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "rightNot", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, RightNotRuleName, bot, i, premises)
   }
 
   /**
@@ -335,7 +374,7 @@ object SequentCalculus {
    */
   case class RightEx(name: String, bot: Sequent, i: Int, t: Term, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithTerm(name, "rightEx", bot, i, t.toString(), premises)
+    override def toString: String = SCProofStep.outputWithTerm(name, RightExRuleName, bot, i, t.toString(), premises)
   }
 
   /**
@@ -349,7 +388,7 @@ object SequentCalculus {
    */
   case class RightAll(name: String, bot: Sequent, i: Int, y: VariableLabel, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithTerm(name, "rightAll", bot, i, y.toString(), premises)
+    override def toString: String = SCProofStep.outputWithTerm(name, RightAllRuleName, bot, i, y.toString(), premises)
   }
 
   /**
@@ -362,7 +401,7 @@ object SequentCalculus {
    */
   case class LeftNotAnd(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "leftNotAnd", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotAndRuleName, bot, i, premises)
 }
 
   /**
@@ -375,7 +414,7 @@ object SequentCalculus {
    */
   case class LeftNotOr(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "leftNotOr", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotOrRuleName, bot, i, premises)
   }
 
   /**
@@ -388,7 +427,7 @@ object SequentCalculus {
    */
   case class LeftNotImp(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "leftNotImp", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotImpRuleName, bot, i, premises)
   }
 
   /**
@@ -401,7 +440,7 @@ object SequentCalculus {
    */
   case class LeftNotIff(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "leftNotIff", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotIffRuleName, bot, i, premises)
   }
 
   /**
@@ -414,7 +453,7 @@ object SequentCalculus {
    */
   case class LeftNotNot(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "leftNotNot", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotNotRuleName, bot, i, premises)
   }
 
   /**
@@ -428,7 +467,7 @@ object SequentCalculus {
    */
   case class LeftNotEx(name: String, bot: Sequent, i: Int, t: Term, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithTerm(name, "leftNotEx", bot, i, t.toString(), premises)
+    override def toString: String = SCProofStep.outputWithTerm(name, LeftNotExRuleName, bot, i, t.toString(), premises)
   }
 
   /**
@@ -442,7 +481,7 @@ object SequentCalculus {
    */
   case class LeftNotAll(name: String, bot: Sequent, i: Int, y: VariableLabel, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithTerm(name, "leftNotAll", bot, i, y.toString(), premises)
+    override def toString: String = SCProofStep.outputWithTerm(name, LeftNotAllRuleName, bot, i, y.toString(), premises)
   }
 
   /**
@@ -454,7 +493,7 @@ object SequentCalculus {
    */
   case class RightRefl(name: String, bot: Sequent, i: Int) extends LVL1ProofStep {
     val premises = Seq()
-    override def toString: String = SCProofStep.outputSingleIndex(name, "rightRefl", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, RightReflRuleName, bot, i, premises)
   }
 
   /**
@@ -470,7 +509,7 @@ object SequentCalculus {
    */
   case class LeftSubst(name: String, bot: Sequent, i: Int, j: Int, P: Formula, x: VariableLabel, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithSubst(name, "leftSubst", bot, i, j, P.toString(), x.toString(), premises)
+    override def toString: String = SCProofStep.outputWithSubst(name, LeftSubstRuleName, bot, i, j, P.toString(), x.toString(), premises)
   }
 
   /**
@@ -486,7 +525,7 @@ object SequentCalculus {
    */
   case class RightSubst(name: String, bot: Sequent, i: Int, j: Int, P: Formula, x: VariableLabel, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithSubst(name, "rightSubst", bot, i, j, P.toString(), x.toString(), premises)
+    override def toString: String = SCProofStep.outputWithSubst(name, RightSubstRuleName, bot, i, j, P.toString(), x.toString(), premises)
   }
 
 }

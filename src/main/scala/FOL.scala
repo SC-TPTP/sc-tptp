@@ -1,5 +1,7 @@
 object FOL {
 
+
+
   /**
    * A labelled node for tree-like structures.
    */
@@ -77,20 +79,16 @@ object FOL {
   /////// Formulas /////////
   //////////////////////////
 
-
-
-
-  sealed case class AtomicLabel(id: Identifier, arity: Int) extends Label{
+  sealed case class AtomicLabel(id: Identifier, arity: Int) extends Label {
     def apply(args: Seq[Term]): AtomicFormula = AtomicFormula(this, args)
-     override def toString(): String = id.name
+    override def toString(): String = id.name
   }
 
   val equality: AtomicLabel = AtomicLabel(Identifier("="), 2)
   val top: AtomicLabel = AtomicLabel(Identifier("$true"), 0)
   val bot: AtomicLabel = AtomicLabel(Identifier("$false"), 0)
 
-
-  sealed abstract class ConnectorLabel(val id: Identifier, val arity: Int) extends Label{
+  sealed abstract class ConnectorLabel(val id: Identifier, val arity: Int) extends Label {
     def apply(args: Seq[Formula]): ConnectorFormula = ConnectorFormula(this, args)
   }
 
@@ -127,7 +125,7 @@ object FOL {
       case `equality` => s"(${args(0).toString()} ${equality.id.name} ${args(1).toString()})"
       case `top` => top.id.name
       case `bot` => bot.id.name
-      case al: AtomicLabel => 
+      case al: AtomicLabel =>
         if (al.arity == 0) then al.id.name
         else s"${al.toString()}(${args.mkString(",")})"
     }
@@ -160,8 +158,8 @@ object FOL {
     override def freeVariables: Set[VariableLabel] = inner.freeVariables - bound
 
     override def toString(): String = label match {
-      case Forall => s"${Forall.id.name} [${bound.toString()}]: ${inner.toString()}" 
-      case Exists => s"${Exists.id.name} [${bound.toString()}]: ${inner.toString()}" 
+      case Forall => s"${Forall.id.name} [${bound.toString()}]: ${inner.toString()}"
+      case Exists => s"${Exists.id.name} [${bound.toString()}]: ${inner.toString()}"
     }
   }
 
@@ -183,9 +181,6 @@ object FOL {
         BinderFormula(label, newBoundVariable, substituteVariablesInFormula(newInner, newSubst, newTaken))
       } else BinderFormula(label, bound, substituteVariablesInFormula(inner, newSubst, newTaken))
   }
-
-
-
 
   val === = equality
   extension (t: Term) {
@@ -229,7 +224,5 @@ object FOL {
     infix inline def \/(g: Formula): Formula = Or(Seq(f, g))
     infix inline def ∨(g: Formula): Formula = Or(Seq(f, g))
   }
-
-
 
 }

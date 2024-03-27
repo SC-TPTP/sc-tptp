@@ -2,14 +2,24 @@ import java.io.File
 import Parser.*
 import FOL.*
 import SequentCalculus.*
+import CoqOutput.CoqProof
 
 object Test {
 
   def main(args: Array[String]): Unit = {
-    println("\n First proof:")
-    println(reconstructProof(new File("proofs/Test.gothm0.p")).toString())
-    println("\n Second proof:")
-    println(reconstructProof(new File("proofs/Test.gothm1.p")).toString())
+    // println("\n First proof:")
+    // println(reconstructProof(new File("proofs/Test.gothm0.p")).toString())
+    // println("\n Second proof:")
+    // println(reconstructProof(new File("proofs/Test.gothm1.p")).toString())
+
+    val drinkers = reconstructProof(new File("proofs/Test.gothm2.p"))
+
+    println("\n Drinkers TPTP:")
+    println(drinkers.toString())
+
+    println("\n Drinkers Coq:")
+    val drinkersCoq = CoqProof(drinkers)
+    println(drinkersCoq.toString())
   }
 
   def testSC(): Unit = {

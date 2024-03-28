@@ -1,4 +1,4 @@
-package collection.mutable
+package datastructure.mutable
 
 trait UnionFind[T] {
 

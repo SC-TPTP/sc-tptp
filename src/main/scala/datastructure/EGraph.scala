@@ -2,7 +2,7 @@ package datastructure.mutable
 
 import scala.collection.*
 
-class EGraph[Label] {
+class EGraph[Label]() {
 
   type EClassId = Int
   var maxId = 0
@@ -11,11 +11,25 @@ class EGraph[Label] {
     maxId
   }
 
+
   val uf = UnionFindWithExplain[EClassId]()
   import uf.{union}
   export uf.find
 
   type ENode = (Label, List[EClassId])
+
+
+  def makeSingletonEClass(node:ENode): EClassId = {
+    val id = nextId()
+    uf.add(id)
+    map(id) = Set(node)
+    parents(id) = mutable.Map()
+    id
+  }
+
+  def classOf(id: EClassId): Set[ENode] = map(id)
+
+  
 
   val map = mutable.Map[EClassId, Set[ENode]]()
   val parents = mutable.Map[EClassId, mutable.Map[ENode, EClassId]]()
@@ -46,8 +60,7 @@ class EGraph[Label] {
   def add(node: ENode): EClassId = lookup(node) match {
     case Some(id) => id
     case None =>
-      val id = nextId()
-      map(id) = Set(node)
+      val id = makeSingletonEClass(node)
       node._2.foreach(child => parents(child)(node) = id)
       hashcons(node) = id
       id
@@ -56,8 +69,13 @@ class EGraph[Label] {
   def merge(id1: EClassId, id2: EClassId): Unit = {
     if find(id1) == find(id2) then ()
     else
+      val newSet = map(find(id1)) ++ map(find(id2))
+      val newparents = parents(find(id1)) ++ parents(find(id2))
       union(id1, id2)
-      worklist = find(id1) :: worklist
+      val newId = find(id1)
+      map(newId) = newSet
+      parents(newId) = newparents
+      worklist = id2 :: worklist
       rebuild()
   }
 

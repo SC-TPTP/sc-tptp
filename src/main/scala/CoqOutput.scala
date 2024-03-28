@@ -63,8 +63,13 @@ object CoqOutput {
     }
   }
 
-  case class CoqProof(steps: IndexedSeq[SCProofStep]) {
-    override def toString(): String = steps.foldLeft("")((acc, e) => acc + "\n" + e.toString())
+  case class CoqProof(ScProof: SCProof[?]) {
+
+    def toCoqSteps(ScProof: SCProof[?]): IndexedSeq[CoqProofStep] = {
+        ScProof.steps.foldLeft(IndexedSeq())((acc, e) =>  acc :+ CoqProofStep(e))
+    }
+
+    override def toString(): String = toCoqSteps(ScProof).foldLeft("")((acc, e) => acc + "\n" + e.toString())
   }
 
 // companion object - constructeur

@@ -58,9 +58,9 @@ object CoqOutput {
     }
   }
 
-  case class CoqProof(ScProof: SCProof) {
+  case class CoqProof(ScProof: SCProof[?]) {
 
-    def toCoqSteps(ScProof: SCProof): IndexedSeq[CoqProofStep] = {
+    def toCoqSteps(ScProof: SCProof[?]): IndexedSeq[CoqProofStep] = {
         ScProof.steps.foldLeft(IndexedSeq())((acc, e) =>  acc :+ CoqProofStep(e))
     }
 

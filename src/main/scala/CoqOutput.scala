@@ -3,8 +3,16 @@ import SequentCalculus.RulesName.*
 
 object CoqOutput {
 
-  case class CoqContext() {
+    def toCoqProof(scProof: SCProof[?]): IndexedSeq[CoqProofStep] = {
+        scProof.steps.foldLeft(IndexedSeq())((acc, e) =>  acc :+ CoqProofStep(e))
+    }
 
+    def toCoqProofStep(scProof: SCProof[?]): IndexedSeq[CoqProofStep] = {
+        scProof.steps.foldLeft(IndexedSeq())((acc, e) =>  acc :+ CoqProofStep(e))
+    }
+
+
+  case class CoqContext() {
     // Path to SCTPTP.v
     def pathToSCTPTPCoq(): String = {
       "path/to/SCTPTP.v"
@@ -24,9 +32,6 @@ object CoqOutput {
   }
 
   case class CoqProofStep(step: SCProofStep) {
-
-    def apply(ScProofStep: SCProofStep): CoqProofStep = CoqProofStep(ScProofStep)
-
     def makeAlphaStep(ruleName: String, i : Int, indexMax: Int) : String = {
         s"apply ${ruleName} H${i}. intros ${Seq.range(i+1, i+indexMax+1).foldLeft("", 0)((acc, e) => (acc._1 + "H" + e.toString() + (if (acc._2 != i + indexMax) then " " else ""), acc._2 + 1))._1}."
     }
@@ -58,14 +63,11 @@ object CoqOutput {
     }
   }
 
-  case class CoqProof(ScProof: SCProof) {
-
-    def toCoqSteps(ScProof: SCProof): IndexedSeq[CoqProofStep] = {
-        ScProof.steps.foldLeft(IndexedSeq())((acc, e) =>  acc :+ CoqProofStep(e))
-    }
-
-    override def toString(): String = toCoqSteps(ScProof).foldLeft("")((acc, e) => acc + "\n" + e.toString())
+  case class CoqProof(steps: IndexedSeq[SCProofStep]) {
+    override def toString(): String = steps.foldLeft("")((acc, e) => acc + "\n" + e.toString())
   }
+
+// companion object - constructeur
 
 //   case class CoqMapConnector 
 //   btps.AndConn:        "/\\",

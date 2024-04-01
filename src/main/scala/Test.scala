@@ -16,10 +16,10 @@ object Test {
 
     val drinkers = reconstructProof(new File("proofs/Test.gothm2.p"))
 
-    println("\n Drinkers TPTP:")
+    println("\nDrinkers TPTP:")
     println(drinkers.toString())
 
-    println("\n Drinkers Coq:")
+    println("\nDrinkers Coq:")
     val drinkersCoq = CoqProof(drinkers)
     println(drinkersCoq.toString())
   }

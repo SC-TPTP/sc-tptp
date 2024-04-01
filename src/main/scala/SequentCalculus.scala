@@ -1,3 +1,5 @@
+package sctptp
+
 import FOL.*
 import scala.compiletime.ops.int
 import SequentCalculus.RulesName.*
@@ -67,6 +69,11 @@ object SequentCalculus {
 
     def outputWithSubst(name: String, rule: String, bot: Sequent, i: Int, j: Int, term: String, subterm: String, premises: Seq[String]): String = 
       s"fof(${name}, plain, ${bot}, inference(${rule}, param(${i}, ${j}, $$fof(${term})) $$fot(${subterm})), [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+
+    def outputWithSubstMany(name: String, rule: String, bot: Sequent, is: List[(Int, Boolean)], j: Int, term: String, subterms: List[String], premises: Seq[String]): String = 
+      s"fof(${name}, plain, ${bot}, inference(${rule}, param(${is}, ${j}, $$fof(${term})), ${subterms.map(st => s"$$fot(${st}))")}, [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+
+
   }
 
   trait SCProof[Steps<:SCProofStep] {
@@ -526,6 +533,23 @@ object SequentCalculus {
   case class RightSubst(name: String, bot: Sequent, i: Int, j: Int, P: Formula, x: VariableLabel, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputWithSubst(name, RightSubstRuleName, bot, i, j, P.toString(), x.toString(), premises)
+  }
+
+
+  /**
+   *   Γ |- P[x:=t], Δ
+   * ----------------
+   *   Γ, t = u |- P[x:=u], Δ
+   *
+   * @param bot Resulting formula
+   * @param i Index of t = u on the left
+   * @param j Index of P(t) on the right
+   * @param P Shape of the formula in which the substitution occurs
+   * @param x Variable indicating where in P the substitution occurs
+   */
+  case class RightSubstMulti(name: String, bot: Sequent, is: List[(Int, Boolean)], j: Int, P: Formula, xs: List[VariableLabel], t1: String) extends LVL1ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = SCProofStep.outputWithSubstMany(name, RightSubstRuleName, bot, is, j, P.toString(), xs.map(_.toString()), premises)
   }
 
 }

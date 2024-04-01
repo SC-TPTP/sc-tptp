@@ -1,5 +1,6 @@
-object FOL {
+package sctptp
 
+object FOL {
 
 
   /**
@@ -39,14 +40,14 @@ object FOL {
 
   case class FunctionLabel(id: Identifier, arity: Int) extends TermLabel {
     def apply(args: Seq[Term]): Term = Term(this, args)
-    override def toString(): String = id.name
+    override def toString(): String = id.toString()
   }
 
   case class VariableLabel(id: Identifier) extends TermLabel {
     val name: Identifier = id
     val arity = 0
 
-    override def toString(): String = name.name
+    override def toString(): String = id.toString()
   }
 
   sealed case class Term(label: TermLabel, args: Seq[Term]) {
@@ -180,6 +181,18 @@ object FOL {
         val newInner = substituteVariablesInFormula(inner, Map(bound -> Variable(newBoundVariable)), newTaken)
         BinderFormula(label, newBoundVariable, substituteVariablesInFormula(newInner, newSubst, newTaken))
       } else BinderFormula(label, bound, substituteVariablesInFormula(inner, newSubst, newTaken))
+  }
+
+  extension (tl: TermLabel) {
+    def apply(args: Term*): Term = Term(tl, args)
+  }
+
+  extension (al: AtomicLabel) {
+    def apply(args: Term*): AtomicFormula = AtomicFormula(al, args)
+  }
+
+  extension (cl: ConnectorLabel) {
+    def apply(args: Formula*): ConnectorFormula = ConnectorFormula(cl, args)
   }
 
   val === = equality

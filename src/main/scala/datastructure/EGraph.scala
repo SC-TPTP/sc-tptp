@@ -2,9 +2,11 @@ package datastructure.mutable
 
 import scala.collection.*
 
-class EGraph[Label]() {
+trait EGraph[Label]() {
 
   type EClassId = Int
+  type ENode = (Label, List[EClassId])
+
   var maxId = 0
   def nextId(): EClassId = {
     maxId += 1
@@ -12,9 +14,43 @@ class EGraph[Label]() {
   }
 
 
+  val uf : UnionFind[EClassId]
+  export uf.find
+
+  def makeSingletonEClass(node:ENode): EClassId 
+
+  def classOf(id: EClassId): Set[ENode] 
+
+
+  def isCanonical(id: EClassId): Boolean = id == find(id)
+
+  def isCanonical(node: ENode): Boolean = node == canonicalize(node)
+
+  def canonicalize(node: ENode): ENode = {
+    val (label, children) = node
+    val canonicalChildren = children.map(find)
+    (label, canonicalChildren)
+  }
+
+  def idEq(id1: EClassId, id2: EClassId): Boolean = find(id1) == find(id2)
+
+  def add(node: ENode): EClassId
+
+  def merge(id1: EClassId, id2: EClassId): Unit
+
+}
+
+
+
+
+
+
+class StrictEGraph[Label]() extends EGraph[Label] {
+
+  type EClassId = Int
+
   val uf = UnionFindWithExplain[EClassId]()
   import uf.{union}
-  export uf.find
 
   type ENode = (Label, List[EClassId])
 
@@ -29,31 +65,16 @@ class EGraph[Label]() {
 
   def classOf(id: EClassId): Set[ENode] = map(id)
 
-  
+
 
   val map = mutable.Map[EClassId, Set[ENode]]()
   val parents = mutable.Map[EClassId, mutable.Map[ENode, EClassId]]()
   val hashcons = mutable.Map[ENode, EClassId]()
   var worklist = List[EClassId]()
 
-  def isCanonical(id: EClassId): Boolean = id == find(id)
 
-  def isCanonical(node: ENode): Boolean = node == canonicalize(node)
-
-  def canonicalize(node: ENode): ENode = {
-    val (label, children) = node
-    val canonicalChildren = children.map(find)
-    (label, canonicalChildren)
-  }
-
-  def idEq(id1: EClassId, id2: EClassId): Boolean = find(id1) == find(id2)
 
   def nodeEq(node1: ENode, node2: ENode): Boolean = ???
-
-  private def nodeCongruence(node1: ENode, node2: ENode): Boolean = 
-    node1._1 == node2._2 && node1._2.length == node2._2.length &&
-      node1._2.zip(node2._2).forall((id1, id2) => idEq(id1, id2))
-  
 
   def lookup(node: ENode): Option[EClassId] = hashcons.get(canonicalize(node))
 
@@ -80,14 +101,14 @@ class EGraph[Label]() {
   }
 
 
-  def rebuild(): Unit = {
+  protected def rebuild(): Unit = {
     while worklist.nonEmpty do
       val todo = worklist.map(find)
       worklist = List()
       todo.foreach(repair)
   }
 
-  def repair(id: EClassId): Unit = {
+  protected def repair(id: EClassId): Unit = {
     parents(id).foreach {
       case (pNode, pClassId) =>
         hashcons.remove(pNode)
@@ -105,6 +126,69 @@ class EGraph[Label]() {
       parents(id) = newParents
     }
   }
+}
+
+
+
+class EGraphWithProof[Label]() extends StrictEGraph[Label] {
+  override val uf: UnionFindWithExplain[EClassId] = UnionFindWithExplain[EClassId]()
+  import uf.{union}
+
+  trait Step
+  case class External(cause: (EClassId, EClassId)) extends Step
+  case class Congruence(cause: (EClassId, EClassId)) extends Step
+
+  val proofMap = mutable.Map[(EClassId, EClassId), Step]()
+
+  def explain(id1: EClassId, id2: EClassId): Option[List[Step]] = {
+    val steps = uf.explain(id1, id2)
+    steps.map(_.map(proofMap))
+  }
+
+  override def merge(id1: EClassId, id2: EClassId): Unit = {
+    mergeWithStep(id1, id2, External((id1, id2)))
+  }
+  
+  protected def mergeWithStep(id1: EClassId, id2: EClassId, step: Step): Unit = {
+    if find(id1) == find(id2) then ()
+    else
+      proofMap((id1, id2)) = step
+      val newSet = map(find(id1)) ++ map(find(id2))
+      val newparents = parents(find(id1)) ++ parents(find(id2))
+      union(id1, id2)
+      val newId = find(id1)
+      map(newId) = newSet
+      parents(newId) = newparents
+      worklist = id2 :: worklist
+      rebuildCause((id1, id2))
+  }
+
+  protected def rebuildCause(cause: (EClassId, EClassId)): Unit = {
+    while worklist.nonEmpty do
+      val todo = worklist.map(find)
+      worklist = List()
+      todo.foreach(repairCause(_, cause))
+  }
+
+  protected def repairCause(id: EClassId, cause: (EClassId, EClassId)): Unit = {
+    parents(id).foreach {
+      case (pNode, pClassId) =>
+        hashcons.remove(pNode)
+        val newPNode = canonicalize(pNode)
+        hashcons(newPNode) = find(pClassId)
+    }
+
+    val newParents = mutable.Map[ENode, EClassId]()
+    parents(id).foreach {
+      case (pNode, pClassId) =>
+        val newPNode = canonicalize(pNode)
+        if newParents.contains(newPNode) then
+          mergeWithStep(pClassId, newParents(newPNode), Congruence(cause))
+        newParents(newPNode) = find(pClassId)
+    }
+    parents(id) = newParents
+  }
 
   
+
 }

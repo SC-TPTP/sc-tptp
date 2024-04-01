@@ -1,3 +1,5 @@
+package sctptp
+
 import FOL.* 
 import SequentCalculus.*
 

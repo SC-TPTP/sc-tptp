@@ -1,3 +1,5 @@
+package sctptp
+
 import leo.datastructures.TPTP.AnnotatedFormula
 import leo.datastructures.TPTP.FOF
 import leo.datastructures.TPTP.FOFAnnotated

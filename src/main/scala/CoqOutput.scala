@@ -1,3 +1,5 @@
+package sctptp
+
 import SequentCalculus.*
 import SequentCalculus.RulesName.*
 

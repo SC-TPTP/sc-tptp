@@ -66,10 +66,10 @@ class StrictUnionFind[T] extends UnionFind[T] {
 
 
 class UnionFindWithExplain[T] extends UnionFind[T] {
-  private val parent = scala.collection.mutable.Map[T, T]()
-  private val realParent = scala.collection.mutable.Map[T, (T, ((T, T), Boolean, Int))]()
-  private val rank = scala.collection.mutable.Map[T, Int]()
-  private var unionCounter = 0
+  val parent = scala.collection.mutable.Map[T, T]()
+  val realParent = scala.collection.mutable.Map[T, (T, ((T, T), Boolean, Int))]()
+  val rank = scala.collection.mutable.Map[T, Int]()
+  var unionCounter = 0
 
   def add(x: T): Unit = {
     parent(x) = x

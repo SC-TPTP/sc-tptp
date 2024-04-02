@@ -4,7 +4,7 @@ import leo.datastructures.TPTP.AnnotatedFormula
 import leo.datastructures.TPTP.FOF
 import leo.datastructures.TPTP.FOFAnnotated
 import leo.modules.input.{TPTPParser}
-import FOL.*
+import FOL.{*, given}
 import SequentCalculus.*
 import SequentCalculus as SC
 
@@ -14,10 +14,6 @@ import leo.datastructures.TPTP.TFF.Logical
 
 object Parser {
 
-  given Conversion[String, Identifier] = s => s.split("_") match {
-    case a if a.last.forall(_.isDigit)=> Identifier(a.take(a.length-1).mkString(""), a.last.toInt)
-    case _ => Identifier(s, 0)
-  }
 
   def convertTermToFOL(term: FOF.Term): Term = term match {
 

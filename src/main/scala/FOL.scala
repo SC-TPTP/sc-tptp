@@ -24,6 +24,10 @@ object FOL {
     val counterSeparator: Char = '_'
     def isValidIdentifier(s: String): Boolean = s.nonEmpty // && s.forall(_.isLetterOrDigit) && s.head.isUpper
   }
+  given Conversion[String, Identifier] = s => s.split("_") match {
+    case a if a.last.forall(_.isDigit)=> Identifier(a.take(a.length-1).mkString(""), a.last.toInt)
+    case _ => Identifier(s, 0)
+  }
 
   def freshId(taken: Iterable[Identifier], base: Identifier): Identifier = {
     new Identifier(

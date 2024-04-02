@@ -42,7 +42,7 @@ Proof. firstorder. Qed.
 (* Left Not Rules *)
 
 Lemma leftNotNot : forall P : Prop,
-  P -> (~ P -> False).
+  P -> (~ ~ P).
 Proof. tauto. Qed.
 
 Lemma leftNotTrue :
@@ -55,11 +55,11 @@ Proof. tauto. Qed.
 
 Definition leftNotAnd := fun P Q c h i => leftNotAnd_s P Q h i c.
 
-Lemma leftNotImply_s : forall P Q : Prop,
+Lemma leftNotImp_s : forall P Q : Prop,
   (P -> ~Q -> False) -> (~(P -> Q) -> False).
 Proof. tauto. Qed.
 
-Definition leftNotImply := fun P Q c h => leftNotImply_s P Q h c.
+Definition leftNotImp := fun P Q c h => leftNotImp_s P Q h c.
 
 Lemma leftNotOr_s : forall P Q : Prop,
   (~P -> ~Q -> False) -> (~(P \/ Q) -> False).
@@ -86,7 +86,7 @@ Definition leftNotAll := fun T P c h => leftNotAll_s T P h c.
 
 (* Right Rules *)
 
-Lemma RightNot : forall P : Prop, (P -> False) -> ~P.
+Lemma rightNot : forall P : Prop, (P -> False) -> ~P.
 Proof. tauto. Qed.
 
 Lemma rightAnd : forall P Q : Prop, (P) -> (Q) -> (P /\ Q).
@@ -103,10 +103,9 @@ Proof. intros P Q H0 H1 H2. auto. Qed.
 Lemma rightIff : forall P Q : Prop, (P -> Q) -> (Q -> P) -> (P <-> Q).
 Proof. intros P Q H0 H1. split. auto. auto. Qed.
 
-Lemma RightEx: forall (T : Type) (P : T -> Prop) (t : T), (P t) -> (exists x : T, (P x)).
+Lemma rightEx: forall (T : Type) (P : T -> Prop) (t : T), (P t) -> (exists x : T, (P x)).
 Proof. firstorder. Qed.
 
-Lemma RightAll : forall (T : Type) (P : T -> Prop),
+Lemma rightAll : forall (T : Type) (P : T -> Prop),
   (forall x : T, (P x)) -> (forall x : T, (P x)).
 Proof. firstorder. Qed.
-

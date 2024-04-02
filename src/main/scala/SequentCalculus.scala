@@ -77,7 +77,7 @@ object SequentCalculus {
   }
 
   trait SCProof[Steps<:SCProofStep] {
-
+    val thmName: String
     val steps: IndexedSeq[Steps]
 
     /**
@@ -119,7 +119,7 @@ object SequentCalculus {
 
   sealed trait LVL1ProofStep extends SCProofStep
 
-  case class LVL1Proof(steps: IndexedSeq[LVL1ProofStep]) extends SCProof[LVL1ProofStep] 
+  case class LVL1Proof(steps: IndexedSeq[LVL1ProofStep], thmName: String) extends SCProof[LVL1ProofStep] 
 
 
   /**

@@ -166,7 +166,7 @@ object Parser {
                       "inference",
                       List(
                         GeneralTerm(List(MetaFunctionData(stepName, List())), None), // stepnames
-                        GeneralTerm(List(MetaFunctionData("param", parameters)), None), // params
+                        GeneralTerm(List(), Some(parameters)), // params
                         GeneralTerm(List(), Some(numberTerms))
                       ) // numbers
                     )

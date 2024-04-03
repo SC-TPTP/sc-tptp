@@ -34,7 +34,6 @@ object CoqOutput {
   }
 
   def computeUninstantiatedVariables(variables: Set[VariableLabel]): String = {
-    println(variables) 
     variables.foldLeft("") { (acc, e) => acc + s"Parameter ${e.name}: sctptp_U.\n" }
   }
 
@@ -91,6 +90,7 @@ object CoqOutput {
     case LeftWeakening(name, bot, i, t1) => (s"(* [${name}] *) " + s"clear H${i}.", 0)
     case RightWeakening(name, bot, i, t1) => (s"(* [${name}] *) " + s"clear ${bot.right(i).toString()}.", 0)
     case Cut(name, bot, i, j, t1, t2) => ("", 1)
+    case LVL2.Congruence(name, bot) => (s"(* [${name}] *) congruence.", 0)
 
     case LeftAnd(name, bot, i, t1) => (s"(* [${name}] *) " + makeAlphaStep(LeftAndRuleName, i, indexNextIntro, 2), 2)
     case LeftOr(name, bot, i, t1, t2) => (s"(* [${name}] *) " + makeBetaStep(LeftOrRuleName, i, indexNextIntro, 2), 1)

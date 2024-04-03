@@ -7,6 +7,7 @@ import leo.modules.input.{TPTPParser}
 import FOL.{*, given}
 import SequentCalculus.*
 import SequentCalculus as SC
+import LVL2.*
 
 import java.io.File
 import leo.datastructures.TPTP.TFF.Logical
@@ -90,6 +91,7 @@ object Parser {
       case _ => throw new Exception("Only FOF statements are supported")
     }
     if steps.forall(_.isInstanceOf[LVL1ProofStep]) then LVL1Proof(steps.reverse.toIndexedSeq.asInstanceOf[IndexedSeq[LVL1ProofStep]], file.getName().replace(".", "_"))
+    if steps.forall(_.isInstanceOf[LVL2ProofStep]) then LVL2Proof(steps.reverse.toIndexedSeq.asInstanceOf[IndexedSeq[LVL2ProofStep]], file.getName().replace(".", "_"))
     else throw new Exception("Some proof steps could not be reconstructed")
   }
 
@@ -112,6 +114,7 @@ object Parser {
       case Inference.LeftAll(step) => Some(step)
       case Inference.LeftNotEx(step) => Some(step)
       case Inference.RightNot(step) => Some(step)
+      case Inference.Congruence(step) => Some(step)
       case _ => None
     }
     r
@@ -503,6 +506,15 @@ object Parser {
               case Term(x: VariableLabel, Seq()) => x
               case _ => throw new Exception(s"Expected a variable, but got $xl")
             Some(SC.RightSubst(name, convertSequentToFol(sequent), n.toInt, m.toInt, p, x, t1))
+          case _ => None
+        }
+    }
+
+    object Congruence {
+      def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] = 
+        ann_seq match {
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("congruence", Seq(), Seq())) =>
+            Some(LVL2.Congruence(name, convertSequentToFol(sequent)))
           case _ => None
         }
     }

@@ -14,18 +14,19 @@ object Test {
     // println("\n Second proof:")
     // println(reconstructProof(new File("proofs/Test.gothm1.p")).toString())
 
-    val problem = reconstructProof(new File("proofs/Test.gothm0.p"))
+    // val problem = reconstructProof(new File("proofs/Test.gothm0.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm1.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm2.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm3.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm4.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm5.p"))
+    val problem = reconstructProof(new File("proofs/Test.gothm6.p"))
 
     println("\nProblem TPTP:")
     println(problem.toString())
 
     println("\nProblem Coq:")
-    val problemCoq = CoqProof(problem, Map.empty[String, Int])
+    val problemCoq = CoqProof(problem, Map.empty[String, Int], Map.empty[String, Int])
     println(problemCoq.toString())
   }
 

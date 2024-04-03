@@ -57,21 +57,21 @@ object SequentCalculus {
 
   object SCProofStep {
     def outputNIndexes(name: String, rule: String, bot: Sequent, indexes: Seq[Int], premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, param(${indexes.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != indexes.length - 1) then ", " else ""), acc._2 + 1))._1}), [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [${indexes.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != indexes.length - 1) then ", " else ""), acc._2 + 1))._1}], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
     def outputSingleIndex(name: String, rule: String, bot: Sequent, i: Int, premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, param(${i}), [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [${i}], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
     
     def outputDoubleIndexes(name: String, rule: String, bot: Sequent, i: Int, j: Int, premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, param(${i}, ${j}), [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [${i}, ${j}], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
 
     def outputWithTerm(name: String, rule: String, bot: Sequent, i: Int, term: String, premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, param(${i}, $$fot(${term})), [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [${i}, $$fot(${term})], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
 
     def outputWithSubst(name: String, rule: String, bot: Sequent, i: Int, j: Int, term: String, subterm: String, premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, param(${i}, ${j}, $$fof(${term})) $$fot(${subterm})), [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [${i}, ${j}, $$fof(${term})) $$fot(${subterm})], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
 
     def outputWithSubstMany(name: String, rule: String, bot: Sequent, is: List[(Int, Boolean)], j: Int, term: String, subterms: List[String], premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, param(${is}, ${j}, $$fof(${term})), ${subterms.map(st => s"$$fot(${st}))")}, [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [${is}, ${j}, $$fof(${term}), [${subterms.map(st => s"$$fot(${st})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
 
 
   }

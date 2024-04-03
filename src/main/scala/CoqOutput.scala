@@ -218,3 +218,5 @@ object CoqOutput {
     }
   }
 }
+
+// TODO : axioms

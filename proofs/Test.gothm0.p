@@ -4,6 +4,7 @@
 
 fof(c_Test_gothm0_p, conjecture, (((sp & sq) | (sp & sr)) => (sp & (sq | sr)))).
 
+<<<<<<< HEAD
 fof(f8, plain, [~((((sp & sq) | (sp & sr)) => (sp & (sq | sr)))), ((sp & sq) | (sp & sr)), ~((sp & (sq | sr))), (sp & sq), sp, sq, ~(sp)] --> [], inference(leftHyp, [6, 4], [])).
 
 fof(f10, plain, [~((((sp & sq) | (sp & sr)) => (sp & (sq | sr)))), ((sp & sq) | (sp & sr)), ~((sp & (sq | sr))), (sp & sq), sp, sq, ~((sq | sr)), ~(sq), ~(sr)] --> [], inference(leftHyp, [7, 5], [])).
@@ -24,7 +25,9 @@ fof(f11, plain, [~((((sp & sq) | (sp & sr)) => (sp & (sq | sr)))), ((sp & sq) | 
 
 fof(f6, plain, [~((((sp & sq) | (sp & sr)) => (sp & (sq | sr)))), ((sp & sq) | (sp & sr)), ~((sp & (sq | sr))), (sp & sr)] --> [], inference(leftAnd, [3], [f11])).
 
+<<<<<<< HEAD
 fof(f4, plain, [~((((sp & sq) | (sp & sr)) => (sp & (sq | sr)))), ((sp & sq) | (sp & sr)), ~((sp & (sq | sr)))] --> [], inference(leftOr, [1], [f5, f6])).
+
 
 fof(f3, plain, [~((((sp & sq) | (sp & sr)) => (sp & (sq | sr))))] --> [], inference(leftNotImp, [0], [f4])).
 

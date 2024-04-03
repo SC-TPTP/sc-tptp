@@ -7,7 +7,7 @@ object LVL2 {
   sealed trait StrictLVL2ProofStep extends SCProofStep
   type LVL2ProofStep = StrictLVL2ProofStep | LVL1ProofStep
 
-  case class LVL2Proof(steps: IndexedSeq[LVL2ProofStep]) extends SCProof[LVL2ProofStep] 
+  case class LVL2Proof(steps: IndexedSeq[LVL2ProofStep], thmName: String) extends SCProof[LVL2ProofStep] 
 
   /**
    *   Γ |- P[x:=t], Δ

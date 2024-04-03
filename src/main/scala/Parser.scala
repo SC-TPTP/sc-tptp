@@ -89,7 +89,7 @@ object Parser {
             }
       case _ => throw new Exception("Only FOF statements are supported")
     }
-    if steps.forall(_.isInstanceOf[LVL1ProofStep]) then LVL1Proof(steps.reverse.toIndexedSeq.asInstanceOf[IndexedSeq[LVL1ProofStep]])
+    if steps.forall(_.isInstanceOf[LVL1ProofStep]) then LVL1Proof(steps.reverse.toIndexedSeq.asInstanceOf[IndexedSeq[LVL1ProofStep]], file.getName().replace(".", "_"))
     else throw new Exception("Some proof steps could not be reconstructed")
   }
 

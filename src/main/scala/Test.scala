@@ -23,6 +23,7 @@ object Test {
     // val problem = reconstructProof(new File("proofs/Test.gothm6.p"))
     val problem = reconstructProof(new File("proofs/Test.gothm7.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm8.p"))
+    // val problem = reconstructProof(new File("proofs/Test.gothm9.p"))
 
     println("\nProblem TPTP:")
     println(problem.toString())

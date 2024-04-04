@@ -191,9 +191,22 @@ object CoqOutput {
       )
     }
 
-    def makeTheoremAndContext(FirstStep: SCProofStep): (String, Map[String, Int], Map[String, Int]) = {
-      val res = mapTheoremToCoqSymbols(FirstStep.bot.right(0), Map.empty[String, Int], Map.empty[String, Int])
-      (s"Theorem ${ScProof.thmName}:  ${res._1}." + "\nProof.\n" + "apply NNPP. intro H0.\n", res._2, res._3)
+    def introAxioms(axioms: Seq[Formula]) : (String, Int) = {
+      axioms.foldLeft(("", 0))((acc, e) => {
+        (acc._1 + s"intro H${acc._2}. " , acc._2 + 1)
+      })
+    }
+
+    def makeTheoremAndContext(firstStep: SCProofStep): (String, Map[String, Int], Map[String, Int], Int) = {
+      val axiomsList = firstStep.bot.left.slice(0, firstStep.bot.left.length - 1)
+      val theorem = !(firstStep.bot.left(firstStep.bot.left.length - 1))
+
+      val (axioms, nextIndex) = introAxioms(axiomsList)
+
+      val initialFormula = axiomsList.foldRight(theorem: Formula)((e, acc) => { e ==> acc }) 
+
+      val res = mapTheoremToCoqSymbols(initialFormula, Map.empty[String, Int], Map.empty[String, Int])
+      (s"Theorem ${ScProof.thmName}:  ${res._1}." + "\nProof.\n" + axioms + s"intro H${nextIndex}.\n", res._2, res._3, nextIndex + 1)
     }
 
     def getStepFromName(Steps: IndexedSeq[SCProofStep], name: String): SCProofStep = {
@@ -210,13 +223,12 @@ object CoqOutput {
     }
 
     override def toString(): String = {
-      val (thm, context_p, context_t) = makeTheoremAndContext(ScProof(ScProof.steps.length - 1))
+      val firstStep = getStepFromName(ScProof.steps, "f3")
+      val (initialStep, context_p, context_t, nextIndex) = makeTheoremAndContext(firstStep)
       contextPreamble(ScProof, context_p, context_t)
-        + thm
-        + toCoqSteps(ScProof.steps, "f3", 1).foldRight("")((e, acc) => e + "\n" + acc)
+        + initialStep
+        + toCoqSteps(ScProof.steps, "f3", nextIndex).foldRight("")((e, acc) => e + "\n" + acc)
         + "Qed."
     }
   }
 }
-
-// TODO : axioms

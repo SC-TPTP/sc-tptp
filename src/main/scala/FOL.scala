@@ -127,7 +127,7 @@ object FOL {
       args.foldLeft(Set.empty[VariableLabel])((prev, next) => prev union next.freeVariables)
 
     override def toString(): String = label match {
-      case `equality` => s"(${args(0).toString()} ${equality.id.name} ${args(1).toString()})"
+      case `equality` => s"${args(0).toString()} ${equality.id.name} ${args(1).toString()}"
       case `top` => top.id.name
       case `bot` => bot.id.name
       case al: AtomicLabel =>

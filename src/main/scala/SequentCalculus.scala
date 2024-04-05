@@ -14,8 +14,7 @@ object SequentCalculus {
     type RulesName = Value
     val HypRuleName = "hyp"
     val LeftHypRuleName = "leftHyp"
-    val LeftWeakeningRuleName = "leftWeaken"
-    val RightWeakeningRuleName = "rightWeaken"
+    val WeakeningRuleName = "Weakening"
     val CutRuleName = "cut"
     val LeftAndRuleName = "leftAnd"
     val LeftOrRuleName = "leftOr"
@@ -161,29 +160,16 @@ object SequentCalculus {
   }
 
   /**
-   *    Γ |- Δ
+   *    Γ1 |- Δ1
    * -------------
-   *   Γ, A |- Δ
+   *   Γ1, Γ2 |- Δ1, Δ2
    *
    * @param bot Resulting formula
    * @param i Index of A on the left
    */
-  case class LeftWeakening(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
+  case class Weakening(name: String, bot: Sequent, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, LeftWeakeningRuleName, bot, i, premises)
-  }
-
-  /**
-   *    Γ |- Δ
-   * -------------
-   *   Γ |- A, Δ
-   *
-   * @param bot Resulting formula
-   * @param i Index of A on the right
-   */
-  case class RightWeakening(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
-    val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, RightWeakeningRuleName, bot, i, premises)
+    override def toString: String = SCProofStep.outputNIndexes(name, WeakeningRuleName, bot, List(), Seq(t1))
   }
 
   /**

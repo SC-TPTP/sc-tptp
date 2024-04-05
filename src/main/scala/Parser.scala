@@ -19,7 +19,7 @@ object Parser {
   def convertTermToFOL(term: FOF.Term): Term = term match {
 
     case FOF.AtomicTerm(f, args) =>
-      Term(FunctionLabel(f, args.size), args map convertTermToFOL)
+      Term(FunctionSymbol(f, args.size), args map convertTermToFOL)
     case FOF.Variable(name) => Variable(name)
     case FOF.DistinctObject(name) => throw new Exception("Distinct objects are not supported in pure FOL")
     case FOF.NumberTerm(value) => throw new Exception("Numbers are not supported in pure FOL")
@@ -32,11 +32,11 @@ object Parser {
       case FOF.AtomicFormula(f, args) =>
         if f == "$true" then AtomicFormula(top, Nil)
         else if f == "$false" then AtomicFormula(bot, Nil)
-        else AtomicFormula(AtomicLabel(f, args.size), args map convertTermToFOL)
+        else AtomicFormula(AtomicSymbol(f, args.size), args map convertTermToFOL)
       case FOF.QuantifiedFormula(quantifier, variableList, body) =>
         quantifier match {
-          case FOF.! => variableList.foldRight(convertFormulaToFol(body))((s, f) => BinderFormula(Forall, VariableLabel(s), f))
-          case FOF.? => variableList.foldRight(convertFormulaToFol(body))((s, f) => BinderFormula(Exists, VariableLabel(s), f))
+          case FOF.! => variableList.foldRight(convertFormulaToFol(body))((s, f) => BinderFormula(Forall, VariableSymbol(s), f))
+          case FOF.? => variableList.foldRight(convertFormulaToFol(body))((s, f) => BinderFormula(Exists, VariableSymbol(s), f))
         }
       case FOF.UnaryFormula(connective, body) =>
         connective match {
@@ -311,7 +311,7 @@ object Parser {
           
           case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftEx", Seq(StrOrNum(n), GenTerm(xl)), Seq(t1))) => // x has to be a GeneralTerm representinf a variable, i.e. $fot(x)
             val x = xl match
-              case Term(x: VariableLabel, Seq()) => x
+              case Term(x: VariableSymbol, Seq()) => x
               case _ => throw new Exception(s"Expected a variable, but got $xl")
             Some(SC.LeftEx(name, convertSequentToFol(sequent), n.toInt, x, t1))
           case _ => None
@@ -388,7 +388,7 @@ object Parser {
         ann_seq match {
           case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightForall", Seq(StrOrNum(n), GenTerm(xl)), Seq(t1))) =>
             val x = xl match
-              case Term(x: VariableLabel, Seq()) => x
+              case Term(x: VariableSymbol, Seq()) => x
               case _ => throw new Exception(s"Expected a variable, but got $xl")
             Some(SC.RightAll(name, convertSequentToFol(sequent), n.toInt, x, t1))
           case _ => None
@@ -464,7 +464,7 @@ object Parser {
         ann_seq match {
           case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotForall", Seq(StrOrNum(n), GenTerm(xl)), Seq(t1))) => // x has to be a GeneralTerm representinf a variable, i.e. $fot(x)
             val x = xl match
-              case Term(x: VariableLabel, Seq()) => x
+              case Term(x: VariableSymbol, Seq()) => x
               case _ => throw new Exception(s"Expected a variable, but got $xl")
             Some(SC.LeftNotAll(name, convertSequentToFol(sequent), n.toInt, x, t1))
           case _ => None
@@ -485,7 +485,7 @@ object Parser {
         ann_seq match {
           case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightSubst", Seq(StrOrNum(n), StrOrNum(m), GenTerm(xl), GenFormula(p)), Seq(t1))) =>
             val x = xl match
-              case Term(x: VariableLabel, Seq()) => x
+              case Term(x: VariableSymbol, Seq()) => x
               case _ => throw new Exception(s"Expected a variable, but got $xl")
             Some(SC.LeftSubst(name, convertSequentToFol(sequent), n.toInt, m.toInt, p, x, t1))
           case _ => None
@@ -497,7 +497,7 @@ object Parser {
         ann_seq match {
           case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightSubst", Seq(StrOrNum(n), StrOrNum(m), GenTerm(xl), GenFormula(p)), Seq(t1))) =>
             val x = xl match
-              case Term(x: VariableLabel, Seq()) => x
+              case Term(x: VariableSymbol, Seq()) => x
               case _ => throw new Exception(s"Expected a variable, but got $xl")
             Some(SC.RightSubst(name, convertSequentToFol(sequent), n.toInt, m.toInt, p, x, t1))
           case _ => None

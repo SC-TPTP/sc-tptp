@@ -36,15 +36,15 @@ object Test {
   def testSC(): Unit = {
     // Terms
     val x_id = Identifier("X")
-    val x_label = VariableLabel(x_id)
+    val x_label = VariableSymbol(x_id)
     val x = Variable(x_label)
 
     val a_id = Identifier("a")
-    val a_term_label = FunctionLabel(a_id, 0)
+    val a_term_label = FunctionSymbol(a_id, 0)
     val a_term = Term(a_term_label, Seq())
 
     val f_id = Identifier("f")
-    val f_label = FunctionLabel(f_id, 3)
+    val f_label = FunctionSymbol(f_id, 3)
     val fx = Term(f_label, Seq(x, a_term, x))
 
     println("x.toString: " + x.toString())
@@ -52,13 +52,13 @@ object Test {
     println("fx.toString: " + fx.toString())
 
     // Atomic Formulas
-    val a_atomic_label = AtomicLabel(a_id, 0)
+    val a_atomic_label = AtomicSymbol(a_id, 0)
     val a = AtomicFormula(a_atomic_label, Seq())
     val af_top = AtomicFormula(top, Seq())
     val af_bot = AtomicFormula(bot, Seq())
     val eq_a_a = AtomicFormula(equality, Seq(a_term, a_term))
     val p_id = Identifier("p")
-    val p_atomic_label = AtomicLabel(p_id, 2)
+    val p_atomic_label = AtomicSymbol(p_id, 2)
     val p_a_x = AtomicFormula(p_atomic_label, Seq(a_term, x))
 
     println("a.toString: " + a.toString())

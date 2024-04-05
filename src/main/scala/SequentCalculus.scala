@@ -46,7 +46,7 @@ object SequentCalculus {
 
   case class Sequent(left: Seq[Formula], right: Seq[Formula]) {
     override def toString: String =
-      s"[${left.mkString(",")}] --> [${right.mkString(",")}]"
+      s"{${left.mkString(",")}} --> {${right.mkString(",")}}"
   }
 
   trait SCProofStep {

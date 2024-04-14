@@ -2,10 +2,10 @@ package datastructure.mutable
 
 import scala.collection.*
 
-trait EGraph[Label]() {
+trait EGraph[Symbol]() {
 
   type EClassId = Int
-  type ENode = (Label, List[EClassId])
+  type ENode = (Symbol, List[EClassId])
 
   var maxId = 0
   def nextId(): EClassId = {
@@ -45,14 +45,14 @@ trait EGraph[Label]() {
 
 
 
-class StrictEGraph[Label]() extends EGraph[Label] {
+class StrictEGraph[Symbol]() extends EGraph[Symbol] {
 
   type EClassId = Int
 
   val uf = UnionFindWithExplain[EClassId]()
   import uf.{union}
 
-  type ENode = (Label, List[EClassId])
+  type ENode = (Symbol, List[EClassId])
 
 
   def makeSingletonEClass(node:ENode): EClassId = {
@@ -130,7 +130,7 @@ class StrictEGraph[Label]() extends EGraph[Label] {
 
 
 
-class EGraphWithProof[Label]() extends StrictEGraph[Label] {
+class EGraphWithProof[Symbol]() extends StrictEGraph[Symbol] {
   override val uf: UnionFindWithExplain[EClassId] = UnionFindWithExplain[EClassId]()
   import uf.{union}
 

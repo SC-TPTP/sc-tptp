@@ -18,7 +18,7 @@ object CoqOutput {
     lines + "\n"
   }
 
-  def retrieveUninstantiatedVariables(steps: IndexedSeq[SCProofStep]): (Set[VariableLabel]) = {
+  def retrieveUninstantiatedVariables(steps: IndexedSeq[SCProofStep]): (Set[VariableSymbol]) = {
     steps.foldLeft(Set())((acc, e) => {
       e match
         case LeftEx(name, bot, i, y, t1) => acc - y
@@ -33,7 +33,7 @@ object CoqOutput {
     })
   }
 
-  def computeUninstantiatedVariables(variables: Set[VariableLabel]): String = {
+  def computeUninstantiatedVariables(variables: Set[VariableSymbol]): String = {
     variables.foldLeft("") { (acc, e) => acc + s"Parameter ${e.name}: sctptp_U.\n" }
   }
 
@@ -187,8 +187,8 @@ object CoqOutput {
     def makeMapTermListToArity(tl: Seq[Term]): Map[String, Int] = {
       tl.foldLeft(Map.empty[String, Int])((acc, e) => 
         e.label match
-          case FunctionLabel(id, arity) => acc + (id.name -> arity)
-          case VariableLabel(id) => acc
+          case FunctionSymbol(id, arity) => acc + (id.name -> arity)
+          case VariableSymbol(id) => acc
       )
     }
 

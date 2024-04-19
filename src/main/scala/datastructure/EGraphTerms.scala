@@ -211,7 +211,7 @@ class EGraphTerms() {
             val left_eq_right = sctptp.LVL2.RightSubstMulti(
               name3, 
               SC.Sequent(eqs.map(_ === _) ++ ctx1, (left === right) +: ctx2),
-              (0 until eqs.size).map((_, true)).toList, 
+              (0 until eqs.size).toList, 
               0, 
               P, 
               freeVars.toList, 

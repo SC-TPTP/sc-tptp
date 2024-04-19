@@ -86,7 +86,7 @@ object CongruenceClosure {
             val substStep = LVL2.RightSubstMulti(
               congName, 
               SC.Sequent(childrenPairs.map(_ === _) ++ bot.left, bot.right),
-              (0 until childrenPairs.size).map((_, true)).toList,
+              (0 until childrenPairs.size).toList,
               i,
               la.label(xs map (_())),
               xs,

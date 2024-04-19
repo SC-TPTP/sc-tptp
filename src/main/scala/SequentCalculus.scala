@@ -71,8 +71,8 @@ object SequentCalculus {
     def outputWithSubst(name: String, rule: String, bot: Sequent, i: Int, j: Int, term: String, subterm: String, premises: Seq[String]): String = 
       s"fof(${name}, plain, ${bot}, inference(${rule}, [${i}, ${j}, $$fof(${term})) $$fot(${subterm})], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
 
-    def outputWithSubstMany(name: String, rule: String, bot: Sequent, is: List[(Int, Boolean)], j: Int, term: String, subterms: List[String], premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, [${is}, ${j}, $$fof(${term}), [${subterms.map(st => s"$$fot(${st})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+    def outputWithSubstMany(name: String, rule: String, bot: Sequent, is: List[Int], j: Int, term: String, subterms: List[String], premises: Seq[String]): String = 
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [[${is.mkString(", ")}], ${j}, $$fof(${term}), [${subterms.map(st => s"$$fot(${st})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
 
 
   }

@@ -59,11 +59,12 @@ object SequentCalculus {
   object SCProofStep {
     def outputNIndexes(name: String, rule: String, bot: Sequent, indexes: Seq[Int], premises: Seq[String]): String = 
       s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${indexes.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != indexes.length - 1) then ", " else ""), acc._2 + 1))._1}], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
-    def outputSingleIndex(name: String, rule: String, bot: Sequent, i: Int, premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${i}], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+
+    def outputSingleIndex(name: String, role: String, rule: String, bot: Sequent, i: Int, premises: Seq[String]): String = 
+      s"fof(${name}, ${role}, ${bot}, inference(${rule}, [status(thm), ${i}], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
     
-    def outputDoubleIndexes(name: String, rule: String, bot: Sequent, i: Int, j: Int, premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${i}, ${j}], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+    def outputDoubleIndexes(name: String, role: String, rule: String, bot: Sequent, i: Int, j: Int, premises: Seq[String]): String = 
+      s"fof(${name}, ${role}, ${bot}, inference(${rule}, [status(thm), ${i}, ${j}], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
 
     def outputWithTerm(name: String, rule: String, bot: Sequent, i: Int, term: String, premises: Seq[String]): String = 
       s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${i}, $$fot(${term})], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
@@ -154,7 +155,7 @@ object SequentCalculus {
    */
   case class Hyp(name: String, bot: Sequent, i: Int, j: Int) extends LVL1ProofStep {
     val premises = Seq()
-    override def toString: String = SCProofStep.outputDoubleIndexes(name, HypRuleName, bot, i, j, premises)
+    override def toString: String = SCProofStep.outputDoubleIndexes(name, HypRuleName, "assumption", bot, i, j, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = bot.left(i) == bot.left(j)
   }
 
@@ -168,7 +169,7 @@ object SequentCalculus {
    */
   case class LeftHyp(name: String, bot: Sequent, i: Int, j: Int) extends LVL1ProofStep {
     val premises = Seq()
-    override def toString: String = SCProofStep.outputDoubleIndexes(name, LeftHypRuleName, bot, i, j, premises)
+    override def toString: String = SCProofStep.outputDoubleIndexes(name, LeftHypRuleName, "assumption", bot, i, j, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = bot.left(j) == ~bot.left(i)
   }
 
@@ -199,7 +200,7 @@ object SequentCalculus {
    */
   case class Cut(name: String, bot: Sequent, i: Int, j: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputDoubleIndexes(name, CutRuleName, bot, i, j, premises)
+    override def toString: String = SCProofStep.outputDoubleIndexes(name, CutRuleName, "plain", bot, i, j, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       val A = premises(t1).right(i)
       isSameSet(bot.left, premises(t1).left) && 
@@ -218,7 +219,7 @@ object SequentCalculus {
    */
   case class LeftAnd(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, LeftAndRuleName, bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftAndRuleName, "plain", bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.left(i) match
         case ConnectorFormula(And, Seq(a, b)) =>
@@ -237,7 +238,7 @@ object SequentCalculus {
    */
   case class LeftOr(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputSingleIndex(name, LeftOrRuleName, bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftOrRuleName, "plain", bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.left(i) match
         case a_b @ ConnectorFormula(Or, Seq(a, b)) =>
@@ -259,7 +260,7 @@ object SequentCalculus {
    */
   case class LeftImp1(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputSingleIndex(name, LeftImp1RuleName, bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftImp1RuleName, "plain", bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.left(i) match
         case a_b @ ConnectorFormula(Implies, Seq(a, b)) =>
@@ -280,7 +281,7 @@ object SequentCalculus {
    */
   case class LeftImp2(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputSingleIndex(name, LeftImp2RuleName, bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftImp2RuleName, "plain", bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.left(i) match
         case a_b @ ConnectorFormula(Implies, Seq(a, b)) =>
@@ -301,7 +302,7 @@ object SequentCalculus {
    */
   case class LeftIff(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, LeftIffRuleName, bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftIffRuleName, "plain", bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.left(i) match
         case a_b @ ConnectorFormula(Iff, Seq(a, b)) =>
@@ -320,7 +321,7 @@ object SequentCalculus {
    */
   case class LeftNot(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotRuleName, bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotRuleName, "plain", bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.left(i) match
         case na @ ConnectorFormula(Neg, Seq(a)) => 
@@ -382,7 +383,7 @@ object SequentCalculus {
    */
   case class RightAnd(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep { //inverse of LeftOr
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputSingleIndex(name,RightAndRuleName, bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name,RightAndRuleName, "plain", bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.right(i) match
         case a_b @ ConnectorFormula(And, Seq(a, b)) => 
@@ -405,7 +406,7 @@ object SequentCalculus {
    */
   case class RightOr(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, RightOrRuleName, bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, RightOrRuleName, "plain", bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.right(i) match
         case a_b @ ConnectorFormula(Or, Seq(a, b)) => 
@@ -424,7 +425,7 @@ object SequentCalculus {
    */
   case class RightImp(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, RightImpRuleName, bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, RightImpRuleName, "plain", bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.right(i) match
         case a_b @ ConnectorFormula(Implies, Seq(a, b)) => 
@@ -443,7 +444,7 @@ object SequentCalculus {
    */
   case class RightIff(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputSingleIndex(name, RightIffRuleName, bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, RightIffRuleName, "plain", bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.right(i) match
         case a_b @ ConnectorFormula(Iff, Seq(a, b)) => 
@@ -464,7 +465,7 @@ object SequentCalculus {
    */
   case class RightNot(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, RightNotRuleName, bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, RightNotRuleName, "plain", bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.right(i) match
         case na @ ConnectorFormula(Neg, Seq(a)) => 
@@ -526,7 +527,7 @@ object SequentCalculus {
    */
   case class LeftNotAnd(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotAndRuleName, bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotAndRuleName, "plain", bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.left(i) match
         case na_b @ ConnectorFormula(Neg, Seq(ConnectorFormula(And, Seq(a, b)))) => 
@@ -547,7 +548,7 @@ object SequentCalculus {
    */
   case class LeftNotOr(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotOrRuleName, bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotOrRuleName, "plain", bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.left(i) match
         case na_b @ ConnectorFormula(Neg, Seq(ConnectorFormula(Or, Seq(a, b)))) => 
@@ -566,7 +567,7 @@ object SequentCalculus {
    */
   case class LeftNotImp(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotImpRuleName, bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotImpRuleName, "plain", bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.left(i) match
         case na_b @ ConnectorFormula(Neg, Seq(ConnectorFormula(Implies, Seq(a, b)))) => 
@@ -585,7 +586,7 @@ object SequentCalculus {
    */
   case class LeftNotIff(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotIffRuleName, bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotIffRuleName, "plain", bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.left(i) match
         case na_b @ ConnectorFormula(Neg, Seq(ConnectorFormula(Iff, Seq(a, b)))) => 
@@ -606,7 +607,7 @@ object SequentCalculus {
    */
   case class LeftNotNot(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotNotRuleName, bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotNotRuleName, "plain", bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.left(i) match
         case na @ ConnectorFormula(Neg, Seq(ConnectorFormula(Neg, Seq(a)))) => 
@@ -667,7 +668,7 @@ object SequentCalculus {
    */
   case class RightRefl(name: String, bot: Sequent, i: Int) extends LVL1ProofStep {
     val premises = Seq()
-    override def toString: String = SCProofStep.outputSingleIndex(name, RightReflRuleName, bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, RightReflRuleName, "plain", bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.right(i) match
         case AtomicFormula(`equality`, Seq(t1, t2)) => t1 == t2

@@ -4,9 +4,67 @@ use egg::{*, rewrite as rw};
 //implement function asString for Vec<FlatTerm<egg::SymbolLang>> as a function not a method
 fn as_string(v: &Vec<FlatTerm<egg::SymbolLang>>) -> String {
     let strs: Vec<String> = v.iter()
-    .map(|e| e.to_string())
+    .map(|e| format!("{:?}", e))
     .collect();
     strs.join("\n")
+}
+
+fn get_flat_string(v: &Vec<FlatTerm<egg::SymbolLang>>) -> String {
+    v.iter()
+        .map(|e| e.to_string())
+        .collect::<Vec<String>>()
+        .join("\n")
+}
+
+fn expr_to_tptp_res(expr: &FlatTerm<egg::SymbolLang>) -> String {
+    let head = expr.node.op;
+    if expr.children.is_empty() {
+        format!("{}", head)
+    } else {
+        let args = expr.children.iter().map(|e| expr_to_tptp_res(e)).collect::<Vec<String>>().join(", ");
+        format!("{}({})", head, args)
+    }
+}
+
+fn expr_to_tptp_hole(expr: &FlatTerm<egg::SymbolLang>) -> (String, Option<String>) {
+    if expr.backward_rule.is_some() {
+        ("HOLE".to_owned(), Some(expr.backward_rule.unwrap().to_string().to_owned()))
+    } else if expr.forward_rule.is_some() {
+        ("HOLE".to_owned(), Some(expr.forward_rule.unwrap().to_string().to_owned()))
+    } else {
+        let head = expr.node.op;
+        if expr.children.is_empty() {
+            (format!("{}", head), None)
+        } else {
+            let args = expr.children.iter().fold(("".to_owned(), None), |acc, e| {
+                let (res, rule) = expr_to_tptp_hole(e);
+                (format!("{}, {}", acc.0, res), rule.or(acc.1))
+            });
+            (format!("{}({})", head, args.0), args.1)
+        }
+    }
+}
+
+fn line_to_tptp<F>(line: &FlatTerm<egg::SymbolLang>, i: i32, base: &String, left: &String, map: F) -> String where F: Fn(String) -> i32 {
+    let (with_hole, _rule) = expr_to_tptp_hole(line);
+    let full = expr_to_tptp_res(line);
+    format!("fof(f{}, plain, [{}] --> [{} = {}], inference(RightSubstEq, param({}, {}, HOLE), [f{}])).", i, left, base, full, map(_rule.unwrap()), with_hole, i-1)
+}
+
+fn proof_to_tptp<F>(proof: &Vec<FlatTerm<egg::SymbolLang>>, rules: Vec<(String, String)>, map: F) -> String where F: Fn(String) -> i32 {
+    let left = rules.iter().map(|rule| {
+        format!("{} = {}", rule.0, rule.1)
+    }).collect::<Vec<String>>().join(", ");
+    let base = expr_to_tptp_res(&proof[0]);
+    let first = format!("fof(f0, plain, [{}] --> [{} = {}], inference(RightRefl, param(0), [])).\n", left, base, base);
+
+    let mut i = 1;
+    first + &proof.iter().skip(1).map( |line| {
+        let res = line_to_tptp(line, i, &base, &left, &map);
+        i += 1;
+        res
+    }
+    ).collect::<Vec<String>>().join("\n")
 }
 
 fn main() {
@@ -18,37 +76,71 @@ fn main() {
 
     ];
 
+
     let expr = "(sf (sf (sf (sf (sf (sf (sf (sf cc))))))))".parse().unwrap();
     let start = "(sf cc)".parse().unwrap();
     let end = "cc".parse().unwrap();
     let mut runner = Runner::default().with_explanations_enabled().with_expr(&expr).run(rules);
+    let mut e1 = runner.explain_equivalence(&start, &end);
+    let _e1 = e1.make_flat_explanation();
+    //println!("{}", as_string(&_e1));
+    println!("\n");
+
+        
+    let rules2: &[Rewrite<SymbolLang, ()>] = &[
+        rw!("rule2"; "(sf cc)" => "dd"),
+    ];
+
+
+    let expr2 = "(sf (sf cc))".parse().unwrap();
+    let start2 = "(sf (sf cc))".parse().unwrap();
+    let end2 = "(sf dd)".parse().unwrap();
+    let mut runner2 = Runner::default().with_explanations_enabled().with_expr(&expr2).run(rules2);
+    let mut e2 = runner2.explain_equivalence(&start2, &end2);
+    let _e2 = e2.make_flat_explanation();
+    println!("{}", as_string(&_e2));
 
     //implement display for Vec<FlatTerm<egg::SymbolLang>>
 
-    println!("{}", as_string(runner.explain_equivalence(&start, &end).make_flat_explanation()));
 
-
+    println!("");
     
 
 
-    //complete this
-    // (sf cc)
-    // (sf (Rewrite<= rule5 (sf (sf (sf (sf (sf cc)))))))
-    // (sf (sf (sf (sf (sf (sf (Rewrite<= rule5 (sf (sf (sf (sf (sf cc))))))))))))
-    // (sf (sf (sf (Rewrite=> rule8 cc))))
-    // (sf (sf (sf (Rewrite<= rule5 (sf (sf (sf (sf (sf cc)))))))))
-    // (Rewrite=> rule8 cc)
-    let expected_result = vec![
-        "fof(f1, plain, [(f(f(f(f(f(f(f(f(cc)))))))) = cc), (f(f(f(f(f(cc))))) = cc)] --> [f(cc) = f(cc)], inference(RightRefl, param(0), [])).", // (sf cc)
-        "fof(f2, plain, [(f(f(f(f(f(f(f(f(cc)))))))) = cc), (f(f(f(f(f(cc))))) = cc)] --> [f(cc) = f(f(f(f(f(f(cc))))))], inference(RightSubstEq, param(1, f(cc) = f(Y), Y), [f1])).", // (sf (Rewrite<= rule5 (sf (sf (sf (sf (sf cc)))))))
-        "fof(f3, plain, [(f(f(f(f(f(f(f(f(cc)))))))) = cc), (f(f(f(f(f(cc))))) = cc)] --> [f(cc) = f(f(f(f(f(f(f(f(f(f(f(cc)))))))))))], inference(RightSubstEq, param(1, f(cc) = f(f(f(f(f(f(Y)))))), Y), [f2])).", // (sf (sf (sf (sf (sf (sf (Rewrite<= rule5 (sf (sf (sf (sf (sf cc)))))))))))
-        "fof(f4, plain, [(f(f(f(f(f(f(f(f(cc)))))))) = cc), (f(f(f(f(f(cc))))) = cc)] --> [f(cc) = f(f(f(cc)))], inference(RightSubstEq, param(0, f(cc) = f(f(f(Y))), Y), [f3])).", // (sf (sf (sf (Rewrite=> rule8 cc))))
-        "fof(f5, plain, [(f(f(f(f(f(f(f(f(cc)))))))) = cc), (f(f(f(f(f(cc))))) = cc)] --> [f(cc) = f(f(f(f(f(f(f(cc)))))))], inference(RightSubstEq, param(1, f(cc) = f(f(f(Y))), Y), [f4])).", // (sf (sf (sf (Rewrite<= rule5 (sf (sf (sf (sf (sf cc))))))))
-        "fof(f6, plain, [(f(f(f(f(f(f(f(f(cc)))))))) = cc), (f(f(f(f(f(cc))))) = cc)] --> [f(cc) = cc], inference(RightSubstEq, param(0, f(cc) = Y, Y), [f5])).", // (Rewrite=> rule8 cc)
+    // This is the respresentation "sexpr" of type FlatTerm<egg::SymbolLang
+    let _sexpr_proof = vec![
+        "(sf cc)",
+        "(sf (Rewrite<= rule5 (sf (sf (sf (sf (sf cc)))))))",
+        "(sf (sf (sf (sf (sf (sf (Rewrite<= rule5 (sf (sf (sf (sf (sf cc))))))))))))",
+        "(sf (sf (sf (Rewrite=> rule8 cc))))",
+        "(sf (sf (sf (Rewrite<= rule5 (sf (sf (sf (sf (sf cc)))))))))",
+        "(Rewrite=> rule8 cc)"
     ];
-    println!("{:?}", expected_result);
 
+    // This is the respresentation "tptp"
+    let _tptp_proof = vec![
+        "fof(f1, plain, [(sf(sf(sf(sf(sf(sf(sf(sf(cc)))))))) = cc), (sf(sf(sf(sf(sf(cc))))) = cc)] --> [sf(cc) = sf(cc)], inference(RightRefl, param(0), [])).", // (sf cc)
+        "fof(f2, plain, [(sf(sf(sf(sf(sf(sf(sf(sf(cc)))))))) = cc), (sf(sf(sf(sf(sf(cc))))) = cc)] --> [sf(cc) = sf(sf(sf(sf(sf(sf(cc))))))], inference(RightSubstEq, param(1, sf(cc) = sf(Y), Y), [f1])).", // (sf (Rewrite<= rule5 (sf (sf (sf (sf (sf cc)))))))
+        "fof(f3, plain, [(sf(sf(sf(sf(sf(sf(sf(sf(cc)))))))) = cc), (sf(sf(sf(sf(sf(cc))))) = cc)] --> [sf(cc) = sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(cc)))))))))))], inference(RightSubstEq, param(1, sf(cc) = sf(sf(sf(sf(sf(sf(Y)))))), Y), [f2])).", // (sf (sf (sf (sf (sf (sf (Rewrite<= rule5 (sf (sf (sf (sf (sf cc)))))))))))
+        "fof(f4, plain, [(sf(sf(sf(sf(sf(sf(sf(sf(cc)))))))) = cc), (sf(sf(sf(sf(sf(cc))))) = cc)] --> [sf(cc) = sf(sf(sf(cc)))], inference(RightSubstEq, param(0, sf(cc) = sf(sf(sf(Y))), Y), [f3])).", // (sf (sf (sf (Rewrite=> rule8 cc))))
+        "fof(f5, plain, [(sf(sf(sf(sf(sf(sf(sf(sf(cc)))))))) = cc), (sf(sf(sf(sf(sf(cc))))) = cc)] --> [sf(cc) = sf(sf(sf(sf(sf(sf(sf(cc)))))))], inference(RightSubstEq, param(1, sf(cc) = sf(sf(sf(Y))), Y), [f4])).", // (sf (sf (sf (Rewrite<= rule5 (sf (sf (sf (sf (sf cc))))))))
+        "fof(f6, plain, [(sf(sf(sf(sf(sf(sf(sf(sf(cc)))))))) = cc), (sf(sf(sf(sf(sf(cc))))) = cc)] --> [sf(cc) = cc], inference(RightSubstEq, param(0, sf(cc) = Y, Y), [f5])).", // (Rewrite=> rule8 cc)
+    ];
 
+    // sexpr term: (sf (sf (sf (sf (sf (sf cc))))))
+    // tptp term: sf(sf(sf(sf(sf(sf(cc)))))
+    // function that transforms expressions of type FlatTerm<egg::SymbolLang> to tptp format:
+    #[allow(unused_variables)]
+
+    
+    
+
+    let rules_ = vec![
+        ("(sf (sf (sf (sf (sf cc)))))".to_owned(), "cc".to_owned()),
+        ("(sf (sf (sf (sf (sf (sf (sf (sf cc))))))))".to_owned(), "cc".to_owned())
+    ];
+    println!("{}", get_flat_string(_e1));
+    println!("{}", proof_to_tptp(&_e1, rules_, |s| if s == "rule5" { 0 } else { 1 }));
 
 
 }

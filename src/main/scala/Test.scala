@@ -16,7 +16,7 @@ object Test {
 
     // val problem = reconstructProof(new File("proofs/Test.gothm0.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm1.p"))
-    val problem = reconstructProof(new File("proofs/Test.gothm2.p"))
+    // val problem = reconstructProof(new File("proofs/Test.gothm2.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm3.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm4.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm5.p"))
@@ -24,6 +24,7 @@ object Test {
     // val problem = reconstructProof(new File("proofs/Test.gothm7.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm8.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm9.p"))
+    val problem = reconstructProof(new File("proofs/Test.gothm10.p"))
 
     println("\nProblem TPTP:")
     println(problem.toString())

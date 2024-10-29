@@ -115,6 +115,12 @@ object Parser {
       case Inference.LeftAll(step) => Some(step)
       case Inference.LeftNotEx(step) => Some(step)
       case Inference.RightNot(step) => Some(step)
+      case Inference.RightAnd(step) => Some(step)
+      case Inference.RightOr(step) => Some(step)
+      case Inference.RightImp(step) => Some(step)
+      case Inference.RightIff(step) => Some(step)
+      case Inference.RightEx(step) => Some(step)
+      case Inference.RightAll(step) => Some(step)
       case Inference.Congruence(step) => Some(step)
       case _ => None
     }
@@ -197,7 +203,7 @@ object Parser {
     object Hyp {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("hyp", Seq(StrOrNum(n), StrOrNum(m)), Seq())) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("hyp", Seq(_, StrOrNum(n), StrOrNum(m)), Seq())) =>
             if (sequent.lhs(n.toInt) == sequent.rhs(m.toInt)) then
               val left = sequent.lhs.map(convertFormulaToFol)
               val right = sequent.rhs.map(convertFormulaToFol)
@@ -210,7 +216,7 @@ object Parser {
     object LeftHyp {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftHyp", Seq(StrOrNum(n), StrOrNum(m)), Seq())) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftHyp", Seq(_, StrOrNum(n), StrOrNum(m)), Seq())) =>
             Some(SC.LeftHyp(name, convertSequentToFol(sequent), n.toInt, m.toInt))
           case _ =>
             None
@@ -220,7 +226,7 @@ object Parser {
     object Weakening {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("weakening", Seq(StrOrNum(n)), Seq(t1))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("weakening", Seq(_, StrOrNum(n)), Seq(t1))) =>
             Some(SC.Weakening(name, convertSequentToFol(sequent), t1))
           case _ => None
         }
@@ -231,7 +237,7 @@ object Parser {
     object Cut {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("cut", Seq(StrOrNum(n), StrOrNum(m)), Seq(t1, t2))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("cut", Seq(_, StrOrNum(n), StrOrNum(m)), Seq(t1, t2))) =>
             Some(SC.Cut(name, convertSequentToFol(sequent), n.toInt, m.toInt, t1, t2))
           case _ =>
             None
@@ -243,7 +249,7 @@ object Parser {
     object LeftAnd {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftAnd", Seq(StrOrNum(n)), Seq(t1))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftAnd", Seq(_, StrOrNum(n)), Seq(t1))) =>
             Some(SC.LeftAnd(name, convertSequentToFol(sequent), n.toInt, t1))
           case _ => None
         }
@@ -252,7 +258,7 @@ object Parser {
     object LeftOr {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftOr", Seq(StrOrNum(n)), Seq(t1, t2))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftOr", Seq(_, StrOrNum(n)), Seq(t1, t2))) =>
             val f = sequent.lhs(n.toInt)
             val (a, b) = convertFormulaToFol(f) match {
               case ConnectorFormula(Or, Seq(x, y)) => (x, y)
@@ -266,7 +272,7 @@ object Parser {
     object LeftImp1 {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftImp1", Seq(StrOrNum(n)), Seq(t1, t2))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftImp1", Seq(_, StrOrNum(n)), Seq(t1, t2))) =>
             val f = sequent.lhs(n.toInt)
             val (a, b) = convertFormulaToFol(f) match {
               case ConnectorFormula(Implies, Seq(x, y)) => (x, y)
@@ -280,7 +286,7 @@ object Parser {
     object LeftImp2 {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftImp2", Seq(StrOrNum(n)), Seq(t1, t2))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftImp2", Seq(_, StrOrNum(n)), Seq(t1, t2))) =>
             
             Some(SC.LeftImp2(name, convertSequentToFol(sequent), n.toInt, t1, t2))
           case _ => None
@@ -290,7 +296,7 @@ object Parser {
     object LeftIff {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftIff", Seq(StrOrNum(n)), Seq(t1))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftIff", Seq(_, StrOrNum(n)), Seq(t1))) =>
             Some(SC.LeftIff(name, convertSequentToFol(sequent), n.toInt, t1))
           case _ => None
         }
@@ -299,7 +305,7 @@ object Parser {
     object LeftNot {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNot", Seq(StrOrNum(n)), Seq(t1))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNot", Seq(_, StrOrNum(n)), Seq(t1))) =>
             Some(SC.LeftNot(name, convertSequentToFol(sequent), n.toInt, t1))
           case _ => None
         }
@@ -309,7 +315,7 @@ object Parser {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] =
         ann_seq match {
           
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftEx", Seq(StrOrNum(n), GenTerm(xl)), Seq(t1))) => // x has to be a GeneralTerm representinf a variable, i.e. $fot(x)
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftEx", Seq(_, StrOrNum(n), GenTerm(xl)), Seq(t1))) => // x has to be a GeneralTerm representinf a variable, i.e. $fot(x)
             val x = xl match
               case Term(x: VariableSymbol, Seq()) => x
               case _ => throw new Exception(s"Expected a variable, but got $xl")
@@ -321,7 +327,7 @@ object Parser {
     object LeftAll {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftForall", Seq(StrOrNum(n), GenTerm(t)), Seq(t1))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftForall", Seq(_, StrOrNum(n), GenTerm(t)), Seq(t1))) =>
             val f = sequent.lhs(n.toInt)
             Some(SC.LeftAll(name, convertSequentToFol(sequent), n.toInt, t, t1))
           case _ => None
@@ -331,7 +337,7 @@ object Parser {
     object RightAnd {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightAnd", Seq(StrOrNum(n)), Seq(t1, t2))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightAnd", Seq(_, StrOrNum(n)), Seq(t1, t2))) =>
             Some(SC.RightAnd(name, convertSequentToFol(sequent), n.toInt, t1, t2))
           case _ => None
         }
@@ -340,7 +346,7 @@ object Parser {
     object RightOr {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightOr", Seq(StrOrNum(n)), Seq(t1))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightOr", Seq(_, StrOrNum(n)), Seq(t1))) =>
             Some(SC.RightOr(name, convertSequentToFol(sequent), n.toInt, t1))
           case _ => None
         }
@@ -349,7 +355,7 @@ object Parser {
     object RightImp {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightImp", Seq(StrOrNum(n)), Seq(t1))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightImp", Seq(_, StrOrNum(n)), Seq(t1))) =>
             Some(SC.RightImp(name, convertSequentToFol(sequent), n.toInt, t1))
           case _ => None
         }
@@ -358,7 +364,7 @@ object Parser {
     object RightIff {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightIff", Seq(StrOrNum(n)), Seq(t1, t2))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightIff", Seq(_, StrOrNum(n)), Seq(t1, t2))) =>
             Some(SC.RightIff(name, convertSequentToFol(sequent), n.toInt, t1, t2))
           case _ => None
         }
@@ -367,7 +373,7 @@ object Parser {
     object RightNot {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightNot", Seq(StrOrNum(n)), Seq(t1))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightNot", Seq(_, StrOrNum(n)), Seq(t1))) =>
             Some(SC.RightNot(name, convertSequentToFol(sequent), n.toInt, t1))
           case _ => None
         }
@@ -376,7 +382,7 @@ object Parser {
     object RightEx {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightEx", Seq(StrOrNum(n), GenTerm(t)), Seq(t1))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightEx", Seq(_, StrOrNum(n), GenTerm(t)), Seq(t1))) =>
             
             Some(SC.RightEx(name, convertSequentToFol(sequent), n.toInt, t, t1))
           case _ => None
@@ -386,7 +392,7 @@ object Parser {
     object RightAll {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightForall", Seq(StrOrNum(n), GenTerm(xl)), Seq(t1))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightForall", Seq(_, StrOrNum(n), GenTerm(xl)), Seq(t1))) =>
             val x = xl match
               case Term(x: VariableSymbol, Seq()) => x
               case _ => throw new Exception(s"Expected a variable, but got $xl")
@@ -398,7 +404,7 @@ object Parser {
     object LeftNotAnd {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotAnd", Seq(StrOrNum(n)), Seq(t1, t2))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotAnd", Seq(_, StrOrNum(n)), Seq(t1, t2))) =>
             val f = sequent.lhs(n.toInt)
             val (a, b) = convertFormulaToFol(f) match {
               case ConnectorFormula(Neg, Seq(ConnectorFormula(And, Seq(x, y)))) => (x, y)
@@ -412,7 +418,7 @@ object Parser {
     object LeftNotOr {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotOr", Seq(StrOrNum(n)), Seq(t1))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotOr", Seq(_, StrOrNum(n)), Seq(t1))) =>
             Some(SC.LeftNotOr(name, convertSequentToFol(sequent), n.toInt, t1))
           case _ => None
         }
@@ -421,7 +427,7 @@ object Parser {
     object LeftNotImp {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotImp", Seq(StrOrNum(n)), Seq(t1))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotImp", Seq(_, StrOrNum(n)), Seq(t1))) =>
             Some(SC.LeftNotImp(name, convertSequentToFol(sequent), n.toInt, t1))
           case _ => None
         }
@@ -430,7 +436,7 @@ object Parser {
     object LeftNotIff {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotIff", Seq(StrOrNum(n)), Seq(t1, t2))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotIff", Seq(_, StrOrNum(n)), Seq(t1, t2))) =>
             Some(SC.LeftNotIff(name, convertSequentToFol(sequent), n.toInt, t1, t2))
           case _ => None
         }
@@ -439,7 +445,7 @@ object Parser {
     object LeftNotNot {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotNot", Seq(StrOrNum(n)), Seq(t1))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotNot", Seq(_, StrOrNum(n)), Seq(t1))) =>
             Some(SC.LeftNotNot(name, convertSequentToFol(sequent), n.toInt, t1))
           case _ => None
         }
@@ -448,7 +454,7 @@ object Parser {
     object LeftNotEx {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotEx", Seq(StrOrNum(n), GenTerm(t)), Seq(t1))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotEx", Seq(_, StrOrNum(n), GenTerm(t)), Seq(t1))) =>
             val f = sequent.lhs(n.toInt)
             val (x, phi) = convertFormulaToFol(f) match {
               case ConnectorFormula(Neg, Seq(BinderFormula(Exists, x, phi))) => (x, phi)
@@ -462,7 +468,7 @@ object Parser {
     object LeftNotAll {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotForall", Seq(StrOrNum(n), GenTerm(xl)), Seq(t1))) => // x has to be a GeneralTerm representinf a variable, i.e. $fot(x)
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotForall", Seq(_, StrOrNum(n), GenTerm(xl)), Seq(t1))) => // x has to be a GeneralTerm representinf a variable, i.e. $fot(x)
             val x = xl match
               case Term(x: VariableSymbol, Seq()) => x
               case _ => throw new Exception(s"Expected a variable, but got $xl")
@@ -474,7 +480,7 @@ object Parser {
     object RightRefl {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightRefl", Seq(StrOrNum(n)), Seq())) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightRefl", Seq(_, StrOrNum(n)), Seq())) =>
             Some(SC.RightRefl(name, convertSequentToFol(sequent), n.toInt))
           case _ => None
         }
@@ -483,7 +489,7 @@ object Parser {
     object LeftSubst {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightSubst", Seq(StrOrNum(n), StrOrNum(m), GenTerm(xl), GenFormula(p)), Seq(t1))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightSubst", Seq(_, StrOrNum(n), StrOrNum(m), GenTerm(xl), GenFormula(p)), Seq(t1))) =>
             val x = xl match
               case Term(x: VariableSymbol, Seq()) => x
               case _ => throw new Exception(s"Expected a variable, but got $xl")
@@ -495,7 +501,7 @@ object Parser {
     object RightSubst {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightSubst", Seq(StrOrNum(n), StrOrNum(m), GenTerm(xl), GenFormula(p)), Seq(t1))) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightSubst", Seq(_, StrOrNum(n), StrOrNum(m), GenTerm(xl), GenFormula(p)), Seq(t1))) =>
             val x = xl match
               case Term(x: VariableSymbol, Seq()) => x
               case _ => throw new Exception(s"Expected a variable, but got $xl")

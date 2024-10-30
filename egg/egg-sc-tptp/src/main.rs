@@ -1,6 +1,14 @@
+#![allow(unused_imports)]
+#![allow(dead_code)]
+
 use egg::{*, rewrite as rw};
 use std::io::Read;
 use tptp::TPTPIterator;
+use tptp::fof;
+use tptp::top;
+use tptp::visitor::Visitor;
+use tptp::common::*;
+
 
 
 //implement function asString for Vec<FlatTerm<egg::SymbolLang>> as a function not a method
@@ -189,14 +197,35 @@ fof(rule8, axiom, [] --> [sf(sf(sf(sf(sf(sf(sf(sf(cc)))))))) = cc]).".to_owned()
         
     }
 
+
+
     fn solve_tptp_problem(path: &str) {
         let bytes = take_input(path);
         let mut parser = TPTPIterator::<()>::new(bytes.as_slice());
         let mut i = 0;
         for result in &mut parser {
+
             match result {
                 Ok(r) => {
-                    println!("{}: {}", i, r);
+                    println!("\n");
+                    match r {
+                        top::TPTPInput::Annotated(annotated) => {
+                            match *annotated {
+                                top::AnnotatedFormula::Fof(ref fof_annotated) => {
+                                    let name = &fof_annotated.0.name;
+                                    let role = &fof_annotated.0.role;
+                                    let formula = &fof_annotated.0.formula;
+                                    let annotations = &fof_annotated.0.annotations;
+                                    println!("{} name: {}, role: {}, formula: {}, annotations: {}", i, name, role, formula, annotations);
+                                }
+                                _ => ()
+                            }
+
+                            println!("{} annotated: {}", i, annotated);
+                        }
+                        _ => ()
+                    }
+                        
                 }
                 Err(e) => {
                     println!("Error: {:?}", e);

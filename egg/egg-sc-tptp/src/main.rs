@@ -36,7 +36,7 @@ fn expr_to_tptp_hole(expr: &FlatTerm<egg::SymbolLang>) -> (String, Option<String
         if expr.children.is_empty() {
             (format!("{}", head), None)
         } else {
-            let args = expr.children.iter().fold(("".to_owned(), None), |acc, e| {
+            let args = expr.children.iter().skip(1).fold(expr_to_tptp_hole(&expr.children[0]), |acc, e| {
                 let (res, rule) = expr_to_tptp_hole(e);
                 (format!("{}, {}", acc.0, res), rule.or(acc.1))
             });
@@ -48,23 +48,51 @@ fn expr_to_tptp_hole(expr: &FlatTerm<egg::SymbolLang>) -> (String, Option<String
 fn line_to_tptp<F>(line: &FlatTerm<egg::SymbolLang>, i: i32, base: &String, left: &String, map: F) -> String where F: Fn(String) -> i32 {
     let (with_hole, _rule) = expr_to_tptp_hole(line);
     let full = expr_to_tptp_res(line);
-    format!("fof(f{}, plain, [{}] --> [{} = {}], inference(RightSubstEq, param({}, {}, HOLE), [f{}])).", i, left, base, full, map(_rule.unwrap()), with_hole, i-1)
+    format!("fof(f{}, plain, [{}] --> [{} = {}], inference(rightSubstEq, param({}, $fof({} = {}), $fot(HOLE)), [f{}])).", i, left, base, full, map(_rule.unwrap()), base, with_hole, i-1)
 }
 
-fn proof_to_tptp<F>(proof: &Vec<FlatTerm<egg::SymbolLang>>, rules: Vec<(String, String)>, map: F) -> String where F: Fn(String) -> i32 {
-    let left = rules.iter().map(|rule| {
-        format!("{} = {}", rule.0, rule.1)
-    }).collect::<Vec<String>>().join(", ");
+fn make_cut_line<F>(left: &String, res: &String, rule_name: &String, i: i32, map: F) -> String where F: Fn(String) -> i32 {
+    format!("fof(f{}, plain, [{}] --> [{}], inference(cut, param(0, {}), [{}, f{}])).", i, left, res, map((&rule_name).to_string()), rule_name, i-1)
+}
+
+
+
+fn proof_to_tptp<F>(header: String, proof: &Vec<FlatTerm<egg::SymbolLang>>, left: Vec<(String, String)>, rules: Vec<(String, String)>, rules_names: Vec<String>, map: F) -> String where F: Fn(String) -> i32 {
+    assert!(rules.len() == rules_names.len());
+    let left_string = &left.iter().map(|rule| {
+            format!("{} = {}", rule.0, rule.1)
+        }).collect::<Vec<String>>().join(", ");
+    let newleft = left_string.to_owned() + (if left.is_empty() {""} else {", "}) + 
+        &rules.iter().map(|rule| {
+            format!("{} = {}", rule.0, rule.1)
+        }).collect::<Vec<String>>().join(", ");
     let base = expr_to_tptp_res(&proof[0]);
-    let first = format!("fof(f0, plain, [{}] --> [{} = {}], inference(RightRefl, param(0), [])).\n", left, base, base);
+    let first = format!("fof(f0, plain, [{}] --> [{} = {}], inference(rightRefl, param(0), [])).\n", newleft, base, base);
 
     let mut i = 1;
-    first + &proof.iter().skip(1).map( |line| {
-        let res = line_to_tptp(line, i, &base, &left, &map);
+    let mut proofstring = header + "\n" + &first + &proof.iter().skip(1).map( |line| {
+        let res = line_to_tptp(line, i, &base, &newleft, &map);
         i += 1;
         res
     }
-    ).collect::<Vec<String>>().join("\n")
+    ).collect::<Vec<String>>().join("\n");
+
+    let final_res = base.to_owned() + " = " + &expr_to_tptp_res(&proof[proof.len()-1]);
+    let mut n = rules.len();
+    while n > 0 {
+        let newrules = rules.iter().take(n-1);
+        let newleft = left_string.to_owned() + (if left.is_empty() {""} else {", "}) + 
+        &newrules.map(|rule| {
+            format!("{} = {}", rule.0, rule.1)
+        }).collect::<Vec<String>>().join(", ");
+
+        let res = make_cut_line(&newleft, &final_res, &rules_names[n-1], i, &map);
+        proofstring = proofstring + "\n" + &res;
+        i += 1;
+        n -= 1;
+    }
+    proofstring
+
 }
 
 fn main() {
@@ -136,11 +164,16 @@ fn main() {
     
 
     let rules_ = vec![
-        ("(sf (sf (sf (sf (sf cc)))))".to_owned(), "cc".to_owned()),
-        ("(sf (sf (sf (sf (sf (sf (sf (sf cc))))))))".to_owned(), "cc".to_owned())
+        ("sf(sf(sf(sf(sf(cc)))))".to_owned(), "cc".to_owned()),
+        ("sf(sf(sf(sf(sf(sf(sf(sf(cc))))))))".to_owned(), "cc".to_owned())
     ];
+    let rules_names = vec!["rule5".to_owned(), "rule8".to_owned()];
+    let header = 
+    "fof(rule5, axiom, [] --> [sf(sf(sf(sf(sf(cc))))) = cc]).
+fof(rule8, axiom, [] --> [sf(sf(sf(sf(sf(sf(sf(sf(cc)))))))) = cc]).".to_owned();
     println!("{}", get_flat_string(_e1));
-    println!("{}", proof_to_tptp(&_e1, rules_, |s| if s == "rule5" { 0 } else { 1 }));
+    println!("\n");
+    println!("{}", proof_to_tptp(header, &_e1, vec![], rules_, rules_names, |s| if s == "rule5" { 0 } else { 1 }));
 
 
 }

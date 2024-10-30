@@ -1,4 +1,6 @@
 use egg::{*, rewrite as rw};
+use std::io::Read;
+use tptp::TPTPIterator;
 
 
 //implement function asString for Vec<FlatTerm<egg::SymbolLang>> as a function not a method
@@ -176,4 +178,35 @@ fof(rule8, axiom, [] --> [sf(sf(sf(sf(sf(sf(sf(sf(cc)))))))) = cc]).".to_owned()
     println!("{}", proof_to_tptp(header, &_e1, vec![], rules_, rules_names, |s| if s == "rule5" { 0 } else { 1 }));
 
 
+
+
+    //function that ready from a file with path 'path' and then calls TPTPIterator::<()>::new(bytes) on it
+    fn take_input(path: &str) -> Vec<u8> {
+        let mut file = std::fs::File::open(path).unwrap();
+        let mut bytes = Vec::new();
+        file.read_to_end(&mut bytes).unwrap();
+        bytes
+        
+    }
+
+    fn solve_tptp_problem(path: &str) {
+        let bytes = take_input(path);
+        let mut parser = TPTPIterator::<()>::new(bytes.as_slice());
+        let mut i = 0;
+        for result in &mut parser {
+            match result {
+                Ok(r) => {
+                    println!("{}: {}", i, r);
+                }
+                Err(e) => {
+                    println!("Error: {:?}", e);
+                    break;
+                }
+            }
+            i+=1;
+        }
+    }
+    
+    println!("\n ---- \n");
+    solve_tptp_problem("test.p");
 }

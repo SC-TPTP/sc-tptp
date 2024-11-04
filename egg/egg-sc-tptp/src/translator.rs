@@ -8,6 +8,8 @@ use tptp::common::*;
 use tptp::TPTPIterator;
 use ENodeOrVar::*;
 
+use crate::printer::*;
+
 //function that ready translate a file with path 'path' and then calls TPTPIterator::<()>::new(bytes) on it
 pub fn take_input(path: &str) -> Vec<u8> {
   let mut file = std::fs::File::open(path).unwrap();
@@ -16,37 +18,44 @@ pub fn take_input(path: &str) -> Vec<u8> {
   bytes
   
 }
-pub fn solve_tptp_problem(path: &str) {
+
+
+
+pub struct TPTPProblem {
+  pub path: String,
+  pub header: String,
+  pub axioms: Vec<(String, RecExpr<ENodeOrVar<SymbolLang>>, RecExpr<ENodeOrVar<SymbolLang>>)>,
+  pub axioms_as_roots: Vec<RecExpr<SymbolLang>>,
+  pub conjecture: (String, RecExpr<SymbolLang>, RecExpr<SymbolLang>),
+  pub string_rules: Vec<(String, String)>,
+}
+
+pub fn parse_tptp_problem(path: &str) -> TPTPProblem {
   let bytes = take_input(path);
+  let header = String::from_utf8(bytes.clone()).unwrap();
   let mut parser = TPTPIterator::<()>::new(bytes.as_slice());
-  let mut i = 0;
-  let mut runner: Runner<SymbolLang, ()> = Runner::default().with_explanations_enabled();
-  let mut rules: Vec<Rewrite<SymbolLang, ()>> = Vec::new();
+  let mut rules: Vec<(String, RecExpr<ENodeOrVar<SymbolLang>>, RecExpr<ENodeOrVar<SymbolLang>>)> = Vec::new();
+  let mut string_rules: Vec<(String, String)> = Vec::new();
+  let mut conjecture: (String, RecExpr<SymbolLang>, RecExpr<SymbolLang>) = ("".to_string(), RecExpr::default(), RecExpr::default());
+  let mut axioms_as_roots: Vec<RecExpr<SymbolLang>> = Vec::new();
   for result in &mut parser {
-    
     match result {
       Ok(r) => {
-        println!("\n");
         match r {
           top::TPTPInput::Annotated(annotated) => {
             match &*annotated {
               top::AnnotatedFormula::Fof(fof_annotated) => {
                 let name = fof_annotated.0.name.to_string();
                 let role = fof_annotated.0.role.to_string();
-                let formula = &fof_annotated.0.formula.0;
-                let annotations = &fof_annotated.0.annotations;
+                let main_formula = match &*fof_annotated.0.formula {
+                  fof::Formula::Logic(f) => f,
+                  _ => todo!()
+                };
+                let formula = &mut main_formula.clone();
+                get_head_logic(&main_formula, formula);
+                //let annotations = &fof_annotated.0.annotations;
                 match role.as_str() {
-                  "conjecture" => {
-                    use non_patern_translator::*;
-                    let mut expr: RecExpr<SymbolLang> = RecExpr::default();
-                    Id::translate(formula, &mut expr);
-                    runner = runner.with_expr(&expr);
-                    println!("expr: {}", expr);
-                    println!("name: {}, role: {}, formula: {}, annotations: {}, expr: {}", name, role, formula, annotations, expr);
-                    
-                  }
-                  "axiom" => {
-                    use patern_translator::TranslatorSL;
+                  "conjecture" => {                    
                     match formula {
                       fof::LogicFormula::Unitary(u) => {
                         match u {
@@ -56,12 +65,12 @@ pub fn solve_tptp_problem(path: &str) {
                                 match d {
                                   fof::DefinedAtomicFormula::Infix(i) => {
                                     if i.op.0.to_string() == "=" {
-                                      
-                                      let mut expr_left: RecExpr<ENodeOrVar<SymbolLang>> = RecExpr::default();
-                                      let mut expr_right: RecExpr<ENodeOrVar<SymbolLang>> = RecExpr::default();
+                                      use non_patern_translator::TranslatorSL;
+                                      let mut expr_left: RecExpr<SymbolLang> = RecExpr::default();
+                                      let mut expr_right: RecExpr<SymbolLang> = RecExpr::default();
                                       Id::translate(&*i.left, &mut expr_left);
                                       Id::translate(&*i.right, &mut expr_right);
-                                      println!("Axiom {}: {} = {}", name, expr_left, expr_right);
+                                      conjecture = (name, expr_left, expr_right);
 
                                     } else {panic!("formulas must be equalities")}
                                     
@@ -77,18 +86,56 @@ pub fn solve_tptp_problem(path: &str) {
                       }
                       _ => panic!("formulas must be equalities,")
                     }
-                    println!("name: {}, role: {}, formula: {}, annotations: {}", name, role, formula, annotations);
-                    //let left: Pattern<SymbolLang> = Pattern::new(expr);
-                    //let left: RecExpr<ENodeOrVar<SymbolLang>> = expr;
-                    //let right: RecExpr<ENodeOrVar<SymbolLang>> = RecExpr(ENodeOrVar::ENode(expr.0), expr.1);
+                    
+                  }
+                  "axiom" => {
+                    match formula {
+                      fof::LogicFormula::Unitary(u) => {
+                        match u {
+                          fof::UnitaryFormula::Atomic(a) => {
+                            match &**a {
+                              fof::AtomicFormula::Defined(d) => {
+                                match d {
+                                  fof::DefinedAtomicFormula::Infix(i) => {
+                                    if i.op.0.to_string() == "=" {
+                                      {
+                                        use patern_translator::TranslatorSL;
+                                        let mut expr_left: RecExpr<ENodeOrVar<SymbolLang>> = RecExpr::default();
+                                        let mut expr_right: RecExpr<ENodeOrVar<SymbolLang>> = RecExpr::default();
+                                        Id::translate(&*i.left, &mut expr_left);
+                                        Id::translate(&*i.right, &mut expr_right);
+                                        rules.push((name, expr_left, expr_right));
+                                      }
+                                      {
+                                        use non_patern_translator::TranslatorSL;
+                                        let mut expr_left: RecExpr<SymbolLang> = RecExpr::default();
+                                        let mut expr_right: RecExpr<SymbolLang> = RecExpr::default();
+                                        Id::translate(&*i.left, &mut expr_left);
+                                        Id::translate(&*i.right, &mut expr_right);
+                                        axioms_as_roots.push(expr_left);
+                                        axioms_as_roots.push(expr_right);
+                                      }
+                                      string_rules.push((i.left.to_string(), i.right.to_string()));
+                                    } else {panic!("formulas must be equalities")}
+                                    
+                                  }
+                                  _ => panic!("formulas must be equalities")
+                                }
+                              }
+                              _ => panic!("formulas must be equalities")
+                            }
+                          },
+                          _ => panic!("formulas must be equalities")
+                        }
+                      }
+                      _ => panic!("formulas must be equalities,")
+                    }
                   }
                   _ => ()
                 }
               }
               _ => ()
             }
-            
-            println!("{} annotated: {}", i, annotated);
           }
           _ => ()
         }
@@ -99,9 +146,70 @@ pub fn solve_tptp_problem(path: &str) {
         break;
       }
     }
-    i+=1;
+  }
+
+  return TPTPProblem {
+    path: path.to_string(),
+    header: header,
+    axioms: rules,
+    conjecture: conjecture,
+    string_rules: string_rules,
+    axioms_as_roots: axioms_as_roots,
   }
 }
+
+
+pub fn solve_tptp_problem(problem: &TPTPProblem) -> Explanation<egg::SymbolLang> {
+  let rules: Vec<Rewrite<SymbolLang, ()>> = problem.axioms.iter().map(|(name, l, r)| {
+    Rewrite::<egg::SymbolLang, ()>::new(name, egg::Pattern::new(l.clone()), egg::Pattern::new(r.clone())).expect("failed to create rewrite rule")
+  }).collect::<Vec<_>>();
+    
+  let start = &problem.conjecture.1;
+  let end = &problem.conjecture.2;
+  let mut runner = Runner::default().with_explanations_enabled()
+    .with_expr(&start)
+    .with_expr(&end);
+  runner = problem.axioms_as_roots.iter().fold(runner, |r, e| r.with_expr(e));
+  runner = runner.run(rules.iter().collect::<Vec<_>>());
+  let e = runner.explain_equivalence(&start, &end);
+  e
+}
+
+pub fn tptp_problem_to_tptp_solution(path: &str, output: &str) -> () {
+  let problem = parse_tptp_problem(path);
+  let mut proof = solve_tptp_problem(&problem);
+  let expl = proof.make_flat_explanation();
+
+  let rules_names = problem.axioms.iter().map(|axiom| axiom.0.clone()).collect::<Vec<String>>();
+  let map = |s: String| rules_names.iter().position(|r| *r == s).expect(format!("Rule not found: {}", s).as_str()) as i32;
+
+  let res = proof_to_tptp(&problem.header, expl, Vec::new(), &problem.string_rules, &rules_names, map);
+  let mut file = std::fs::File::create(output).unwrap();
+  use std::io::Write;
+  file.write_all(res.as_bytes()).unwrap();
+}
+
+
+fn get_head_logic<'a>(frm: &fof::LogicFormula<'a>, res: &mut fof::LogicFormula<'a> ) -> () {
+  use fof::LogicFormula::*;
+  match frm {
+    Binary(_) => *res = frm.clone(),
+    Unary(_) => *res = frm.clone(),
+    Unitary(u) => get_head_unitary(u, res),
+  }
+}
+
+
+fn get_head_unitary<'a>(frm: &fof::UnitaryFormula<'a>, res: &mut fof::LogicFormula<'a>) -> () {
+  use fof::UnitaryFormula::*;
+  match frm {
+    Parenthesised(flf) => get_head_logic(&*flf, res),
+    Quantified(_) => *res = fof::LogicFormula::Unitary(frm.clone()),
+    Atomic(_) => *res = fof::LogicFormula::Unitary(frm.clone()),
+  }
+}
+
+
 
 mod non_patern_translator {
   use egg::*;
@@ -344,7 +452,10 @@ mod non_patern_translator {
 
   impl TranslatorSL<fof::Formula<'_>> for Id {
     fn translate(frm: &fof::Formula, expr: &mut RecExpr<SymbolLang>) -> Id {
-        Self::translate(&frm.0, expr)
+      match frm {
+        fof::Formula::Logic(l) => Self::translate(l, expr),
+        fof::Formula::Sequent(_) => todo!(),
+      }
     }
   }
 }
@@ -593,8 +704,13 @@ mod patern_translator {
 
   impl TranslatorSL<fof::Formula<'_>> for Id {
     fn translate(frm: &fof::Formula, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
-        Self::translate(&frm.0, expr)
+      match frm {
+        fof::Formula::Logic(l) => Self::translate(l, expr),
+        fof::Formula::Sequent(_) => todo!(),
+      }
     }
   }
 }
+
+
 

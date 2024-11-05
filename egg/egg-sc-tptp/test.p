@@ -17,6 +17,8 @@
 
 % Comments : This problem, was printed from a statement in a proof of a theorem by the Lisa theorem prover for submission to proof-producing ATPs.
 %--------------------------------------------------------------------------
-fof(a1, axiom, Xx = sf(sf(sf(sf(sf(sf(sf(sf(Xx))))))))).
-fof(a2, axiom, Xx = sf(sf(sf(sf(sf(Xx)))))).
-fof(c3, conjecture, Xx = sf(Xx)).
+
+
+fof(a1, axiom, cx = sf(sf(cx))).
+fof(a2, axiom, cx = sf(sf(sf(cx)))).
+fof(c3, conjecture, cx = sf(cx)).

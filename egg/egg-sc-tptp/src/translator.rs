@@ -21,14 +21,7 @@ pub fn take_input(path: &str) -> Vec<u8> {
 
 
 
-pub struct TPTPProblem {
-  pub path: String,
-  pub header: String,
-  pub axioms: Vec<(String, RecExpr<ENodeOrVar<SymbolLang>>, RecExpr<ENodeOrVar<SymbolLang>>)>,
-  pub axioms_as_roots: Vec<RecExpr<SymbolLang>>,
-  pub conjecture: (String, RecExpr<SymbolLang>, RecExpr<SymbolLang>),
-  pub string_rules: Vec<(String, String)>,
-}
+
 
 pub fn parse_tptp_problem(path: &str) -> TPTPProblem {
   let bytes = take_input(path);
@@ -37,7 +30,7 @@ pub fn parse_tptp_problem(path: &str) -> TPTPProblem {
   let mut rules: Vec<(String, RecExpr<ENodeOrVar<SymbolLang>>, RecExpr<ENodeOrVar<SymbolLang>>)> = Vec::new();
   let mut string_rules: Vec<(String, String)> = Vec::new();
   let mut conjecture: (String, RecExpr<SymbolLang>, RecExpr<SymbolLang>) = ("".to_string(), RecExpr::default(), RecExpr::default());
-  let mut axioms_as_roots: Vec<RecExpr<SymbolLang>> = Vec::new();
+  let mut axioms_as_roots: Vec<(RecExpr<SymbolLang>, RecExpr<SymbolLang>)> = Vec::new();
   for result in &mut parser {
     match result {
       Ok(r) => {
@@ -51,11 +44,11 @@ pub fn parse_tptp_problem(path: &str) -> TPTPProblem {
                   fof::Formula::Logic(f) => f,
                   _ => todo!()
                 };
-                let formula = &mut main_formula.clone();
-                get_head_logic(&main_formula, formula);
                 //let annotations = &fof_annotated.0.annotations;
                 match role.as_str() {
                   "conjecture" => {                    
+                    let formula = &mut main_formula.clone();
+                    get_head_logic(&main_formula, formula);
                     match formula {
                       fof::LogicFormula::Unitary(u) => {
                         match u {
@@ -89,6 +82,8 @@ pub fn parse_tptp_problem(path: &str) -> TPTPProblem {
                     
                   }
                   "axiom" => {
+                    let formula = &mut main_formula.clone();
+                    get_head_logic(&main_formula, formula); //TODO: remove quantifiers and recover variables
                     match formula {
                       fof::LogicFormula::Unitary(u) => {
                         match u {
@@ -112,8 +107,7 @@ pub fn parse_tptp_problem(path: &str) -> TPTPProblem {
                                         let mut expr_right: RecExpr<SymbolLang> = RecExpr::default();
                                         Id::translate(&*i.left, &mut expr_left);
                                         Id::translate(&*i.right, &mut expr_right);
-                                        axioms_as_roots.push(expr_left);
-                                        axioms_as_roots.push(expr_right);
+                                        axioms_as_roots.push((expr_left, expr_right));
                                       }
                                       string_rules.push((i.left.to_string(), i.right.to_string()));
                                     } else {panic!("formulas must be equalities")}
@@ -169,7 +163,7 @@ pub fn solve_tptp_problem(problem: &TPTPProblem) -> Explanation<egg::SymbolLang>
   let mut runner = Runner::default().with_explanations_enabled()
     .with_expr(&start)
     .with_expr(&end);
-  runner = problem.axioms_as_roots.iter().fold(runner, |r, e| r.with_expr(e));
+  runner = problem.axioms_as_roots.iter().fold(runner, |r, e| r.with_expr(&e.0).with_expr(&e.1));
   runner = runner.run(rules.iter().collect::<Vec<_>>());
   let e = runner.explain_equivalence(&start, &end);
   e
@@ -179,11 +173,16 @@ pub fn tptp_problem_to_tptp_solution(path: &str, output: &str) -> () {
   let problem = parse_tptp_problem(path);
   let mut proof = solve_tptp_problem(&problem);
   let expl = proof.make_flat_explanation();
+  let axioms: Vec<(Vec<String>, FlatTerm<SymbolLang>, FlatTerm<SymbolLang>)> = problem.axioms_as_roots.iter().map(|(l, r)| {
+    let mut runner1: Runner<SymbolLang, ()> = Runner::default().with_explanations_enabled().with_expr(&l).run(&[]);
+    let mut runner2: Runner<SymbolLang, ()> = Runner::default().with_explanations_enabled().with_expr(&l).run(&[]);
+    let left_ft = runner1.explain_equivalence(&l, &l).make_flat_explanation()[0].clone();
+    let right_ft = runner2.explain_equivalence(&r, &r).make_flat_explanation()[0].clone();
+  (Vec::new(), left_ft, right_ft)
+  }).collect();
 
-  let rules_names = problem.axioms.iter().map(|axiom| axiom.0.clone()).collect::<Vec<String>>();
-  let map = |s: String| rules_names.iter().position(|r| *r == s).expect(format!("Rule not found: {}", s).as_str()) as i32;
 
-  let res = proof_to_tptp(&problem.header, expl, Vec::new(), &problem.string_rules, &rules_names, map);
+  let res = proof_to_tptp(&problem.header, expl, &axioms, &problem);
   let mut file = std::fs::File::create(output).unwrap();
   use std::io::Write;
   file.write_all(res.as_bytes()).unwrap();
@@ -511,7 +510,10 @@ mod patern_translator {
     fn translate(tm: &fof::Term, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
         use fof::Term::*;
         match tm {
-            Variable(v) => expr.add(ENode(SymbolLang::leaf(v.to_string()))),
+            Variable(v) => {
+              use std::str::FromStr;
+              expr.add(ENodeOrVar::Var(egg::Var::from_str(&format!("?{}", v.to_string())).expect(&format!("incorrect variable name: {}", v.to_string())) ))
+            },
             Function(f) => Id::translate(&**f, expr),
         }
     }

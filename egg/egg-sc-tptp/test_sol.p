@@ -17,14 +17,13 @@
 
 % Comments : This problem, was printed from a statement in a proof of a theorem by the Lisa theorem prover for submission to proof-producing ATPs.
 %--------------------------------------------------------------------------
-fof(a1, axiom, Xx = sf(sf(sf(sf(sf(sf(sf(sf(Xx))))))))).
-fof(a2, axiom, Xx = sf(sf(sf(sf(sf(Xx)))))).
-fof(c3, conjecture, Xx = sf(Xx)).
-fof(f0, plain, [Xx = sf(sf(sf(sf(sf(sf(sf(sf(Xx)))))))), Xx = sf(sf(sf(sf(sf(Xx)))))] --> [Xx = Xx], inference(rightRefl, param(0), [])).
-fof(f1, plain, [Xx = sf(sf(sf(sf(sf(sf(sf(sf(Xx)))))))), Xx = sf(sf(sf(sf(sf(Xx)))))] --> [Xx = sf(sf(sf(sf(sf(sf(sf(sf(Xx))))))))], inference(rightSubstEq, param(0, $fof(Xx = HOLE), $fot(HOLE)), [f0])).
-fof(f2, plain, [Xx = sf(sf(sf(sf(sf(sf(sf(sf(Xx)))))))), Xx = sf(sf(sf(sf(sf(Xx)))))] --> [Xx = sf(sf(sf(Xx)))], inference(rightSubstEq, param(1, $fof(Xx = sf(sf(sf(HOLE)))), $fot(HOLE)), [f1])).
-fof(f3, plain, [Xx = sf(sf(sf(sf(sf(sf(sf(sf(Xx)))))))), Xx = sf(sf(sf(sf(sf(Xx)))))] --> [Xx = sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(Xx)))))))))))], inference(rightSubstEq, param(0, $fof(Xx = sf(sf(sf(HOLE)))), $fot(HOLE)), [f2])).
-fof(f4, plain, [Xx = sf(sf(sf(sf(sf(sf(sf(sf(Xx)))))))), Xx = sf(sf(sf(sf(sf(Xx)))))] --> [Xx = sf(sf(sf(sf(sf(sf(Xx))))))], inference(rightSubstEq, param(1, $fof(Xx = sf(sf(sf(sf(sf(sf(HOLE))))))), $fot(HOLE)), [f3])).
-fof(f5, plain, [Xx = sf(sf(sf(sf(sf(sf(sf(sf(Xx)))))))), Xx = sf(sf(sf(sf(sf(Xx)))))] --> [Xx = sf(Xx)], inference(rightSubstEq, param(1, $fof(Xx = sf(HOLE)), $fot(HOLE)), [f4])).
-fof(f6, plain, [Xx = sf(sf(sf(sf(sf(sf(sf(sf(Xx))))))))] --> [Xx = sf(Xx)], inference(cut, param(0, 1), [a2, f5])).
-fof(f7, plain, [] --> [Xx = sf(Xx)], inference(cut, param(0, 0), [a1, f6])).
+
+
+fof(a1, axiom, cx = sf(sf(cx))).
+fof(a2, axiom, cx = sf(sf(sf(cx)))).
+fof(c3, conjecture, cx = sf(cx)).
+fof(f0, plain, [] --> [cx = cx], inference(rightRefl, param(0), [])).
+fof(f1, plain, [cx = (sf (sf (sf cx)))] --> [cx = (sf (sf (sf cx)))], inference(rightSubstEq, param(0, $fof(cx = HOLE), $fot(HOLE)), [f0])).
+fof(f2, plain, [] --> [cx = (sf (sf (sf cx)))], inference(cut, param(0, 0), [a2, f3])).
+fof(f4, plain, [cx = (sf (sf cx))] --> [cx = (sf cx)], inference(rightSubstEq, param(0, $fof(cx = (sf HOLE)), $fot(HOLE)), [f3])).
+fof(f5, plain, [] --> [cx = (sf cx)], inference(cut, param(0, 0), [a1, f4])).

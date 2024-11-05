@@ -100,22 +100,8 @@ fn testing() {
   // sexpr term: (sf (sf (sf (sf (sf (sf cc))))))
   // tptp term: sf(sf(sf(sf(sf(sf(cc)))))
   // function that transforms expressions of type FlatTerm<egg::SymbolLang> to tptp format:
-  #[allow(unused_variables)]
+
   
-  
-  
-  
-  let rules_ = vec![
-  ("sf(sf(sf(sf(sf(cc)))))".to_owned(), "cc".to_owned()),
-  ("sf(sf(sf(sf(sf(sf(sf(sf(cc))))))))".to_owned(), "cc".to_owned())
-  ];
-  let rules_names = vec!["rule5".to_owned(), "rule8".to_owned()];
-  let header = 
-  "fof(rule5, axiom, [] --> [sf(sf(sf(sf(sf(cc))))) = cc]).
-fof(rule8, axiom, [] --> [sf(sf(sf(sf(sf(sf(sf(sf(cc)))))))) = cc]).".to_owned();
-  println!("{}", get_flat_string(_e1));
-  println!("\n");
-  println!("{}", proof_to_tptp(&header, &_e1, vec![], &rules_, &rules_names, |s| if s == "rule5" { 0 } else { 1 }));
   
 }
 

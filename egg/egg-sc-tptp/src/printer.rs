@@ -143,13 +143,19 @@ pub fn line_to_tptp<F>(line: &FlatTerm<egg::SymbolLang>, i: &mut i32, base: &Str
   let res_string = if backward {
     let mut match_map = HashMap::new();
     if matching(&rule_left, &inner, &mut match_map) {
-      if match_map.is_empty() {
-        let newleft = left.to_owned() + (if left.is_empty() {""} else {", "}) + format!("{} = {}", rule_left, rule_right).as_str();
-        format!("fof(f{i}, plain, [{newleft}] --> [{base} = {res}], inference(rightSubstEq, param(0, $fof({base} = {with_hole}), $fot(HOLE)), [f{}])).\n", *i-1) + 
-        format!("fof(f{}, plain, [{left}] --> [{base} = {res}], inference(cut, param(0, 0), [{rule_name}, f{i}])).", *i+1).as_str()
-      } else { 
-        todo!()
-      }
+      let newleft = format!("{} = {}", rule_left, rule_right) + (if left.is_empty() {""} else {", "}) + left;
+      let rule_repr = format!("{} = {}", rule_left, rule_right);  
+      let mut vars = "".to_owned();
+      //let left_with_quantified = rule_repr + (if left.is_empty() {""} else {", "}) + left;
+      format!("fof(f{i}, plain, [{newleft}] --> [{base} = {res}], inference(rightSubstEq, param(0, $fof({base} = {with_hole}), $fot(HOLE)), [f{}])).\n", *i-1) + 
+      variables.iter().map(|v| {
+        let inst_term = match_map.get(v as &str).map(|t| t.to_string()).unwrap_or(v.to_owned());
+        vars.insert_str(0, (v.to_owned() + if vars.is_empty() {""} else {", "}).as_str());
+        let s = format!("fof(f{}, plain, [![{vars}]: {rule_repr}] --> [{base} = {res}], inference(leftForall, param(0, $fot({inst_term})), [f{i}])).\n", *i+1); //TODO: specialize v to the result of the matching
+        *i+=1;
+        s
+      }).collect::<Vec<String>>().join("").as_str() +
+      format!("fof(f{}, plain, [{left}] --> [{base} = {res}], inference(cut, param(0, 0), [{rule_name}, f{}])).", *i+1, *i+2).as_str()
     } else {
       panic!("Error: {} does not match {}", expr_to_tptp_res(&rule_left), expr_to_tptp_res(&res));
     }
@@ -163,8 +169,9 @@ pub fn line_to_tptp<F>(line: &FlatTerm<egg::SymbolLang>, i: &mut i32, base: &Str
       //let left_with_quantified = rule_repr + (if left.is_empty() {""} else {", "}) + left;
       format!("fof(f{i}, plain, [{newleft}] --> [{base} = {res}], inference(rightSubstEq, param(0, $fof({base} = {with_hole}), $fot(HOLE)), [f{}])).\n", *i-1) + 
       variables.iter().map(|v| {
+        let inst_term = match_map.get(v as &str).map(|t| t.to_string()).unwrap_or(v.to_owned());
         vars.insert_str(0, (v.to_owned() + if vars.is_empty() {""} else {", "}).as_str());
-        let s = format!("fof(f{}, plain, [] --> [! [{vars}]: {rule_repr}], inference(leftForall, param(0, $fot({v}), [f{i}])).\n", *i+1); //TODO: specialize v to the result of the matching
+        let s = format!("fof(f{}, plain, [![{vars}]: {rule_repr}] --> [{base} = {res}], inference(leftForall, param(0, $fot({inst_term})), [f{i}])).\n", *i+1); //TODO: specialize v to the result of the matching
         *i+=1;
         s
       }).collect::<Vec<String>>().join("").as_str() +
@@ -226,7 +233,7 @@ pub struct TPTPProblem {
   pub path: String,
   pub header: String,
   pub axioms: Vec<(String, RecExpr<ENodeOrVar<SymbolLang>>, RecExpr<ENodeOrVar<SymbolLang>>)>,
-  pub axioms_as_roots: Vec<(RecExpr<SymbolLang>, RecExpr<SymbolLang>)>,
+  pub axioms_as_roots: Vec<(Vec<String>, RecExpr<SymbolLang>, RecExpr<SymbolLang>)>,
   pub conjecture: (String, RecExpr<SymbolLang>, RecExpr<SymbolLang>),
   pub string_rules: Vec<(String, String)>,
 }

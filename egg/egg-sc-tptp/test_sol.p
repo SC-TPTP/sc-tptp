@@ -19,11 +19,13 @@
 %--------------------------------------------------------------------------
 
 
-fof(a1, axiom, cx = sf(sf(cx))).
-fof(a2, axiom, cx = sf(sf(sf(cx)))).
+fof(a1, axiom, ![Xx]: Xx = sf(sf(Xx))).
+fof(a2, axiom, ![Xx]: Xx = sf(sf(sf(Xx)))).
 fof(c3, conjecture, cx = sf(cx)).
 fof(f0, plain, [] --> [cx = cx], inference(rightRefl, param(0), [])).
-fof(f1, plain, [cx = (sf (sf (sf cx)))] --> [cx = (sf (sf (sf cx)))], inference(rightSubstEq, param(0, $fof(cx = HOLE), $fot(HOLE)), [f0])).
-fof(f2, plain, [] --> [cx = (sf (sf (sf cx)))], inference(cut, param(0, 0), [a2, f3])).
-fof(f4, plain, [cx = (sf (sf cx))] --> [cx = (sf cx)], inference(rightSubstEq, param(0, $fof(cx = (sf HOLE)), $fot(HOLE)), [f3])).
-fof(f5, plain, [] --> [cx = (sf cx)], inference(cut, param(0, 0), [a1, f4])).
+fof(f1, plain, [Xx = (sf (sf (sf Xx)))] --> [cx = (sf (sf (sf cx)))], inference(rightSubstEq, param(0, $fof(cx = HOLE), $fot(HOLE)), [f0])).
+fof(f2, plain, [![Xx]: Xx = (sf (sf (sf Xx)))] --> [cx = (sf (sf (sf cx)))], inference(leftForall, param(0, $fot(cx)), [f1])).
+fof(f3, plain, [] --> [cx = (sf (sf (sf cx)))], inference(cut, param(0, 0), [a2, f4])).
+fof(f5, plain, [Xx = (sf (sf Xx))] --> [cx = (sf cx)], inference(rightSubstEq, param(0, $fof(cx = (sf HOLE)), $fot(HOLE)), [f4])).
+fof(f6, plain, [![Xx]: Xx = (sf (sf Xx))] --> [cx = (sf cx)], inference(leftForall, param(0, $fot(cx)), [f5])).
+fof(f7, plain, [] --> [cx = (sf cx)], inference(cut, param(0, 0), [a1, f8])).

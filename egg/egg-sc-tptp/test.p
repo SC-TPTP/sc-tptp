@@ -19,6 +19,6 @@
 %--------------------------------------------------------------------------
 
 
-fof(a1, axiom, cx = sf(sf(cx))).
-fof(a2, axiom, cx = sf(sf(sf(cx)))).
+fof(a1, axiom, ![Xx]: Xx = sf(sf(Xx))).
+fof(a2, axiom, ![Xx]: Xx = sf(sf(sf(Xx)))).
 fof(c3, conjecture, cx = sf(cx)).

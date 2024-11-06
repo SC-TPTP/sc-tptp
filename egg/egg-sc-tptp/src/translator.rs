@@ -30,7 +30,7 @@ pub fn parse_tptp_problem(path: &str) -> TPTPProblem {
   let mut rules: Vec<(String, RecExpr<ENodeOrVar<SymbolLang>>, RecExpr<ENodeOrVar<SymbolLang>>)> = Vec::new();
   let mut string_rules: Vec<(String, String)> = Vec::new();
   let mut conjecture: (String, RecExpr<SymbolLang>, RecExpr<SymbolLang>) = ("".to_string(), RecExpr::default(), RecExpr::default());
-  let mut axioms_as_roots: Vec<(RecExpr<SymbolLang>, RecExpr<SymbolLang>)> = Vec::new();
+  let mut axioms_as_roots: Vec<(Vec<String>, RecExpr<SymbolLang>, RecExpr<SymbolLang>)> = Vec::new();
   for result in &mut parser {
     match result {
       Ok(r) => {
@@ -83,7 +83,8 @@ pub fn parse_tptp_problem(path: &str) -> TPTPProblem {
                   }
                   "axiom" => {
                     let formula = &mut main_formula.clone();
-                    get_head_logic(&main_formula, formula); //TODO: remove quantifiers and recover variables
+                    let mut vars =  Vec::<String>::new();
+                    get_head_vars_logic(&main_formula, formula, &mut vars);
                     match formula {
                       fof::LogicFormula::Unitary(u) => {
                         match u {
@@ -107,22 +108,22 @@ pub fn parse_tptp_problem(path: &str) -> TPTPProblem {
                                         let mut expr_right: RecExpr<SymbolLang> = RecExpr::default();
                                         Id::translate(&*i.left, &mut expr_left);
                                         Id::translate(&*i.right, &mut expr_right);
-                                        axioms_as_roots.push((expr_left, expr_right));
+                                        axioms_as_roots.push((vars, expr_left, expr_right));
                                       }
                                       string_rules.push((i.left.to_string(), i.right.to_string()));
-                                    } else {panic!("formulas must be equalities")}
+                                    } else {panic!("formulas must be equalities =")}
                                     
                                   }
-                                  _ => panic!("formulas must be equalities")
+                                  _ => panic!("formulas must be equalities Infix")
                                 }
                               }
-                              _ => panic!("formulas must be equalities")
+                              _ => panic!("formulas must be equalities Defined")
                             }
                           },
-                          _ => panic!("formulas must be equalities")
+                          _ => panic!("formulas must be equalities Atomic")
                         }
                       }
-                      _ => panic!("formulas must be equalities,")
+                      _ => panic!("formulas must be equalities unitary")
                     }
                   }
                   _ => ()
@@ -163,7 +164,7 @@ pub fn solve_tptp_problem(problem: &TPTPProblem) -> Explanation<egg::SymbolLang>
   let mut runner = Runner::default().with_explanations_enabled()
     .with_expr(&start)
     .with_expr(&end);
-  runner = problem.axioms_as_roots.iter().fold(runner, |r, e| r.with_expr(&e.0).with_expr(&e.1));
+  runner = problem.axioms_as_roots.iter().fold(runner, |r, e| r.with_expr(&e.1).with_expr(&e.2));
   runner = runner.run(rules.iter().collect::<Vec<_>>());
   let e = runner.explain_equivalence(&start, &end);
   e
@@ -173,12 +174,12 @@ pub fn tptp_problem_to_tptp_solution(path: &str, output: &str) -> () {
   let problem = parse_tptp_problem(path);
   let mut proof = solve_tptp_problem(&problem);
   let expl = proof.make_flat_explanation();
-  let axioms: Vec<(Vec<String>, FlatTerm<SymbolLang>, FlatTerm<SymbolLang>)> = problem.axioms_as_roots.iter().map(|(l, r)| {
+  let axioms: Vec<(Vec<String>, FlatTerm<SymbolLang>, FlatTerm<SymbolLang>)> = problem.axioms_as_roots.iter().map(|(vars, l, r)| {
     let mut runner1: Runner<SymbolLang, ()> = Runner::default().with_explanations_enabled().with_expr(&l).run(&[]);
     let mut runner2: Runner<SymbolLang, ()> = Runner::default().with_explanations_enabled().with_expr(&l).run(&[]);
     let left_ft = runner1.explain_equivalence(&l, &l).make_flat_explanation()[0].clone();
     let right_ft = runner2.explain_equivalence(&r, &r).make_flat_explanation()[0].clone();
-  (Vec::new(), left_ft, right_ft)
+  (vars.clone(), left_ft, right_ft)
   }).collect();
 
 
@@ -205,6 +206,40 @@ fn get_head_unitary<'a>(frm: &fof::UnitaryFormula<'a>, res: &mut fof::LogicFormu
     Parenthesised(flf) => get_head_logic(&*flf, res),
     Quantified(_) => *res = fof::LogicFormula::Unitary(frm.clone()),
     Atomic(_) => *res = fof::LogicFormula::Unitary(frm.clone()),
+  }
+}
+
+fn get_head_vars_logic<'a>(frm: &fof::LogicFormula<'a>, res_f: &mut fof::LogicFormula<'a>, res_v: &mut Vec<String> ) -> () {
+  use fof::LogicFormula::*;
+  match frm {
+    Binary(_) => *res_f = frm.clone(),
+    Unary(_) => *res_f = frm.clone(),
+    Unitary(u) => get_head_vars_unitary(u, res_f, res_v),
+  }
+}
+
+
+fn get_head_vars_unitary<'a>(frm: &fof::UnitaryFormula<'a>, res_f: &mut fof::LogicFormula<'a>, res_v: &mut Vec<String> ) -> () {
+  use fof::UnitaryFormula::*;
+  match frm {
+    Parenthesised(flf) => get_head_vars_logic(&*flf, res_f, res_v),
+    Quantified(fff) => {
+      if fff.quantifier == fof::Quantifier::Forall {
+        res_v.push(fff.bound.0.iter().map(|v| v.to_string()).collect());
+        get_head_vars_unit(&*fff.formula, res_f, res_v)
+      } else {
+        *res_f = fof::LogicFormula::Unitary(frm.clone())
+      }
+    },
+    Atomic(_) => *res_f = fof::LogicFormula::Unitary(frm.clone()),
+  }
+}
+
+fn get_head_vars_unit<'a>(frm: &fof::UnitFormula<'a>, res_f: &mut fof::LogicFormula<'a>, res_v: &mut Vec<String> ) -> () {
+  use fof::UnitFormula::*;
+  match frm {
+    Unitary(u) => get_head_vars_unitary(u, res_f, res_v),
+    Unary(u) => *res_f = fof::LogicFormula::Unary(u.clone()),
   }
 }
 

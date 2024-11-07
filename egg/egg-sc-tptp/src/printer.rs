@@ -147,7 +147,7 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<egg::SymbolLang>, i: &mut i32, bas
     let mut vars = "".to_owned();
     *i+=1; 
     format!("fof(f{i}, plain, [{newleft}] --> [{base} = {res}], inference(rightSubstEq, param(0, $fof({base} = {with_hole}), $fot(HOLE)), [f{}])).\n", *i-1) + 
-    variables.iter().map(|v| {
+    variables.iter().rev().map(|v| {
       let inst_term = match_map.get(v as &str).map(expr_to_tptp_res).unwrap_or(v.to_owned());
       vars.insert_str(0, (v.to_owned() + if vars.is_empty() {""} else {", "}).as_str());
       match_map.remove(&v as &str);

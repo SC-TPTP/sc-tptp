@@ -225,7 +225,8 @@ fn get_head_vars_unitary<'a>(frm: &fof::UnitaryFormula<'a>, res_f: &mut fof::Log
     Parenthesised(flf) => get_head_vars_logic(&*flf, res_f, res_v),
     Quantified(fff) => {
       if fff.quantifier == fof::Quantifier::Forall {
-        res_v.push(fff.bound.0.iter().map(|v| v.to_string()).collect());
+        let mut vars: Vec<String> = fff.bound.0.iter().map(|v| v.to_string()).collect();
+        res_v.append(&mut vars);
         get_head_vars_unit(&*fff.formula, res_f, res_v)
       } else {
         *res_f = fof::LogicFormula::Unitary(frm.clone())

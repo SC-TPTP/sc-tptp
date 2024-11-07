@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+clap = { version = "4.0", features = ["derive"] }
 egg = "0.9.5"
 tptp = { path = "../../../projects/rust-tptp-parser" } #"0.31.1"

@@ -53,15 +53,15 @@ pub fn expr_to_tptp_hole(expr: &FlatTerm<egg::SymbolLang>) -> (String, Option<St
   }
 }  */
 
-pub fn instantiate(expr: &FlatTerm<egg::SymbolLang>, v: &str, t: &FlatTerm<egg::SymbolLang>) -> FlatTerm<egg::SymbolLang> {
-  if expr.node.op.as_str() == v && expr.children.is_empty() {
-    return t.clone();
+pub fn instantiate(expr: &FlatTerm<egg::SymbolLang>, map: &HashMap<&str, FlatTerm<egg::SymbolLang>>) -> FlatTerm<egg::SymbolLang> {
+  if map.contains_key(expr.node.op.as_str()) && expr.children.is_empty() {
+    return map.get(expr.node.op.as_str()).unwrap().clone();
   }
   else {FlatTerm { 
     node: expr.node.clone(),
     backward_rule: None,
     forward_rule: None,
-    children: expr.children.iter().map(|e| instantiate(e, v, t)).collect() } 
+    children: expr.children.iter().map(|e| instantiate(e, map)).collect() } 
   } 
 }
 
@@ -133,56 +133,47 @@ pub fn rewrites_to_holes(expr: &FlatTerm<egg::SymbolLang>, hole: Symbol) -> Hole
   }
 }
 
-pub fn line_to_tptp<F>(line: &FlatTerm<egg::SymbolLang>, i: &mut i32, base: &String, left: &String, map_rule: F) -> String where F: Fn(String) -> (Vec<String>, FlatTerm<egg::SymbolLang>, FlatTerm<egg::SymbolLang>) {
+pub fn line_to_tptp_level1<F>(line: &FlatTerm<egg::SymbolLang>, i: &mut i32, base: &String, left: &String, map_rule: F) -> String where F: Fn(String) -> (Vec<String>, FlatTerm<egg::SymbolLang>, FlatTerm<egg::SymbolLang>) {
   let line_to_holes = rewrites_to_holes(line, "HOLE".into());
-  let with_hole = line_to_holes.with_holes;
+  let with_hole = expr_to_tptp_res(&line_to_holes.with_holes);
   let _rule = line_to_holes.rule;
   let (inner, backward, rule_name) = _rule.unwrap();
-  let res = line.clone().remove_rewrites();
+  let res = expr_to_tptp_res(&line.clone().remove_rewrites());
   let (variables, rule_left, rule_right) = map_rule(rule_name.clone());
-  let res_string = if backward {
-    let mut match_map = HashMap::new();
-    if matching(&rule_left, &inner, &mut match_map) {
-      let newleft = format!("{} = {}", rule_left, rule_right) + (if left.is_empty() {""} else {", "}) + left;
-      let rule_repr = format!("{} = {}", rule_left, rule_right);  
-      let mut vars = "".to_owned();
-      //let left_with_quantified = rule_repr + (if left.is_empty() {""} else {", "}) + left;
-      format!("fof(f{i}, plain, [{newleft}] --> [{base} = {res}], inference(rightSubstEq, param(0, $fof({base} = {with_hole}), $fot(HOLE)), [f{}])).\n", *i-1) + 
-      variables.iter().map(|v| {
-        let inst_term = match_map.get(v as &str).map(|t| t.to_string()).unwrap_or(v.to_owned());
-        vars.insert_str(0, (v.to_owned() + if vars.is_empty() {""} else {", "}).as_str());
-        let s = format!("fof(f{}, plain, [![{vars}]: {rule_repr}] --> [{base} = {res}], inference(leftForall, param(0, $fot({inst_term})), [f{i}])).\n", *i+1); //TODO: specialize v to the result of the matching
-        *i+=1;
-        s
-      }).collect::<Vec<String>>().join("").as_str() +
-      format!("fof(f{}, plain, [{left}] --> [{base} = {res}], inference(cut, param(0, 0), [{rule_name}, f{}])).", *i+1, *i+2).as_str()
-    } else {
-      panic!("Error: {} does not match {}", expr_to_tptp_res(&rule_left), expr_to_tptp_res(&res));
-    }
-  }
-  else {
-    let mut match_map = HashMap::new();
-    if matching(&rule_right, &inner, &mut match_map) {
-      let newleft = format!("{} = {}", rule_left, rule_right) + (if left.is_empty() {""} else {", "}) + left;
-      let rule_repr = format!("{} = {}", rule_left, rule_right);  
-      let mut vars = "".to_owned();
-      //let left_with_quantified = rule_repr + (if left.is_empty() {""} else {", "}) + left;
-      format!("fof(f{i}, plain, [{newleft}] --> [{base} = {res}], inference(rightSubstEq, param(0, $fof({base} = {with_hole}), $fot(HOLE)), [f{}])).\n", *i-1) + 
-      variables.iter().map(|v| {
-        let inst_term = match_map.get(v as &str).map(|t| t.to_string()).unwrap_or(v.to_owned());
-        vars.insert_str(0, (v.to_owned() + if vars.is_empty() {""} else {", "}).as_str());
-        let s = format!("fof(f{}, plain, [![{vars}]: {rule_repr}] --> [{base} = {res}], inference(leftForall, param(0, $fot({inst_term})), [f{i}])).\n", *i+1); //TODO: specialize v to the result of the matching
-        *i+=1;
-        s
-      }).collect::<Vec<String>>().join("").as_str() +
-      format!("fof(f{}, plain, [{left}] --> [{base} = {res}], inference(cut, param(0, 0), [{rule_name}, f{}])).", *i+1, *i+2).as_str()
-    } else {
-      panic!("Error: {} does not match {}", expr_to_tptp_res(&rule_right), expr_to_tptp_res(&res));
-    }
+  let mut match_map = HashMap::new();
+  let has_matched = if backward { matching(&rule_left, &inner, &mut match_map) } else { matching(&rule_right, &inner, &mut match_map) };
+  let res_string: String = if has_matched {
+    let newleft = format!("{} = {}", expr_to_tptp_res(&instantiate(&rule_left, &match_map)), expr_to_tptp_res(&instantiate(&rule_right, &match_map))) + (if left.is_empty() {""} else {", "}) + left;
+    let mut vars = "".to_owned();
+    *i+=1; 
+    format!("fof(f{i}, plain, [{newleft}] --> [{base} = {res}], inference(rightSubstEq, param(0, $fof({base} = {with_hole}), $fot(HOLE)), [f{}])).\n", *i-1) + 
+    variables.iter().map(|v| {
+      let inst_term = match_map.get(v as &str).map(expr_to_tptp_res).unwrap_or(v.to_owned());
+      vars.insert_str(0, (v.to_owned() + if vars.is_empty() {""} else {", "}).as_str());
+      match_map.remove(&v as &str);
+      let new_inner = format!("{} = {}", expr_to_tptp_res(&instantiate(&rule_left, &match_map)), expr_to_tptp_res(&instantiate(&rule_right, &match_map)));
+      *i+=1; 
+      let s = format!("fof(f{i}, plain, [![{vars}]: {new_inner}] --> [{base} = {res}], inference(leftForall, param(0, $fot({inst_term})), [f{}])).\n", *i-1);
+      s
+    }).collect::<Vec<String>>().join("").as_str() +
+    { *i+=1; format!("fof(f{i}, plain, [{left}] --> [{base} = {res}], inference(cut, param(0, 0), [{rule_name}, f{}])).", *i-1).as_str()}
+  } else {
+    panic!("Error: neither {} nor {} does not match {}", expr_to_tptp_res(&rule_left), expr_to_tptp_res(&rule_right), &res);
   };
-  *i += 2;
   res_string
 }
+
+pub fn line_to_tptp_level2(line: &FlatTerm<egg::SymbolLang>, i: &mut i32, base: &String, left: &String) -> String {
+  let line_to_holes = rewrites_to_holes(line, "HOLE".into());
+  let with_hole = expr_to_tptp_res(&line_to_holes.with_holes);
+  let _rule = line_to_holes.rule;
+  let (_, _, rule_name) = _rule.unwrap();
+  let res = expr_to_tptp_res(&line.clone().remove_rewrites());
+  *i+=1; 
+  format!("fof(f{i}, plain, [{left}] --> [{base} = {res}], inference(substWithMatching, param(0, 0, $fof({base} = {with_hole}), $fot(HOLE)), [{rule_name}, f{}])).", *i-1)
+}
+
+
 
 pub fn make_cut_line<F>(left: &String, res: &String, rule_name: &String, i: i32, map: F) -> String where F: Fn(String) -> i32 {
   format!("fof(f{}, plain, [{}] --> [{}], inference(cut, param(0, {}), [{}, f{}])).", i, left, res, map((&rule_name).to_string()), rule_name, i-1)
@@ -190,7 +181,8 @@ pub fn make_cut_line<F>(left: &String, res: &String, rule_name: &String, i: i32,
 
 
 
-pub fn proof_to_tptp(header: &String, proof: &Vec<FlatTerm<SymbolLang>>, axioms: &Vec<(Vec<String>, FlatTerm<SymbolLang>, FlatTerm<SymbolLang>)>, problem: &TPTPProblem) -> String {
+
+pub fn proof_to_tptp(header: &String, proof: &Vec<FlatTerm<SymbolLang>>, axioms: &Vec<(Vec<String>, FlatTerm<SymbolLang>, FlatTerm<SymbolLang>)>, problem: &TPTPProblem, level1:bool) -> String {
   let rules_names = problem.axioms.iter().map(|axiom| axiom.0.clone()).collect::<Vec<String>>();
   let map_rule = |s: String| {
     let rule = axioms.iter().zip(&rules_names).find(|axiom| *axiom.1 == s).expect(format!("Rule not found: {}", s).as_str());
@@ -203,34 +195,22 @@ pub fn proof_to_tptp(header: &String, proof: &Vec<FlatTerm<SymbolLang>>, axioms:
 
   let base = expr_to_tptp_res(&proof[0]);
   let first = format!("fof(f0, plain, [] --> [{base} = {base}], inference(rightRefl, param(0), [])).\n");
-  let mut i = 1;
+  let mut i = 0;
 
   let proofstring = header.to_owned() + "\n" + &first + &proof.iter().skip(1).map( |line| {
-    let res = line_to_tptp(line, &mut i, &base, &left_string, &map_rule);
-    i += 1;
+    let res =if level1 {
+      line_to_tptp_level1(line, &mut i, &base, &left_string, &map_rule)
+    } else {
+      line_to_tptp_level2(line, &mut i, &base, &left_string)
+    };
     res
   }).collect::<Vec<String>>().join("\n");
-
-  /*
-  let final_res = base.to_owned() + " = " + &expr_to_tptp_res(&proof[proof.len()-1]);
-  let mut n = axioms.len();
-  while n > 0 {
-    let newrules = axioms.iter().take(n-1);
-    let newleft = left_string.to_owned() + (if left.is_empty() {""} else {", "}) + 
-    &newrules.map(|rule| {
-      format!("{} = {}", rule.0, rule.1)
-    }).collect::<Vec<String>>().join(", ");
-    //let res = make_cut_line(&newleft, &final_res, &rules_names[n-1], i, &map_index);
-    //proofstring = proofstring + "\n" + &res;
-    n -= 1;
-  }
-    */
   proofstring
 
 }
 
 pub struct TPTPProblem {
-  pub path: String,
+  pub path: std::path::PathBuf,
   pub header: String,
   pub axioms: Vec<(String, RecExpr<ENodeOrVar<SymbolLang>>, RecExpr<ENodeOrVar<SymbolLang>>)>,
   pub axioms_as_roots: Vec<(Vec<String>, RecExpr<SymbolLang>, RecExpr<SymbolLang>)>,

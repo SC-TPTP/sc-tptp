@@ -11,7 +11,7 @@ use ENodeOrVar::*;
 use crate::printer::*;
 
 //function that ready translate a file with path 'path' and then calls TPTPIterator::<()>::new(bytes) on it
-pub fn take_input(path: &str) -> Vec<u8> {
+pub fn take_input(path: &std::path::PathBuf) -> Vec<u8> {
   let mut file = std::fs::File::open(path).unwrap();
   let mut bytes = Vec::new();
   file.read_to_end(&mut bytes).unwrap();
@@ -23,7 +23,7 @@ pub fn take_input(path: &str) -> Vec<u8> {
 
 
 
-pub fn parse_tptp_problem(path: &str) -> TPTPProblem {
+pub fn parse_tptp_problem(path: &std::path::PathBuf) -> TPTPProblem {
   let bytes = take_input(path);
   let header = String::from_utf8(bytes.clone()).unwrap();
   let mut parser = TPTPIterator::<()>::new(bytes.as_slice());
@@ -144,7 +144,7 @@ pub fn parse_tptp_problem(path: &str) -> TPTPProblem {
   }
 
   return TPTPProblem {
-    path: path.to_string(),
+    path: path.clone(),
     header: header,
     axioms: rules,
     conjecture: conjecture,
@@ -170,7 +170,7 @@ pub fn solve_tptp_problem(problem: &TPTPProblem) -> Explanation<egg::SymbolLang>
   e
 }
 
-pub fn tptp_problem_to_tptp_solution(path: &str, output: &str) -> () {
+pub fn tptp_problem_to_tptp_solution(path: &std::path::PathBuf, output: &std::path::PathBuf, level1:bool) -> () {
   let problem = parse_tptp_problem(path);
   let mut proof = solve_tptp_problem(&problem);
   let expl = proof.make_flat_explanation();
@@ -183,7 +183,7 @@ pub fn tptp_problem_to_tptp_solution(path: &str, output: &str) -> () {
   }).collect();
 
 
-  let res = proof_to_tptp(&problem.header, expl, &axioms, &problem);
+  let res = proof_to_tptp(&problem.header, expl, &axioms, &problem, level1);
   let mut file = std::fs::File::create(output).unwrap();
   use std::io::Write;
   file.write_all(res.as_bytes()).unwrap();

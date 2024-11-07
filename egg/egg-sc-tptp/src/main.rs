@@ -17,13 +17,19 @@ use std::io::Read;
 use std::ops::Index;
 use std::env;
 
+use clap::Parser;
 
+#[derive(Parser)]
+struct Cli {
+  input_path: std::path::PathBuf,
+  output_path: std::path::PathBuf,
+  #[clap(long="level1", short, action)]
+  level1: bool,
+}
 
 fn main() {
-  let args: Vec<String> = env::args().collect();
-  let input = &args[1];
-  let output = &args[2];
-  tptp_problem_to_tptp_solution(input, output);
+  let cli = Cli::parse();
+  tptp_problem_to_tptp_solution(&cli.input_path, &cli.output_path, cli.level1);
 
 }
 

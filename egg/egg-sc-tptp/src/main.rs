@@ -28,6 +28,7 @@ struct Cli {
 }
 
 fn main() {
+  env::set_var("RUST_BACKTRACE", "1");
   let cli = Cli::parse();
   tptp_problem_to_tptp_solution(&cli.input_path, &cli.output_path, cli.level1);
 

@@ -7,3 +7,4 @@ edition = "2021"
 clap = { version = "4.0", features = ["derive"] }
 egg = "0.9.5"
 tptp = { path = "../../../projects/rust-tptp-parser" } #"0.31.1"
+nom = { version = "7.1", default-features = false, features = ["alloc"] }

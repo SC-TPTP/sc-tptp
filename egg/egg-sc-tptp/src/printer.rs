@@ -138,6 +138,7 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<egg::SymbolLang>, i: &mut i32, bas
   let with_hole = expr_to_tptp_res(&line_to_holes.with_holes);
   let _rule = line_to_holes.rule;
   let (inner, backward, rule_name) = _rule.unwrap();
+  let is_local_rule: bool = rule_name.starts_with("$");
   let res = expr_to_tptp_res(&line.clone().remove_rewrites());
   let (variables, rule_left, rule_right) = map_rule(rule_name.clone());
   let mut match_map = HashMap::new();
@@ -147,16 +148,25 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<egg::SymbolLang>, i: &mut i32, bas
     let mut vars = "".to_owned();
     *i+=1; 
     format!("fof(f{i}, plain, [{newleft}] --> [{base} = {res}], inference(rightSubstEq, param(0, $fof({base} = {with_hole}), $fot(HOLE)), [f{}])).\n", *i-1) + 
-    variables.iter().rev().map(|v| {
+    variables.iter().enumerate().rev().map(|(nth, v)| {
       let inst_term = match_map.get(v as &str).map(expr_to_tptp_res).unwrap_or(v.to_owned());
       vars.insert_str(0, (v.to_owned() + if vars.is_empty() {""} else {", "}).as_str());
       match_map.remove(&v as &str);
       let new_inner = format!("{} = {}", expr_to_tptp_res(&instantiate(&rule_left, &match_map)), expr_to_tptp_res(&instantiate(&rule_right, &match_map)));
       *i+=1; 
-      let s = format!("fof(f{i}, plain, [![{vars}]: {new_inner}] --> [{base} = {res}], inference(leftForall, param(0, $fot({inst_term})), [f{}])).\n", *i-1);
+      let new_quant_formula = if is_local_rule && nth == 0 {"".to_owned()} else {format!("![{vars}]: {new_inner}")};
+      let forall_no = if is_local_rule && nth == 0 {
+        let mut no = rule_name.clone();
+        no.remove(0);
+        no
+      } else {"0".to_owned()};
+      let comma = if left.is_empty() || new_quant_formula.is_empty() {"".to_owned()} else {", ".to_owned()};
+      let s = format!("fof(f{i}, plain, [{new_quant_formula}{comma}{left}] --> [{base} = {res}], inference(leftForall, param({forall_no}, $fot({inst_term})), [f{}])).\n", *i-1);
       s
     }).collect::<Vec<String>>().join("").as_str() +
-    { *i+=1; format!("fof(f{i}, plain, [{left}] --> [{base} = {res}], inference(cut, param(0, 0), [{rule_name}, f{}])).", *i-1).as_str()}
+    (if !is_local_rule {
+      *i+=1; format!("fof(f{i}, plain, [{left}] --> [{base} = {res}], inference(cut, param(0, 0), [{rule_name}, f{}])).", *i-1)
+    } else {"".to_string()}).as_str()
   } else {
     panic!("Error: neither {} nor {} does not match {}", expr_to_tptp_res(&rule_left), expr_to_tptp_res(&rule_right), &res);
   };
@@ -168,9 +178,19 @@ pub fn line_to_tptp_level2(line: &FlatTerm<egg::SymbolLang>, i: &mut i32, base: 
   let with_hole = expr_to_tptp_res(&line_to_holes.with_holes);
   let _rule = line_to_holes.rule;
   let (_, _, rule_name) = _rule.unwrap();
+  let is_local_rule: bool = rule_name.starts_with("$");
   let res = expr_to_tptp_res(&line.clone().remove_rewrites());
   *i+=1; 
-  format!("fof(f{i}, plain, [{left}] --> [{base} = {res}], inference(substWithMatching, param(0, 0, $fof({base} = {with_hole}), $fot(HOLE)), [{rule_name}, f{}])).", *i-1)
+  if is_local_rule {
+    let forall_no = if is_local_rule {
+      let mut no = rule_name.clone();
+      no.remove(0);
+      no
+    } else {"0".to_owned()};
+    format!("fof(f{i}, plain, [{left}] --> [{base} = {res}], inference(substWithMatchingLocal, param({forall_no}, $fof({base} = {with_hole}), $fot(HOLE)), [f{}])).", *i-1)
+  } else {
+    format!("fof(f{i}, plain, [{left}] --> [{base} = {res}], inference(substWithMatching, param($fof({base} = {with_hole}), $fot(HOLE)), [{rule_name}, f{}])).", *i-1)
+  }
 }
 
 
@@ -185,23 +205,23 @@ pub fn make_cut_line<F>(left: &String, res: &String, rule_name: &String, i: i32,
 pub fn proof_to_tptp(header: &String, proof: &Vec<FlatTerm<SymbolLang>>, axioms: &Vec<(Vec<String>, FlatTerm<SymbolLang>, FlatTerm<SymbolLang>)>, problem: &TPTPProblem, level1:bool) -> String {
   let rules_names = problem.axioms.iter().map(|axiom| axiom.0.clone()).collect::<Vec<String>>();
   let map_rule = |s: String| {
-    let rule = axioms.iter().zip(&rules_names).find(|axiom| *axiom.1 == s).expect(format!("Rule not found: {}", s).as_str());
+
+    let rule = 
+      axioms.iter().zip(&rules_names).find(|axiom| *axiom.1 == s).expect(format!("Rule not found: {}", s).as_str());
+    
     (rule.0.0.clone(), rule.0.1.clone(), rule.0.2.clone())
   };
-  let left: Vec<(String, String)> = Vec::new();
-  let left_string = &left.iter().map(|rule| {
-    format!("{} = {}", rule.0, rule.1)
-  }).collect::<Vec<String>>().join(", ");
+  let left = &problem.left_string.join(", ");
 
   let base = expr_to_tptp_res(&proof[0]);
-  let first = format!("fof(f0, plain, [] --> [{base} = {base}], inference(rightRefl, param(0), [])).\n");
+  let first = format!("fof(f0, plain, [{left}] --> [{base} = {base}], inference(rightRefl, param(0), [])).\n");
   let mut i = 0;
 
   let proofstring = header.to_owned() + "\n" + &first + &proof.iter().skip(1).map( |line| {
     let res =if level1 {
-      line_to_tptp_level1(line, &mut i, &base, &left_string, &map_rule)
+      line_to_tptp_level1(line, &mut i, &base, &left, &map_rule)
     } else {
-      line_to_tptp_level2(line, &mut i, &base, &left_string)
+      line_to_tptp_level2(line, &mut i, &base, &left)
     };
     res
   }).collect::<Vec<String>>().join("\n");
@@ -213,6 +233,7 @@ pub struct TPTPProblem {
   pub path: std::path::PathBuf,
   pub header: String,
   pub axioms: Vec<(String, RecExpr<ENodeOrVar<SymbolLang>>, RecExpr<ENodeOrVar<SymbolLang>>)>,
+  pub left_string: Vec<String>,
   pub axioms_as_roots: Vec<(Vec<String>, RecExpr<SymbolLang>, RecExpr<SymbolLang>)>,
   pub conjecture: (String, RecExpr<SymbolLang>, RecExpr<SymbolLang>),
   pub string_rules: Vec<(String, String)>,

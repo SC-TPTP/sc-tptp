@@ -25,7 +25,7 @@ use nom::branch::alt;
 use nom::bytes::streaming::{
   escaped, tag, take_until, take_while, take_while1,
 };
-use nom::character::complete::multispace1;
+use nom::character::complete::{multispace1, space0};
 use nom::character::streaming::{
   line_ending, not_line_ending, one_of,
 };
@@ -33,25 +33,83 @@ use nom::combinator::{map, opt, recognize, value};
 use nom::multi::fold_many0;
 use nom::sequence::{delimited, pair, preceded, tuple};
 
-
-pub fn comment_line<'a, E: Error<'a>>(x: &'a [u8]) -> Result<'a, &'a [u8], E> {
-  delimited(tag("%"),  not_line_ending, line_ending)(x)
+//derive Display 
+impl std::fmt::Display for HeaderLine {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    match self {
+      HeaderLine::Comment(tag, value) => write!(f, "% {tag} : {value}\n"),
+      HeaderLine::Whiteline => write!(f, "\n"),
+      HeaderLine::Other(o) => write!(f, "%{}", o),
+    }
+  }
 }
 
-pub fn parse_header(mut bytes: &[u8]) -> Vec<String> {
-  let mut header: Vec<String> = Vec::new();
+fn fmt_with_spaces(line: &HeaderLine, f: &mut std::fmt::Formatter, n: usize) -> std::fmt::Result {
+  match line {
+    HeaderLine::Comment(tag, value) => {
+      // add spaces to tag to  reach len n:
+      let new_tag = format!("{tag:n$}");
+      write!(f, "% {new_tag} : {value}\n")
+    },
+    HeaderLine::Whiteline => write!(f, "\n"),
+    HeaderLine::Other(o) => write!(f, "%{}", o),
+  }
+}
+
+#[derive(Clone)]
+pub enum HeaderLine {
+  Comment(String, String),
+  Whiteline,
+  Other(String),
+}
+
+impl std::fmt::Display for Header {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    let n = self.comments.iter().map(|l| match l {
+      HeaderLine::Comment(tag, _) => tag.len(),
+      _ => 0,
+    }).max().unwrap_or(0);
+    for line in &self.comments {
+      fmt_with_spaces(line, f, n)?;
+    }
+    Ok(())
+  }
+}
+pub struct Header {
+  comments: Vec<HeaderLine>,
+}
+pub fn comment_tag<'a, E: Error<'a>>(x: &'a [u8]) -> Result<'a, String, E> {
+  use HeaderLine::*;
+  map(delimited(tag("%"), alphanumeric, delimited(space0, tag(":"), space0 )), |s|
+  String::from_utf8(s.to_vec()).unwrap())(x)
+}
+
+
+pub fn comment_line<'a, E: Error<'a>>(x: &'a [u8]) -> Result<'a, HeaderLine, E> {
+  use HeaderLine::*;
+  alt((value(Whiteline, multispace1),
+      map(pair(
+        comment_tag,
+         delimited(space0,  not_line_ending, line_ending)), |(tag, s)| {
+          Comment(tag, String::from_utf8(s.to_vec()).unwrap())
+      })))(x)
+}
+
+pub fn parse_header(mut bytes: &[u8]) -> Header {
+  let mut header: Vec<HeaderLine> = Vec::new();
   loop {
     let r    = comment_line::<'_, ()>(bytes);
     match r {
       Ok((reminder, comment)) => {
-        header.push(String::from_utf8(comment.to_vec()).unwrap());
+        header.push(comment);
         bytes = reminder;
       }
       Err(_) => break,
     }
   }
-  println!("{}", header.join("\n"));
-  header
+  let header2 = Header { comments: header };
+  println!("{}", header2);
+  header2
 }
 
 

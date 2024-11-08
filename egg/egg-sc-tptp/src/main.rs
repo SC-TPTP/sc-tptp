@@ -3,6 +3,7 @@
 
 mod translator;
 mod printer;
+mod fol;
 use printer::*;
 use translator::*;
 

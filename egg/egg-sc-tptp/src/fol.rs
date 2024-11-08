@@ -63,12 +63,34 @@ impl fmt::Display for Sequent {
 }
 
 
+
+
+// Language 
+
 use egg::define_language;
 use egg::Id;
 
-define_language! {
-  enum FOLLang {
-    Variable(String),
-    Function(String, Vec<Id>),
+#[derive(Debug)]
+struct Varlist {
+  vars: Vec<String>,
+}
+
+
+
+impl fmt::Display for Varlist {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "{}", self.vars.join(", "))
   }
+}
+
+
+enum FOLLang {
+  Variable(String),
+  Function(String, Vec<Id>),
+  Predicate(String, Vec<Id>),
+  Not(Id),
+  And(Id, Id),
+  Or(Id, Id),
+  Implies(Id, Id),
+  Iff(Id, Id)
 }

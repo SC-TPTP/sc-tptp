@@ -231,10 +231,11 @@ pub fn proof_to_tptp(header: &String, proof: &Vec<FlatTerm<SymbolLang>>, axioms:
 
 pub struct TPTPProblem {
   pub path: std::path::PathBuf,
-  pub header: String,
+  pub header: Header,
   pub axioms: Vec<(String, RecExpr<ENodeOrVar<SymbolLang>>, RecExpr<ENodeOrVar<SymbolLang>>)>,
   pub left_string: Vec<String>,
   pub axioms_as_roots: Vec<(Vec<String>, RecExpr<SymbolLang>, RecExpr<SymbolLang>)>,
   pub conjecture: (String, RecExpr<SymbolLang>, RecExpr<SymbolLang>),
   pub string_rules: Vec<(String, String)>,
+  pub options: Vec<String>
 }

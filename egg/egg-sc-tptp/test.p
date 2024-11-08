@@ -15,9 +15,9 @@
 % Syntax   : ?
 % SPC      : FOF_UNK_RFO_SEQ
 
+% EggOptions : --time-limit 12
 % Comments : This problem, was printed from a statement in a proof of a theorem by the Lisa theorem prover for submission to proof-producing ATPs.
 %--------------------------------------------------------------------------
-
 
 %fof(a1, axiom, ![Xx]: Xx = sf(sf(Xx))).
 %fof(a2, axiom, [] --> [![Xx, Yy]: Yy = sf(sf(sf(Yy)))]).

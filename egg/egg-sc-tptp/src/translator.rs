@@ -1,6 +1,9 @@
 
 use egg::{*, rewrite as rw};
+use nom::InputLength;
 use core::panic;
+use core::time;
+use std::fmt::format;
 use std::io::Read;
 use tptp::fof;
 use tptp::top;
@@ -25,13 +28,11 @@ use nom::branch::alt;
 use nom::bytes::streaming::{
   escaped, tag, take_until, take_while, take_while1,
 };
-use nom::character::complete::{multispace1, space0};
-use nom::character::streaming::{
-  line_ending, not_line_ending, one_of,
+use nom::character::complete::{multispace1, space0, line_ending, not_line_ending, one_of,
 };
-use nom::combinator::{map, opt, recognize, value};
+use nom::combinator::{map, opt, recognize, value, eof, complete};
 use nom::multi::fold_many0;
-use nom::sequence::{delimited, pair, preceded, tuple};
+use nom::sequence::{delimited, pair, preceded, terminated,  tuple};
 
 //derive Display 
 impl std::fmt::Display for HeaderLine {
@@ -52,11 +53,12 @@ fn fmt_with_spaces(line: &HeaderLine, f: &mut std::fmt::Formatter, n: usize) -> 
       write!(f, "% {new_tag} : {value}\n")
     },
     HeaderLine::Whiteline => write!(f, "\n"),
-    HeaderLine::Other(o) => write!(f, "%{}", o),
+    HeaderLine::Other(o) => write!(f, "{}\n", o),
   }
 }
 
 #[derive(Clone)]
+#[derive(Debug)]
 pub enum HeaderLine {
   Comment(String, String),
   Whiteline,
@@ -75,48 +77,57 @@ impl std::fmt::Display for Header {
     Ok(())
   }
 }
+#[derive(Clone)]
 pub struct Header {
   comments: Vec<HeaderLine>,
 }
 pub fn comment_tag<'a, E: Error<'a>>(x: &'a [u8]) -> Result<'a, String, E> {
   use HeaderLine::*;
-  map(delimited(tag("%"), alphanumeric, delimited(space0, tag(":"), space0 )), |s|
+  map(delimited(preceded(tag("%"), space0), alphanumeric, delimited(space0, tag(":"), space0 )), |s|
   String::from_utf8(s.to_vec()).unwrap())(x)
+}
+
+pub fn line_or_file_ending<'a, E: Error<'a>>(x: &'a [u8]) -> Result<'a, (), E> {
+  alt((value((), line_ending), value((), eof)))(x)
 }
 
 
 pub fn comment_line<'a, E: Error<'a>>(x: &'a [u8]) -> Result<'a, HeaderLine, E> {
   use HeaderLine::*;
-  alt((value(Whiteline, multispace1),
-      map(pair(
-        comment_tag,
-         delimited(space0,  not_line_ending, line_ending)), |(tag, s)| {
-          Comment(tag, String::from_utf8(s.to_vec()).unwrap())
-      })))(x)
+  alt((value(Whiteline, terminated(space0, line_or_file_ending)),
+      complete(map(pair(comment_tag,
+         delimited(space0,  not_line_ending, line_or_file_ending)), |(tag, s)| {
+          Comment(tag.to_string(), String::from_utf8(s.to_vec()).unwrap())
+      })),
+      map(terminated( not_line_ending, line_or_file_ending), |s: &[u8]|Other(String::from_utf8(s.to_vec()).unwrap())),
+
+    ))(x)
 }
 
 pub fn parse_header(mut bytes: &[u8]) -> Header {
   let mut header: Vec<HeaderLine> = Vec::new();
   loop {
     let r    = comment_line::<'_, ()>(bytes);
+    
     match r {
       Ok((reminder, comment)) => {
         header.push(comment);
         bytes = reminder;
+        if reminder.input_len() == 0 {
+          break;
+        }
       }
-      Err(_) => break,
+      Err(_) => panic!("Error: parsing header failed")
     }
   }
   let header2 = Header { comments: header };
-  println!("{}", header2);
   header2
 }
 
 
 pub fn parse_tptp_problem(path: &std::path::PathBuf) -> TPTPProblem {
   let bytes = take_input(path);
-  let _header = parse_header(&bytes);
-  let original_text = String::from_utf8(bytes.clone()).unwrap();
+  let header = parse_header(&bytes.clone());
   let mut parser = TPTPIterator::<()>::new(bytes.as_slice());
   let mut rules: Vec<(String, RecExpr<ENodeOrVar<SymbolLang>>, RecExpr<ENodeOrVar<SymbolLang>>)> = Vec::new();
   //let mut left_rules: Vec<(usize, RecExpr<ENodeOrVar<SymbolLang>>, RecExpr<ENodeOrVar<SymbolLang>>)> = Vec::new();
@@ -290,21 +301,22 @@ pub fn parse_tptp_problem(path: &std::path::PathBuf) -> TPTPProblem {
         }
         
       }
-      Err(e) => {
-        println!("Error: {:?}", e);
-        break;
+      Err(_) => {
+        panic!("Error: parsing failed")
       }
     }
   }
 
+
   return TPTPProblem {
     path: path.clone(),
-    header: original_text,
+    header: header,
     axioms: rules,
     left_string: left_string,
     conjecture: conjecture,
     string_rules: string_rules,
     axioms_as_roots: axioms_as_roots,
+    options: Vec::new(),
   }
 }
 
@@ -320,6 +332,11 @@ pub fn solve_tptp_problem(problem: &TPTPProblem) -> Explanation<egg::SymbolLang>
   let mut runner: Runner<SymbolLang, ()> = Runner::default().with_explanations_enabled()
     .with_expr(&start)
     .with_expr(&end);
+  if problem.options.len() >= 2 && problem.options[0] == "--time-limit" {
+    let time_limit = problem.options[1].parse::<u64>().expect("time limit must be a number");
+    runner = runner.with_time_limit(std::time::Duration::from_secs(time_limit));
+    println!("Time limit set to {} seconds", time_limit); 
+  }
   runner = problem.axioms_as_roots.iter().fold(runner, |r, e| r.with_expr(&e.1).with_expr(&e.2));
   runner = runner.run(&rules);
   let e = runner.explain_equivalence(&start, &end);
@@ -327,7 +344,34 @@ pub fn solve_tptp_problem(problem: &TPTPProblem) -> Explanation<egg::SymbolLang>
 }
 
 pub fn tptp_problem_to_tptp_solution(path: &std::path::PathBuf, output: &std::path::PathBuf, level1:bool) -> () {
-  let problem = parse_tptp_problem(path);
+  let mut problem: TPTPProblem = parse_tptp_problem(path);
+  let mut newcomments = Vec::<HeaderLine>::new();
+  let contains_solver = problem.header.comments.iter().any(|l| match l {
+    HeaderLine::Comment(tag, _) => tag == "Solver",
+    _ => false,
+  });
+  problem.header.comments.iter().for_each(|l| match l {
+    HeaderLine::Comment(tag, value) => {
+      if tag == "EggOptions" {
+        newcomments.push(l.clone());
+          let mut opts: Vec<String> = value.split_whitespace().map(|v| v.to_string()).collect(); 
+          problem.options.append(&mut opts);
+      } else if tag == "Status" {
+        newcomments.push(HeaderLine::Comment(tag.clone(), "Theorem".to_string()));
+      } else if tag == "Comments" && !contains_solver {
+        newcomments.push(l.clone());
+        newcomments.push(HeaderLine::Comment("Solver".to_string(), format!("egg v0.9.5, egg-sc-tptp v{}", env!("CARGO_PKG_VERSION"))));
+      } else if tag == "Solver" {
+        newcomments.push(HeaderLine::Comment("Solver".to_string(), format!("egg v0.9.5, egg-sc-tptp v{}", env!("CARGO_PKG_VERSION"))));
+      } else {
+        newcomments.push(HeaderLine::Comment(tag.clone(), value.clone()));
+      }
+    },
+    _ => newcomments.push(l.clone()),
+  });
+  let newheader = Header { comments: newcomments };
+
+  let init = format!("{}", newheader);
   let mut proof = solve_tptp_problem(&problem);
   let expl = proof.make_flat_explanation();
   let axioms: Vec<(Vec<String>, FlatTerm<SymbolLang>, FlatTerm<SymbolLang>)> = problem.axioms_as_roots.iter().map(|(vars, l, r)| {
@@ -338,8 +382,7 @@ pub fn tptp_problem_to_tptp_solution(path: &std::path::PathBuf, output: &std::pa
   (vars.clone(), left_ft, right_ft)
   }).collect();
 
-
-  let res = proof_to_tptp(&problem.header, expl, &axioms, &problem, level1);
+  let res = proof_to_tptp(&init, expl, &axioms, &problem, level1);
   let mut file = std::fs::File::create(output).unwrap();
   use std::io::Write;
   file.write_all(res.as_bytes()).unwrap();

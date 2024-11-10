@@ -11,6 +11,7 @@ use egg::ENodeOrVar;
 // terms:
 
 #[derive(Debug, Clone)]
+#[derive(PartialEq)]
 pub enum Term {
   Variable(String),
   Function(String, Vec<Box<Term>>),
@@ -28,6 +29,7 @@ impl fmt::Display for Term {
 // formulas:
 
 #[derive(Debug, Clone)]
+#[derive(PartialEq)]
 pub enum Formula {
   True,
   False,
@@ -61,6 +63,7 @@ impl fmt::Display for Formula {
 // sequents:
 
 #[derive(Debug, Clone)]
+#[derive(PartialEq)]
 pub struct Sequent {
   pub left: Vec<Formula>,
   pub right: Vec<Formula>,
@@ -72,12 +75,15 @@ impl fmt::Display for Sequent {
   }
 }
 
-
+#[derive(Debug, Clone)]
+#[derive(PartialEq)]
 pub enum Statement {
   Sequent(Sequent),
   Formula(Formula),
 }
 
+#[derive(Debug, Clone)]
+#[derive(PartialEq)]
 pub struct AnnotatedStatement {
   pub name: String,
   pub role: String,
@@ -144,24 +150,68 @@ pub fn instantiate_formula(formula: &Formula, map: &HashMap<&str, Term>) -> Form
 
 
 
-pub fn matching(expr: &FlatTerm<FOLLang>, expr2: &FlatTerm<FOLLang>, map: &mut HashMap<&str, FlatTerm<FOLLang>>) -> bool {
-  let e_head = expr.node.op.as_str();
-  if expr.node.op == expr2.node.op && expr.children.len() == expr2.children.len() {
-    let res = expr.children.iter().zip(expr2.children.iter())
-      .all(|(e1, e2)| matching(e1, e2, map));
-    res
+pub fn matching_term(expr: &Term, expr2: &Term, map: &mut HashMap<String, Term>) -> bool {
+  match (expr, expr2) {
+    (Term::Variable(name1), Term::Variable(name2)) if name1 == name2 => 
+      true,
+    (Term::Variable(name), _) => 
+      if map.contains_key(name.as_str()) {
+        return map[name.as_str()] == *expr2;
+      } else {
+        map.insert(name.to_owned(), expr2.clone());
+        return true;
+      },
+    (Term::Function(name, args), Term::Function(name2, args2)) => {
+      if name == name2 && args.len() == args2.len() {
+        let res = args.iter().zip(args2.iter())
+          .all(|(e1, e2)| matching_term(e1, e2, map));
+        res
+      } else {
+        false
+      }
+    },
+    _ => false
   }
-  else if expr.children.is_empty() {
-    if map.contains_key(e_head) {
-      return map[e_head] == *expr2;
-    }
-    else {
-      map.insert(expr.node.op.as_str(), expr2.clone());
-      return true;
-    }
-  }
-  else {
-    false
+}
+pub fn matching_formula(formula: &Formula, formula2: &Formula, map: &mut HashMap<String, Term>) -> bool {
+  match (formula, formula2) {
+    (Formula::True, Formula::True) => true,
+    (Formula::False, Formula::False) => true,
+    (Formula::Predicate(name, args), Formula::Predicate(name2, args2)) => {
+      if name == name2 && args.len() == args2.len() {
+        let res = args.iter().zip(args2.iter())
+          .all(|(e1, e2)| matching_term(e1, e2, map));
+        res
+      } else {
+        false
+      }
+    },
+    (Formula::Not(formula), Formula::Not(formula2)) => matching_formula(formula, formula2, map),
+    (Formula::And(formulas), Formula::And(formulas2)) => {
+      if formulas.len() == formulas2.len() {
+        let res = formulas.iter().zip(formulas2.iter())
+          .all(|(e1, e2)| matching_formula(e1, e2, map));
+        res
+      } else {
+        false
+      }
+    },
+    (Formula::Or(formulas), Formula::Or(formulas2)) => {
+      if formulas.len() == formulas2.len() {
+        let res = formulas.iter().zip(formulas2.iter())
+          .all(|(e1, e2)| matching_formula(e1, e2, map));
+        res
+      } else {
+        false
+      }
+    },
+    (Formula::Implies(formula1, formula2), Formula::Implies(formula1_2, formula2_2)) => {
+      matching_formula(formula1, formula1_2, map) && matching_formula(formula2, formula2_2, map)
+    },
+    (Formula::Iff(formula1, formula2), Formula::Iff(formula1_2, formula2_2)) => {
+      matching_formula(formula1, formula1_2, map) && matching_formula(formula2, formula2_2, map)
+    },
+    _ => false
   }
 }
 

@@ -71,6 +71,39 @@ pub fn flat_term_to_formula(expr: &FlatTerm<FOLLang>) -> fol::Formula {
 
 }
 
+pub fn flat_term_to_term_hole(expr: &FlatTerm<FOLLang>) -> (fol::Term, Option<(fol::Term, bool, String)>) {
+  if expr.backward_rule.is_some() {
+    (fol::Term::Variable("HOLE".to_owned()), 
+     Some((flat_term_to_term(&expr.remove_rewrites()), true, expr.backward_rule.unwrap().to_string().to_owned()))
+    )
+  } else if expr.forward_rule.is_some() {
+    (fol::Term::Variable("HOLE".to_owned()),
+     Some((flat_term_to_term(&expr.remove_rewrites()), false, expr.forward_rule.unwrap().to_string().to_owned())))
+  } else {
+    match expr.node {
+      FOLLang::Variable(op) => (fol::Term::Variable(op.to_string()), None),
+      FOLLang::Function(op, _) => {
+        if expr.children.is_empty() {
+          (fol::Term::Function(op.to_string(), vec![]), None)
+        } else {
+          let first = flat_term_to_term_hole(&expr.children[0]);
+          let mut res_vec = vec![Box::new(first.0)];
+          let res_rule = expr.children.iter().skip(1).fold(first.1, |acc, e| {
+            let res = flat_term_to_term_hole(e);
+            res_vec.push(Box::new(res.0));
+            res.1.or(acc)
+          });
+          (fol::Term::Function(op.to_string(), res_vec), res_rule)
+        }
+      },
+      _ => panic!("{} is not a term", expr.to_string())
+    }
+  }
+}
+
+//TODO : flat_term_to_formula_hole
+
+
 
 
 pub struct HolesRes {with_holes: FlatTerm<FOLLang>, rule: Option<(FlatTerm<FOLLang>, bool, String)>}

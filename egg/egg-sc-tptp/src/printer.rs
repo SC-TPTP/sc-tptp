@@ -8,32 +8,28 @@ use tptp::fof;
 use tptp::top;
 use tptp::common::*;
 use std::collections::HashMap;
+use crate::fol;
+use crate::fol::FOLLang;
 
-pub fn as_string(v: &Vec<FlatTerm<egg::SymbolLang>>) -> String {
+pub fn as_string(v: &Vec<FlatTerm<FOLLang>>) -> String {
   let strs: Vec<String> = v.iter()
   .map(|e| format!("{:?}", e))
   .collect();
   strs.join("\n")
 }
 
-pub fn get_flat_string(v: &Vec<FlatTerm<egg::SymbolLang>>) -> String {
+pub fn get_flat_string(v: &Vec<FlatTerm<FOLLang>>) -> String {
   v.iter()
   .map(|e| e.to_string())
   .collect::<Vec<String>>()
   .join("\n")
 }
 
-pub fn expr_to_tptp_res(expr: &FlatTerm<egg::SymbolLang>) -> String {
-  let head = expr.node.op;
-  if expr.children.is_empty() {
-    format!("{}", head)
-  } else {
-    let args = expr.children.iter().map(|e| expr_to_tptp_res(e)).collect::<Vec<String>>().join(", ");
-    format!("{}({})", head, args)
-  }
+pub fn expr_to_tptp_res(expr: &FlatTerm<FOLLang>) -> String {
+  expr.to_string()
 }
   /*
-pub fn expr_to_tptp_hole(expr: &FlatTerm<egg::SymbolLang>) -> (String, Option<String>) {
+pub fn expr_to_tptp_hole(expr: &FlatTerm<FOLLang>) -> (String, Option<String>) {
   rewrites_to_holes(expr, "HOLE".into()).0.to_string();
   if expr.backward_rule.is_some() {
     ("HOLE".to_owned(), Some(expr.backward_rule.unwrap().to_string().to_owned()))
@@ -53,44 +49,36 @@ pub fn expr_to_tptp_hole(expr: &FlatTerm<egg::SymbolLang>) -> (String, Option<St
   }
 }  */
 
-pub fn instantiate(expr: &FlatTerm<egg::SymbolLang>, map: &HashMap<&str, FlatTerm<egg::SymbolLang>>) -> FlatTerm<egg::SymbolLang> {
-  if map.contains_key(expr.node.op.as_str()) && expr.children.is_empty() {
-    return map.get(expr.node.op.as_str()).unwrap().clone();
+pub fn flat_term_to_term(expr: &FlatTerm<FOLLang>) -> fol::Term {
+  match expr.node {
+    FOLLang::Variable(op) => fol::Term::Variable(op.to_string()),
+    FOLLang::Function(op, _) => 
+      fol::Term::Function(op.to_string(), expr.children.iter().map(|e| Box::new(flat_term_to_term(e))).collect()),
+    _ => panic!("{} is not a term", expr.to_string())
+  }                           
+}
+pub fn flat_term_to_formula(expr: &FlatTerm<FOLLang>) -> fol::Formula {
+  match expr.node {
+    FOLLang::Predicate(op, _) => 
+      fol::Formula::Predicate(op.to_string(), expr.children.iter().map(|e| Box::new(flat_term_to_term(e))).collect()),
+    FOLLang::Not(_) => fol::Formula::Not(Box::new(flat_term_to_formula(&expr.children[0]))),
+    FOLLang::And(_) => fol::Formula::And(expr.children.iter().map(|e| Box::new(flat_term_to_formula(e))).collect()),
+    FOLLang::Or(_) => fol::Formula::Or(expr.children.iter().map(|e| Box::new(flat_term_to_formula(e))).collect()),
+    FOLLang::Implies(_) => fol::Formula::Implies(Box::new(flat_term_to_formula(&expr.children[0])), Box::new(flat_term_to_formula(&expr.children[1]))),
+    FOLLang::Iff(_) => fol::Formula::Iff(Box::new(flat_term_to_formula(&expr.children[0])), Box::new(flat_term_to_formula(&expr.children[1]))),
+    _ => panic!("{} is not a formula", expr.to_string())
   }
-  else {FlatTerm { 
-    node: expr.node.clone(),
-    backward_rule: None,
-    forward_rule: None,
-    children: expr.children.iter().map(|e| instantiate(e, map)).collect() } 
-  } 
+
 }
 
-pub fn matching(expr: &FlatTerm<egg::SymbolLang>, expr2: &FlatTerm<egg::SymbolLang>, map: &mut HashMap<&str, FlatTerm<egg::SymbolLang>>) -> bool {
-  let e_head = expr.node.op.as_str();
-  if expr.node.op == expr2.node.op && expr.children.len() == expr2.children.len() {
-    let res = expr.children.iter().zip(expr2.children.iter())
-      .all(|(e1, e2)| matching(e1, e2, map));
-    res
-  }
-  else if expr.children.is_empty() {
-    if map.contains_key(e_head) {
-      return map[e_head] == *expr2;
-    }
-    else {
-      map.insert(expr.node.op.as_str(), expr2.clone());
-      return true;
-    }
-  }
-  else {
-    false
-  }
-}
-pub struct HolesRes {with_holes: FlatTerm<egg::SymbolLang>, rule: Option<(FlatTerm<egg::SymbolLang>, bool, String)>}
 
-pub fn rewrites_to_holes(expr: &FlatTerm<egg::SymbolLang>, hole: Symbol) -> HolesRes {
+
+pub struct HolesRes {with_holes: FlatTerm<FOLLang>, rule: Option<(FlatTerm<FOLLang>, bool, String)>}
+
+pub fn rewrites_to_holes(expr: &FlatTerm<FOLLang>, hole: Symbol) -> HolesRes {
   if expr.backward_rule.is_some() {
-    let res = FlatTerm::<egg::SymbolLang> {
-      node: SymbolLang::leaf(hole),
+    let res = FlatTerm::<FOLLang> {
+      node: FOLLang::leaf(hole),
       backward_rule: None,
       forward_rule: None,
       children: vec![]
@@ -101,8 +89,8 @@ pub fn rewrites_to_holes(expr: &FlatTerm<egg::SymbolLang>, hole: Symbol) -> Hole
       rule: Some((expr_without_rewrites, true, expr.backward_rule.unwrap().to_string().to_owned()))
     }
   } else if expr.forward_rule.is_some() {
-    let res = FlatTerm::<egg::SymbolLang> {
-      node: SymbolLang::leaf(hole),
+    let res = FlatTerm::<FOLLang> {
+      node: FOLLang::leaf(hole),
       backward_rule: None,
       forward_rule: None,
       children: vec![]
@@ -120,7 +108,7 @@ pub fn rewrites_to_holes(expr: &FlatTerm<egg::SymbolLang>, hole: Symbol) -> Hole
       res_vec.push(res.with_holes);
       res.rule.or(acc)
     });
-    let with_holes = (FlatTerm::<egg::SymbolLang> {
+    let with_holes = (FlatTerm::<FOLLang> {
       node: expr.node.clone(),
       backward_rule: None,
       forward_rule: None,
@@ -133,7 +121,7 @@ pub fn rewrites_to_holes(expr: &FlatTerm<egg::SymbolLang>, hole: Symbol) -> Hole
   }
 }
 
-pub fn line_to_tptp_level1<F>(line: &FlatTerm<egg::SymbolLang>, i: &mut i32, base: &String, left: &String, map_rule: F) -> String where F: Fn(String) -> (Vec<String>, FlatTerm<egg::SymbolLang>, FlatTerm<egg::SymbolLang>) {
+pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, base: &String, left: &String, map_rule: F) -> String where F: Fn(String) -> (Vec<String>, FlatTerm<FOLLang>, FlatTerm<FOLLang>) {
   let line_to_holes = rewrites_to_holes(line, "HOLE".into());
   let with_hole = expr_to_tptp_res(&line_to_holes.with_holes);
   let _rule = line_to_holes.rule;
@@ -173,7 +161,7 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<egg::SymbolLang>, i: &mut i32, bas
   res_string
 }
 
-pub fn line_to_tptp_level2(line: &FlatTerm<egg::SymbolLang>, i: &mut i32, base: &String, left: &String) -> String {
+pub fn line_to_tptp_level2(line: &FlatTerm<FOLLang>, i: &mut i32, base: &String, left: &String) -> String {
   let line_to_holes = rewrites_to_holes(line, "HOLE".into());
   let with_hole = expr_to_tptp_res(&line_to_holes.with_holes);
   let _rule = line_to_holes.rule;
@@ -202,7 +190,7 @@ pub fn make_cut_line<F>(left: &String, res: &String, rule_name: &String, i: i32,
 
 
 
-pub fn proof_to_tptp(header: &String, proof: &Vec<FlatTerm<SymbolLang>>, axioms: &Vec<(Vec<String>, FlatTerm<SymbolLang>, FlatTerm<SymbolLang>)>, problem: &TPTPProblem, level1:bool) -> String {
+pub fn proof_to_tptp(header: &String, proof: &Vec<FlatTerm<FOLLang>>, axioms: &Vec<(Vec<String>, FlatTerm<FOLLang>, FlatTerm<FOLLang>)>, problem: &TPTPProblem, level1:bool) -> String {
   let rules_names = problem.axioms.iter().map(|axiom| axiom.0.clone()).collect::<Vec<String>>();
   let map_rule = |s: String| {
 
@@ -232,10 +220,10 @@ pub fn proof_to_tptp(header: &String, proof: &Vec<FlatTerm<SymbolLang>>, axioms:
 pub struct TPTPProblem {
   pub path: std::path::PathBuf,
   pub header: Header,
-  pub axioms: Vec<(String, RecExpr<ENodeOrVar<SymbolLang>>, RecExpr<ENodeOrVar<SymbolLang>>)>,
+  pub axioms: Vec<(String, RecExpr<ENodeOrVar<FOLLang>>, RecExpr<ENodeOrVar<FOLLang>>)>,
   pub left_string: Vec<String>,
-  pub axioms_as_roots: Vec<(Vec<String>, RecExpr<SymbolLang>, RecExpr<SymbolLang>)>,
-  pub conjecture: (String, RecExpr<SymbolLang>, RecExpr<SymbolLang>),
+  pub axioms_as_roots: Vec<(Vec<String>, RecExpr<FOLLang>, RecExpr<FOLLang>)>,
+  pub conjecture: (String, RecExpr<FOLLang>, RecExpr<FOLLang>),
   pub string_rules: Vec<(String, String)>,
   pub options: Vec<String>
 }

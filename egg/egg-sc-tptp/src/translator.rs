@@ -1,6 +1,7 @@
 
 use egg::{*, rewrite as rw};
 use nom::InputLength;
+use tptp::top::AnnotatedFormula;
 use core::panic;
 use core::time;
 use std::fmt::format;
@@ -10,6 +11,9 @@ use tptp::top;
 use tptp::common::*;
 use tptp::TPTPIterator;
 use ENodeOrVar::*;
+
+use crate::fol;
+use fol::FOLLang;
 
 use crate::printer::*;
 
@@ -129,169 +133,111 @@ pub fn parse_tptp_problem(path: &std::path::PathBuf) -> TPTPProblem {
   let bytes = take_input(path);
   let header = parse_header(&bytes.clone());
   let mut parser = TPTPIterator::<()>::new(bytes.as_slice());
-  let mut rules: Vec<(String, RecExpr<ENodeOrVar<SymbolLang>>, RecExpr<ENodeOrVar<SymbolLang>>)> = Vec::new();
-  //let mut left_rules: Vec<(usize, RecExpr<ENodeOrVar<SymbolLang>>, RecExpr<ENodeOrVar<SymbolLang>>)> = Vec::new();
+  let mut rules: Vec<(String, RecExpr<ENodeOrVar<fol::FOLLang>>, RecExpr<ENodeOrVar<fol::FOLLang>>)> = Vec::new();
   let mut string_rules: Vec<(String, String)> = Vec::new();
-  let mut conjecture: (String, RecExpr<SymbolLang>, RecExpr<SymbolLang>) = ("".to_string(), RecExpr::default(), RecExpr::default());
-  let mut axioms_as_roots: Vec<(Vec<String>, RecExpr<SymbolLang>, RecExpr<SymbolLang>)> = Vec::new();
+  let mut conjecture: (String, RecExpr<fol::FOLLang>, RecExpr<fol::FOLLang>) = ("".to_string(), RecExpr::default(), RecExpr::default());
+  let mut axioms_as_roots: Vec<(Vec<String>, RecExpr<fol::FOLLang>, RecExpr<fol::FOLLang>)> = Vec::new();
   let mut left_string: Vec<String> = Vec::new();
   for result in &mut parser {
     match result {
       Ok(r) => {
         match r {
           top::TPTPInput::Annotated(annotated) => {
-            match &*annotated {
-              top::AnnotatedFormula::Fof(fof_annotated) => {
-                let name = fof_annotated.0.name.to_string();
-                let role = fof_annotated.0.role.to_string();
-                let (conditions, main_formula) = match &*fof_annotated.0.formula {
-                  fof::Formula::Logic(f) => (&Vec::<fof::LogicFormula>::new(), f),
-                  fof::Formula::Sequent(sequent) => {
-                    let left = &sequent.left.0;
-                    let right = &sequent.right.0;
-                    if right.len() != 1 {
-                      panic!("Axioms and Conjectures must have exactly one formula on the right hand side")
-                    }
-                    let f = &right[0];
-                    (left, f)
-                    
+            use crate::fol::tptp_fol_translator::*;
+            let anot_form = fol::AnnotatedStatement::translate(&*annotated);
+            let name = anot_form.name;
+            let role = anot_form.role;
+            let (conditions, main_formula) = match anot_form.statement {
+              fol::Statement::Formula(f) => (Vec::<fol::Formula>::new(), f),
+              fol::Statement::Sequent(sequent) => {
+                let left = &sequent.left;
+                let right = &sequent.right;
+                if right.len() != 1 {
+                  panic!("Axioms and Conjectures must have exactly one formula on the right hand side")
+                }
+                let f = &right[0];
+                (left.clone(), f.clone())
+              }
+            };
+            //let annotations = &anot_form.0.annotations;
+            match role.as_str() {
+              "conjecture" => {     
+
+                //Handles rewrite rules on the left
+                conditions.iter().enumerate().for_each(|(no, c)| {
+                  left_string.push(c.to_string());
+                  let formula = &mut c.clone();
+                  let mut vars =  Vec::<String>::new();
+                  get_head_vars_logic(&c, formula, &mut vars);
+
+                  match formula {
+                    fol::Formula::Predicate(op, args ) => 
+                      if op == "=" && args.len() == 2 {
+                        {
+                          let mut expr_left: RecExpr<ENodeOrVar<fol::FOLLang>> = RecExpr::default();
+                          let mut expr_right: RecExpr<ENodeOrVar<fol::FOLLang>> = RecExpr::default();
+                          fol::term_to_recexpr_pattern(&*args[0], &vars, &mut expr_left);
+                          fol::term_to_recexpr_pattern(&*args[1], &vars, &mut expr_right);
+                          rules.push((format!("${no}"), expr_left, expr_right));
+                        }
+                        {
+                          let mut expr_left: RecExpr<fol::FOLLang> = RecExpr::default();
+                          let mut expr_right: RecExpr<fol::FOLLang> = RecExpr::default();
+                          fol::term_to_recexpr(&*args[0], &mut expr_left);
+                          fol::term_to_recexpr(&*args[1], &mut expr_right);
+                          axioms_as_roots.push((vars, expr_left, expr_right));
+                        }
+                        string_rules.push((args[0].to_string(), args[1].to_string()));
+                      } else {},
+                    _ => panic!("formulas must be equalities")
                   }
-                };
-                //let annotations = &fof_annotated.0.annotations;
-                match role.as_str() {
-                  "conjecture" => {     
-
-                    //Handles rewrite rules on the left
-                    conditions.iter().enumerate().for_each(|(no, c)| {
-                      left_string.push(c.to_string());
-                      let formula = &mut c.clone();
-                      let mut vars =  Vec::<String>::new();
-                      get_head_vars_logic(&c, formula, &mut vars);
-                      match formula {
-                        fof::LogicFormula::Unitary(u) => {
-                          match u {
-                            fof::UnitaryFormula::Atomic(a) => {
-                              match &**a {
-                                fof::AtomicFormula::Defined(d) => {
-                                  match d {
-                                    fof::DefinedAtomicFormula::Infix(i) => {
-                                      if i.op.0.to_string() == "=" {
-                                        {
-                                          use patern_translator::TranslatorSL;
-                                          let mut expr_left: RecExpr<ENodeOrVar<SymbolLang>> = RecExpr::default();
-                                          let mut expr_right: RecExpr<ENodeOrVar<SymbolLang>> = RecExpr::default();
-                                          Id::translate(&*i.left, &vars, &mut expr_left);
-                                          Id::translate(&*i.right, &vars, &mut expr_right);
-                                          rules.push((format!("${no}"), expr_left, expr_right));
-                                        }
-                                        {
-                                          use non_patern_translator::TranslatorSL;
-                                          let mut expr_left: RecExpr<SymbolLang> = RecExpr::default();
-                                          let mut expr_right: RecExpr<SymbolLang> = RecExpr::default();
-                                          Id::translate(&*i.left, &mut expr_left);
-                                          Id::translate(&*i.right, &mut expr_right);
-                                          axioms_as_roots.push((vars, expr_left, expr_right));
-                                        }
-                                        string_rules.push((i.left.to_string(), i.right.to_string()));
-                                      } else {}
-                                      
-                                    }
-                                    _ => {}
-                                  }
-                                }
-                                _ => {}
-                              }
-                            },
-                            _ => {}
-                          }
-                        }
-                        _ => {}
-                      }
-                    });
+                });
 
 
 
-                    //Handles the conjecture
-                    let formula = &mut main_formula.clone();
-                    get_head_logic(&main_formula, formula);
-                    match formula {
-                      fof::LogicFormula::Unitary(u) => {
-                        match u {
-                          fof::UnitaryFormula::Atomic(a) => {
-                            match &**a {
-                              fof::AtomicFormula::Defined(d) => {
-                                match d {
-                                  fof::DefinedAtomicFormula::Infix(i) => {
-                                    if i.op.0.to_string() == "=" {
-                                      use non_patern_translator::TranslatorSL;
-                                      let mut expr_left: RecExpr<SymbolLang> = RecExpr::default();
-                                      let mut expr_right: RecExpr<SymbolLang> = RecExpr::default();
-                                      Id::translate(&*i.left, &mut expr_left);
-                                      Id::translate(&*i.right, &mut expr_right);
-                                      conjecture = (name, expr_left, expr_right);
+                //Handles the conjecture
+                let formula = &mut main_formula.clone();
+                get_head_logic(&main_formula, formula);
+                match formula {
+                  fol::Formula::Predicate(op, args ) => {
+                    if op == "=" {
+                      let mut expr_left: RecExpr<fol::FOLLang> = RecExpr::default();
+                      let mut expr_right: RecExpr<fol::FOLLang> = RecExpr::default();
+                      fol::term_to_recexpr(&*args[0], &mut expr_left);
+                      fol::term_to_recexpr(&*args[1], &mut expr_right);
+                      conjecture = (name, expr_left, expr_right);
 
-                                    } else {panic!("formulas must be equalities")}
-                                    
-                                  }
-                                  _ => panic!("formulas must be equalities")
-                                }
-                              }
-                              _ => panic!("formulas must be equalities")
-                            }
-                          },
-                          _ => panic!("formulas must be equalities")
-                        }
-                      }
-                      _ => panic!("formulas must be equalities,")
-                    }
-                    
+                    } else {panic!("formulas must be equalities")}
                   }
-                  "axiom" => {
-                    let formula = &mut main_formula.clone();
-                    let mut vars =  Vec::<String>::new();
-                    get_head_vars_logic(&main_formula, formula, &mut vars);
-                    match formula {
-                      fof::LogicFormula::Unitary(u) => {
-                        match u {
-                          fof::UnitaryFormula::Atomic(a) => {
-                            match &**a {
-                              fof::AtomicFormula::Defined(d) => {
-                                match d {
-                                  fof::DefinedAtomicFormula::Infix(i) => {
-                                    if i.op.0.to_string() == "=" {
-                                      {
-                                        use patern_translator::TranslatorSL;
-                                        let mut expr_left: RecExpr<ENodeOrVar<SymbolLang>> = RecExpr::default();
-                                        let mut expr_right: RecExpr<ENodeOrVar<SymbolLang>> = RecExpr::default();
-                                        Id::translate(&*i.left, &vars, &mut expr_left);
-                                        Id::translate(&*i.right, &vars, &mut expr_right);
-                                        rules.push((name, expr_left, expr_right));
-                                      }
-                                      {
-                                        use non_patern_translator::TranslatorSL;
-                                        let mut expr_left: RecExpr<SymbolLang> = RecExpr::default();
-                                        let mut expr_right: RecExpr<SymbolLang> = RecExpr::default();
-                                        Id::translate(&*i.left, &mut expr_left);
-                                        Id::translate(&*i.right, &mut expr_right);
-                                        axioms_as_roots.push((vars, expr_left, expr_right));
-                                      }
-                                      string_rules.push((i.left.to_string(), i.right.to_string()));
-                                    } else {panic!("formulas must be equalities =")}
-                                    
-                                  }
-                                  _ => panic!("formulas must be equalities Infix")
-                                }
-                              }
-                              _ => panic!("formulas must be equalities Defined")
-                            }
-                          },
-                          _ => panic!("formulas must be equalities Atomic")
-                        }
+                  _ => panic!("formulas must be equalities,")
+                }
+                
+              }
+              "axiom" => {
+                let formula = &mut main_formula.clone();
+                let mut vars =  Vec::<String>::new();
+                get_head_vars_logic(&main_formula, formula, &mut vars);
+                match formula {
+                  fol::Formula::Predicate(op, args ) => {
+                    if op == "=" {
+                      {
+                        let mut expr_left: RecExpr<ENodeOrVar<fol::FOLLang>> = RecExpr::default();
+                        let mut expr_right: RecExpr<ENodeOrVar<fol::FOLLang>> = RecExpr::default();
+                        fol::term_to_recexpr_pattern(&*args[0], &vars, &mut expr_left);
+                        fol::term_to_recexpr_pattern(&*args[1], &vars, &mut expr_right);
+                        rules.push((name, expr_left, expr_right));
                       }
-                      _ => panic!("formulas must be equalities unitary")
+                      {
+                        let mut expr_left: RecExpr<fol::FOLLang> = RecExpr::default();
+                        let mut expr_right: RecExpr<fol::FOLLang> = RecExpr::default();
+                        fol::term_to_recexpr(&*args[0], &mut expr_left);
+                        fol::term_to_recexpr(&*args[1], &mut expr_right);
+                        axioms_as_roots.push((vars, expr_left, expr_right));
+                      }
+                      string_rules.push((args[0].to_string(), args[1].to_string()));
                     }
                   }
-                  _ => ()
+                  _ => panic!("formulas must be equalities unitary")
                 }
               }
               _ => ()
@@ -321,15 +267,15 @@ pub fn parse_tptp_problem(path: &std::path::PathBuf) -> TPTPProblem {
 }
 
 
-pub fn solve_tptp_problem(problem: &TPTPProblem) -> Explanation<egg::SymbolLang> {
-  let rules: Vec<Rewrite<SymbolLang, ()>> = problem.axioms.iter().map(|(name, l, r)| {
-    Rewrite::<egg::SymbolLang, ()>::new(name, egg::Pattern::new(l.clone()), egg::Pattern::new(r.clone())).expect("failed to create rewrite rule")
+pub fn solve_tptp_problem(problem: &TPTPProblem) -> Explanation<FOLLang> {
+  let rules: Vec<Rewrite<FOLLang, ()>> = problem.axioms.iter().map(|(name, l, r)| {
+    Rewrite::<FOLLang, ()>::new(name, egg::Pattern::new(l.clone()), egg::Pattern::new(r.clone())).expect("failed to create rewrite rule")
   }).collect::<Vec<_>>();
     
   let start = &problem.conjecture.1;
   let end = &problem.conjecture.2;
   
-  let mut runner: Runner<SymbolLang, ()> = Runner::default().with_explanations_enabled()
+  let mut runner: Runner<FOLLang, ()> = Runner::default().with_explanations_enabled()
     .with_expr(&start)
     .with_expr(&end);
   if problem.options.len() >= 2 && problem.options[0] == "--time-limit" {
@@ -374,9 +320,9 @@ pub fn tptp_problem_to_tptp_solution(path: &std::path::PathBuf, output: &std::pa
   let init = format!("{}", newheader);
   let mut proof = solve_tptp_problem(&problem);
   let expl = proof.make_flat_explanation();
-  let axioms: Vec<(Vec<String>, FlatTerm<SymbolLang>, FlatTerm<SymbolLang>)> = problem.axioms_as_roots.iter().map(|(vars, l, r)| {
-    let mut runner1: Runner<SymbolLang, ()> = Runner::default().with_explanations_enabled().with_expr(&l).run(&[]);
-    let mut runner2: Runner<SymbolLang, ()> = Runner::default().with_explanations_enabled().with_expr(&l).run(&[]);
+  let axioms: Vec<(Vec<String>, FlatTerm<FOLLang>, FlatTerm<FOLLang>)> = problem.axioms_as_roots.iter().map(|(vars, l, r)| {
+    let mut runner1: Runner<FOLLang, ()> = Runner::default().with_explanations_enabled().with_expr(&l).run(&[]);
+    let mut runner2: Runner<FOLLang, ()> = Runner::default().with_explanations_enabled().with_expr(&l).run(&[]);
     let left_ft = runner1.explain_equivalence(&l, &l).make_flat_explanation()[0].clone();
     let right_ft = runner2.explain_equivalence(&r, &r).make_flat_explanation()[0].clone();
   (vars.clone(), left_ft, right_ft)
@@ -389,62 +335,30 @@ pub fn tptp_problem_to_tptp_solution(path: &std::path::PathBuf, output: &std::pa
 }
 
 
-fn get_head_logic<'a>(frm: &fof::LogicFormula<'a>, res: &mut fof::LogicFormula<'a> ) -> () {
-  use fof::LogicFormula::*;
+fn get_head_logic<'a>(frm: &fol::Formula, res: &mut fol::Formula ) -> () {
+  use fol::Formula::*;
   match frm {
-    Binary(_) => *res = frm.clone(),
-    Unary(_) => *res = frm.clone(),
-    Unitary(u) => get_head_unitary(u, res),
-  }
-}
-
-
-fn get_head_unitary<'a>(frm: &fof::UnitaryFormula<'a>, res: &mut fof::LogicFormula<'a>) -> () {
-  use fof::UnitaryFormula::*;
-  match frm {
-    Parenthesised(flf) => get_head_logic(&*flf, res),
-    Quantified(_) => *res = fof::LogicFormula::Unitary(frm.clone()),
-    Atomic(_) => *res = fof::LogicFormula::Unitary(frm.clone()),
-  }
-}
-
-fn get_head_vars_logic<'a>(frm: &fof::LogicFormula<'a>, res_f: &mut fof::LogicFormula<'a>, res_v: &mut Vec<String> ) -> () {
-  use fof::LogicFormula::*;
-  match frm {
-    Binary(_) => *res_f = frm.clone(),
-    Unary(_) => *res_f = frm.clone(),
-    Unitary(u) => get_head_vars_unitary(u, res_f, res_v),
-  }
-}
-
-
-fn get_head_vars_unitary<'a>(frm: &fof::UnitaryFormula<'a>, res_f: &mut fof::LogicFormula<'a>, res_v: &mut Vec<String> ) -> () {
-  use fof::UnitaryFormula::*;
-  match frm {
-    Parenthesised(flf) => get_head_vars_logic(&*flf, res_f, res_v),
-    Quantified(fff) => {
-      if fff.quantifier == fof::Quantifier::Forall {
-        let mut vars: Vec<String> = fff.bound.0.iter().map(|v| v.to_string()).collect();
-        res_v.append(&mut vars);
-        get_head_vars_unit(&*fff.formula, res_f, res_v)
-      } else {
-        *res_f = fof::LogicFormula::Unitary(frm.clone())
-      }
+    Forall(_, inner) => {
+      get_head_logic(&*inner, res)
     },
-    Atomic(_) => *res_f = fof::LogicFormula::Unitary(frm.clone()),
+    _ => *res = frm.clone(),
   }
 }
 
-fn get_head_vars_unit<'a>(frm: &fof::UnitFormula<'a>, res_f: &mut fof::LogicFormula<'a>, res_v: &mut Vec<String> ) -> () {
-  use fof::UnitFormula::*;
+fn get_head_vars_logic<'a>(frm: &fol::Formula, res_f: &mut fol::Formula, res_v: &mut Vec<String> ) -> () {
+  use fol::Formula::*;
   match frm {
-    Unitary(u) => get_head_vars_unitary(u, res_f, res_v),
-    Unary(u) => *res_f = fof::LogicFormula::Unary(u.clone()),
+    Forall(variables, inner) => {
+      res_v.append(&mut variables.clone());
+      get_head_vars_logic(&*inner, res_f, res_v)
+    },
+    _ => *res_f = frm.clone(),
   }
 }
 
 
 
+/*
 mod non_patern_translator {
   use egg::*;
   use tptp::fof;
@@ -453,12 +367,12 @@ mod non_patern_translator {
   use tptp::TPTPIterator;
 
   pub trait TranslatorSL<T> {
-    fn translate(tm: &T, expr: &mut RecExpr<SymbolLang>) -> Self;
+    fn translate(tm: &T, expr: &mut RecExpr<FOLLang>) -> Self;
   }
 
 
   impl TranslatorSL<fof::FunctionTerm<'_>> for Id {
-    fn translate(tm: &fof::FunctionTerm, expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(tm: &fof::FunctionTerm, expr: &mut RecExpr<FOLLang>) -> Id {
         use fof::FunctionTerm::*;
         match tm {
             Plain(p) => Self::translate(p, expr),
@@ -469,7 +383,7 @@ mod non_patern_translator {
   }
 
   impl TranslatorSL<fof::DefinedTerm<'_>> for Id {
-    fn translate(tm: &fof::DefinedTerm, expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(tm: &fof::DefinedTerm, expr: &mut RecExpr<FOLLang>) -> Id {
         use fof::DefinedTerm::*;
         match tm {
             Defined(d) => Self::translate(d, expr),
@@ -479,39 +393,39 @@ mod non_patern_translator {
   }
 
   impl TranslatorSL<tptp::common::DefinedTerm<'_>> for Id {
-    fn translate(tm: &tptp::common::DefinedTerm, expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(tm: &tptp::common::DefinedTerm, expr: &mut RecExpr<FOLLang>) -> Id {
         use tptp::common::DefinedTerm::*;
         match tm {
-            Number(n) => expr.add(SymbolLang::leaf(n.to_string())),
+            Number(n) => expr.add(FOLLang::leaf(n.to_string())),
             Distinct(_) => todo!(),
         }
     }
   }
 
   impl TranslatorSL<fof::Term<'_>> for Id {
-    fn translate(tm: &fof::Term, expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(tm: &fof::Term, expr: &mut RecExpr<FOLLang>) -> Id {
         use fof::Term::*;
         match tm {
-            Variable(v) => expr.add(SymbolLang::leaf(v.to_string())),
+            Variable(v) => expr.add(FOLLang::leaf(v.to_string())),
             Function(f) => Id::translate(&**f, expr),
         }
     }
   }
 
   impl TranslatorSL<fof::Arguments<'_>> for Vec<Id> {
-    fn translate(args: &fof::Arguments, expr: &mut RecExpr<SymbolLang>) -> Vec<Id> {
+    fn translate(args: &fof::Arguments, expr: &mut RecExpr<FOLLang>) -> Vec<Id> {
       args.0.clone().into_iter().map(move |a: fof::Term<'_>| Id::translate(&a, expr)).collect()
     }
   }
 
   impl TranslatorSL<fof::PlainTerm<'_>> for Id {
-    fn translate(tm: &fof::PlainTerm, expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(tm: &fof::PlainTerm, expr: &mut RecExpr<FOLLang>) -> Id {
         use fof::PlainTerm::*;
         match tm {
-            Constant(c) => expr.add(SymbolLang::leaf(c.to_string())), //Self::C(c.to_string(), Id::new()),
+            Constant(c) => expr.add(FOLLang::leaf(c.to_string())), //Self::C(c.to_string(), Id::new()),
             Function(f, args) => {
               let ids = Vec::translate(args, expr);
-              expr.add(SymbolLang::new(f.to_string(), ids))
+              expr.add(FOLLang::new(f.to_string(), ids))
             }
         }
     }
@@ -520,7 +434,7 @@ mod non_patern_translator {
 
 
   impl TranslatorSL<fof::LogicFormula<'_>> for Id {
-    fn translate(frm: &fof::LogicFormula, expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(frm: &fof::LogicFormula, expr: &mut RecExpr<FOLLang>) -> Id {
       use fof::LogicFormula::*;
       match frm {
         Binary(b) => Self::translate(b, expr),
@@ -531,7 +445,7 @@ mod non_patern_translator {
   }
 
   impl TranslatorSL<fof::QuantifiedFormula<'_>> for Id {
-    fn translate(_frm: &fof::QuantifiedFormula, _expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(_frm: &fof::QuantifiedFormula, _expr: &mut RecExpr<FOLLang>) -> Id {
       todo!();
       /*
       let q = Quantifier::translate(frm.quantifier);
@@ -544,7 +458,7 @@ mod non_patern_translator {
   }
 
   impl TranslatorSL<fof::UnitFormula<'_>> for Id {
-    fn translate(frm: &fof::UnitFormula, expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(frm: &fof::UnitFormula, expr: &mut RecExpr<FOLLang>) -> Id {
         use fof::UnitFormula::*;
         match frm {
             Unitary(u) => Self::translate(u, expr),
@@ -554,27 +468,27 @@ mod non_patern_translator {
   }
 
   impl TranslatorSL<fof::InfixUnary<'_>> for Id {
-    fn translate(frm: &fof::InfixUnary, expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(frm: &fof::InfixUnary, expr: &mut RecExpr<FOLLang>) -> Id {
         let lid = Id::translate(&*frm.left, expr);
         let rid = Id::translate(&*frm.right, expr);
-        expr.add(SymbolLang::new(frm.op.to_string(), vec![lid, rid]))
+        expr.add(FOLLang::new(frm.op.to_string(), vec![lid, rid]))
     }
   }
 
   impl TranslatorSL<fof::UnaryFormula<'_>> for Id {
-    fn translate(frm: &fof::UnaryFormula, expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(frm: &fof::UnaryFormula, expr: &mut RecExpr<FOLLang>) -> Id {
       use fof::UnaryFormula::*;
       match frm {
         Unary(op, fuf) => {
           let child = Id::translate(&**fuf, expr);
-          expr.add(SymbolLang::new(op.to_string(), vec![child]))
+          expr.add(FOLLang::new(op.to_string(), vec![child]))
         } InfixUnary(i) => Self::translate(i, expr),
       }
     }
   }
 
   impl TranslatorSL<fof::BinaryFormula<'_>> for Id {
-    fn translate(frm: &fof::BinaryFormula, expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(frm: &fof::BinaryFormula, expr: &mut RecExpr<FOLLang>) -> Id {
         use fof::BinaryFormula::*;
         match frm {
             Nonassoc(fbn) => Self::translate(fbn, expr),
@@ -584,31 +498,31 @@ mod non_patern_translator {
   }
 
   impl TranslatorSL<fof::BinaryNonassoc<'_>> for Id {
-    fn translate(frm: &fof::BinaryNonassoc, expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(frm: &fof::BinaryNonassoc, expr: &mut RecExpr<FOLLang>) -> Id {
         let lid = Id::translate(&*frm.left, expr);
         let rid = Id::translate(&*frm.right, expr);
-        expr.add(SymbolLang::new(frm.op.to_string(), vec![lid, rid]))
+        expr.add(FOLLang::new(frm.op.to_string(), vec![lid, rid]))
     }
   }
 
   impl TranslatorSL<fof::BinaryAssoc<'_>> for Id {
-    fn translate(fm: &fof::BinaryAssoc, expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(fm: &fof::BinaryAssoc, expr: &mut RecExpr<FOLLang>) -> Id {
         use fof::BinaryAssoc::*;
       match fm {
         Or(fms) => {
           let ids = fms.0.clone().into_iter().map(|a| Id::translate(&a, expr)).collect();
-          expr.add(SymbolLang::new("or".to_string(), ids))
+          expr.add(FOLLang::new("or".to_string(), ids))
         }
         And(fms) => {
           let ids = fms.0.clone().into_iter().map(|a| Id::translate(&a, expr)).collect();
-          expr.add(SymbolLang::new("and".to_string(), ids))
+          expr.add(FOLLang::new("and".to_string(), ids))
         }
       }
     }
   }
 
   impl TranslatorSL<fof::Quantifier> for Id {
-    fn translate(_q: &fof::Quantifier, _expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(_q: &fof::Quantifier, _expr: &mut RecExpr<FOLLang>) -> Id {
       todo!();
       /*
       use fof::Quantifier::*;
@@ -621,7 +535,7 @@ mod non_patern_translator {
   }
 
   impl TranslatorSL<fof::UnitaryFormula<'_>> for Id {
-    fn translate(frm: &fof::UnitaryFormula, expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(frm: &fof::UnitaryFormula, expr: &mut RecExpr<FOLLang>) -> Id {
       use fof::UnitaryFormula::*;
       match frm {
         Parenthesised(flf) => Self::translate(&**flf, expr),
@@ -632,13 +546,13 @@ mod non_patern_translator {
   }
 
   impl TranslatorSL<fof::PlainAtomicFormula<'_>> for Id {
-    fn translate(frm: &fof::PlainAtomicFormula, expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(frm: &fof::PlainAtomicFormula, expr: &mut RecExpr<FOLLang>) -> Id {
       use fof::PlainTerm::*;
       match &frm.0 {
-        Constant(c) => expr.add(SymbolLang::leaf(c.to_string())),
+        Constant(c) => expr.add(FOLLang::leaf(c.to_string())),
         Function(f, args) => {
           let ids = Vec::translate(&*args, expr);
-          expr.add(SymbolLang::new(f.to_string(), ids))
+          expr.add(FOLLang::new(f.to_string(), ids))
         }
       }
     }
@@ -646,14 +560,14 @@ mod non_patern_translator {
   
 
   impl TranslatorSL<fof::DefinedAtomicFormula<'_>> for Id {
-    fn translate(frm: &fof::DefinedAtomicFormula, expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(frm: &fof::DefinedAtomicFormula, expr: &mut RecExpr<FOLLang>) -> Id {
         use fof::DefinedAtomicFormula::*;
         match frm {
             Plain(p) => Self::translate(p, expr),
             Infix(i) => {
               let left = Id::translate(&*i.left, expr);
               let right = Id::translate(&*i.right, expr);
-              expr.add(SymbolLang::new(i.op.to_string(), vec![left, right]))
+              expr.add(FOLLang::new(i.op.to_string(), vec![left, right]))
             }
         }
         
@@ -661,20 +575,20 @@ mod non_patern_translator {
   }
 
   impl TranslatorSL<fof::DefinedPlainFormula<'_>> for Id {
-    fn translate(fm: &fof::DefinedPlainFormula, expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(fm: &fof::DefinedPlainFormula, expr: &mut RecExpr<FOLLang>) -> Id {
         use fof::DefinedPlainTerm::Constant;
         match &fm.0 {
             Constant(c) if c.0 .0 .0 .0 .0 == "true" => 
-              expr.add(SymbolLang::leaf("$true".to_string())),
+              expr.add(FOLLang::leaf("$true".to_string())),
             Constant(c) if c.0 .0 .0 .0 .0 == "false" => 
-              expr.add(SymbolLang::leaf("$false".to_string())),
+              expr.add(FOLLang::leaf("$false".to_string())),
             _ => todo!("only supported defined formulas are $true and $false"),
         }
     }
   }
 
   impl TranslatorSL<fof::AtomicFormula<'_>> for Id {
-    fn translate(frm: &fof::AtomicFormula, expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(frm: &fof::AtomicFormula, expr: &mut RecExpr<FOLLang>) -> Id {
         use fof::AtomicFormula::*;
         match frm {
             Plain(p) => Self::translate(p, expr),
@@ -685,7 +599,7 @@ mod non_patern_translator {
   }
 
   impl TranslatorSL<fof::Formula<'_>> for Id {
-    fn translate(frm: &fof::Formula, expr: &mut RecExpr<SymbolLang>) -> Id {
+    fn translate(frm: &fof::Formula, expr: &mut RecExpr<FOLLang>) -> Id {
       match frm {
         fof::Formula::Logic(l) => Self::translate(l, expr),
         fof::Formula::Sequent(_) => todo!(),
@@ -706,12 +620,12 @@ mod patern_translator {
   use ENodeOrVar::*;
 
   pub trait TranslatorSL<T> {
-    fn translate(tm: &T, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Self;
+    fn translate(tm: &T, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Self;
   }
 
 
   impl TranslatorSL<fof::FunctionTerm<'_>> for Id {
-    fn translate(tm: &fof::FunctionTerm, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(tm: &fof::FunctionTerm, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
         use fof::FunctionTerm::*;
         match tm {
             Plain(p) => Self::translate(p, allowed_vars, expr),
@@ -722,7 +636,7 @@ mod patern_translator {
   }
 
   impl TranslatorSL<fof::DefinedTerm<'_>> for Id {
-    fn translate(tm: &fof::DefinedTerm, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(tm: &fof::DefinedTerm, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
         use fof::DefinedTerm::*;
         match tm {
             Defined(d) => Self::translate(d, allowed_vars, expr),
@@ -732,17 +646,17 @@ mod patern_translator {
   }
 
   impl TranslatorSL<tptp::common::DefinedTerm<'_>> for Id {
-    fn translate(tm: &tptp::common::DefinedTerm, _allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(tm: &tptp::common::DefinedTerm, _allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
       use tptp::common::DefinedTerm::*;
       match tm {
-        Number(n) => expr.add(ENode(SymbolLang::leaf(n.to_string()))),
+        Number(n) => expr.add(ENode(FOLLang::leaf(n.to_string()))),
         Distinct(_) => todo!(),
       }
     }
   }
 
   impl TranslatorSL<fof::Term<'_>> for Id {
-    fn translate(tm: &fof::Term, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(tm: &fof::Term, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
         use fof::Term::*;
         match tm {
           Variable(v) => {
@@ -750,7 +664,7 @@ mod patern_translator {
               use std::str::FromStr;
               expr.add(ENodeOrVar::Var(egg::Var::from_str(&format!("?{}", v.to_string())).expect(&format!("incorrect variable name: {}", v.to_string())) ))
             } else {
-              expr.add(ENode(SymbolLang::leaf(v.to_string())))
+              expr.add(ENode(FOLLang::leaf(v.to_string())))
             }
           },
           Function(f) => Id::translate(&**f, allowed_vars, expr),
@@ -759,19 +673,19 @@ mod patern_translator {
   }
 
   impl TranslatorSL<fof::Arguments<'_>> for Vec<Id> {
-    fn translate(args: &fof::Arguments, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Vec<Id> {
+    fn translate(args: &fof::Arguments, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Vec<Id> {
       args.0.clone().into_iter().map(move |a: fof::Term<'_>| Id::translate(&a, allowed_vars, expr)).collect()
     }
   }
 
   impl TranslatorSL<fof::PlainTerm<'_>> for Id {
-    fn translate(tm: &fof::PlainTerm, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(tm: &fof::PlainTerm, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
         use fof::PlainTerm::*;
         match tm {
-            Constant(c) => expr.add(ENode(SymbolLang::leaf(c.to_string()))), 
+            Constant(c) => expr.add(ENode(FOLLang::leaf(c.to_string()))), 
             Function(f, args) => {
               let ids = Vec::translate(args, allowed_vars, expr);
-              expr.add(ENode(SymbolLang::new(f.to_string(), ids)))
+              expr.add(ENode(FOLLang::new(f.to_string(), ids)))
             }
         }
     }
@@ -780,7 +694,7 @@ mod patern_translator {
 
 
   impl TranslatorSL<fof::LogicFormula<'_>> for Id {
-    fn translate(frm: &fof::LogicFormula, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(frm: &fof::LogicFormula, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
       use fof::LogicFormula::*;
       match frm {
         Binary(b) => Self::translate(b, allowed_vars, expr),
@@ -791,7 +705,7 @@ mod patern_translator {
   }
 
   impl TranslatorSL<fof::QuantifiedFormula<'_>> for Id {
-    fn translate(_frm: &fof::QuantifiedFormula, _allowed_vars: &Vec<String>, _expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(_frm: &fof::QuantifiedFormula, _allowed_vars: &Vec<String>, _expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
       todo!();
       /*
       let q = Quantifier::translate(frm.quantifier);
@@ -804,7 +718,7 @@ mod patern_translator {
   }
 
   impl TranslatorSL<fof::UnitFormula<'_>> for Id {
-    fn translate(frm: &fof::UnitFormula, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(frm: &fof::UnitFormula, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
         use fof::UnitFormula::*;
         match frm {
             Unitary(u) => Self::translate(u, allowed_vars, expr),
@@ -814,27 +728,27 @@ mod patern_translator {
   }
 
   impl TranslatorSL<fof::InfixUnary<'_>> for Id {
-    fn translate(frm: &fof::InfixUnary, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(frm: &fof::InfixUnary, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
         let lid = Id::translate(&*frm.left, allowed_vars, expr);
         let rid = Id::translate(&*frm.right, allowed_vars, expr);
-        expr.add(ENode(SymbolLang::new(frm.op.to_string(), vec![lid, rid])))
+        expr.add(ENode(FOLLang::new(frm.op.to_string(), vec![lid, rid])))
     }
   }
 
   impl TranslatorSL<fof::UnaryFormula<'_>> for Id {
-    fn translate(frm: &fof::UnaryFormula, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(frm: &fof::UnaryFormula, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
       use fof::UnaryFormula::*;
       match frm {
         Unary(op, fuf) => {
           let child = Id::translate(&**fuf, allowed_vars, expr);
-          expr.add(ENode(SymbolLang::new(op.to_string(), vec![child])))
+          expr.add(ENode(FOLLang::new(op.to_string(), vec![child])))
         } InfixUnary(i) => Self::translate(i, allowed_vars, expr),
       }
     }
   }
 
   impl TranslatorSL<fof::BinaryFormula<'_>> for Id {
-    fn translate(frm: &fof::BinaryFormula, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(frm: &fof::BinaryFormula, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
         use fof::BinaryFormula::*;
         match frm {
             Nonassoc(fbn) => Self::translate(fbn, allowed_vars, expr),
@@ -844,31 +758,31 @@ mod patern_translator {
   }
 
   impl TranslatorSL<fof::BinaryNonassoc<'_>> for Id {
-    fn translate(frm: &fof::BinaryNonassoc, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(frm: &fof::BinaryNonassoc, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
         let lid = Id::translate(&*frm.left, allowed_vars, expr);
         let rid = Id::translate(&*frm.right, allowed_vars, expr);
-        expr.add(ENode(SymbolLang::new(frm.op.to_string(), vec![lid, rid])))
+        expr.add(ENode(FOLLang::new(frm.op.to_string(), vec![lid, rid])))
     }
   }
 
   impl TranslatorSL<fof::BinaryAssoc<'_>> for Id {
-    fn translate(fm: &fof::BinaryAssoc, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(fm: &fof::BinaryAssoc, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
         use fof::BinaryAssoc::*;
       match fm {
         Or(fms) => {
           let ids = fms.0.clone().into_iter().map(|a| Id::translate(&a, allowed_vars, expr)).collect();
-          expr.add(ENode(SymbolLang::new("or".to_string(), ids)))
+          expr.add(ENode(FOLLang::new("or".to_string(), ids)))
         }
         And(fms) => {
           let ids = fms.0.clone().into_iter().map(|a| Id::translate(&a, allowed_vars, expr)).collect();
-          expr.add(ENode(SymbolLang::new("and".to_string(), ids)))
+          expr.add(ENode(FOLLang::new("and".to_string(), ids)))
         }
       }
     }
   }
 
   impl TranslatorSL<fof::Quantifier> for Id {
-    fn translate(_q: &fof::Quantifier, _allowed_vars: &Vec<String>, _expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(_q: &fof::Quantifier, _allowed_vars: &Vec<String>, _expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
       todo!();
       /*
       use fof::Quantifier::*;
@@ -881,7 +795,7 @@ mod patern_translator {
   }
 
   impl TranslatorSL<fof::UnitaryFormula<'_>> for Id {
-    fn translate(frm: &fof::UnitaryFormula, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(frm: &fof::UnitaryFormula, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
       use fof::UnitaryFormula::*;
       match frm {
         Parenthesised(flf) => Self::translate(&**flf, allowed_vars, expr),
@@ -892,27 +806,27 @@ mod patern_translator {
   }
 
   impl TranslatorSL<fof::PlainAtomicFormula<'_>> for Id {
-    fn translate(frm: &fof::PlainAtomicFormula, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(frm: &fof::PlainAtomicFormula, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
       use fof::PlainTerm::*;
       match &frm.0 {
-        Constant(c) => expr.add(ENode(SymbolLang::leaf(c.to_string()))),
+        Constant(c) => expr.add(ENode(FOLLang::leaf(c.to_string()))),
         Function(f, args) => {
           let ids = Vec::translate(&*args, allowed_vars, expr);
-          expr.add(ENode(SymbolLang::new(f.to_string(), ids)))
+          expr.add(ENode(FOLLang::new(f.to_string(), ids)))
         }
       }
     }
   }
 
   impl TranslatorSL<fof::DefinedAtomicFormula<'_>> for Id {
-    fn translate(frm: &fof::DefinedAtomicFormula, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(frm: &fof::DefinedAtomicFormula, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
         use fof::DefinedAtomicFormula::*;
         match frm {
             Plain(p) => Self::translate(p, allowed_vars, expr),
             Infix(i) => {
               let left = Id::translate(&*i.left, allowed_vars, expr);
               let right = Id::translate(&*i.right, allowed_vars, expr);
-              expr.add(ENode(SymbolLang::new(i.op.to_string(), vec![left, right])))
+              expr.add(ENode(FOLLang::new(i.op.to_string(), vec![left, right])))
             }
         }
         
@@ -920,20 +834,20 @@ mod patern_translator {
   }
 
   impl TranslatorSL<fof::DefinedPlainFormula<'_>> for Id {
-    fn translate(fm: &fof::DefinedPlainFormula, _allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(fm: &fof::DefinedPlainFormula, _allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
         use fof::DefinedPlainTerm::Constant;
         match &fm.0 {
             Constant(c) if c.0 .0 .0 .0 .0 == "true" => 
-              expr.add(ENode(SymbolLang::leaf("$true".to_string()))),
+              expr.add(ENode(FOLLang::leaf("$true".to_string()))),
             Constant(c) if c.0 .0 .0 .0 .0 == "false" => 
-              expr.add(ENode(SymbolLang::leaf("$false".to_string()))),
+              expr.add(ENode(FOLLang::leaf("$false".to_string()))),
             _ => todo!("only supported defined formulas are $true and $false"),
         }
     }
   }
 
   impl TranslatorSL<fof::AtomicFormula<'_>> for Id {
-    fn translate(frm: &fof::AtomicFormula, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(frm: &fof::AtomicFormula, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
         use fof::AtomicFormula::*;
         match frm {
             Plain(p) => Self::translate(p, allowed_vars, expr),
@@ -944,7 +858,7 @@ mod patern_translator {
   }
 
   impl TranslatorSL<fof::Formula<'_>> for Id {
-    fn translate(frm: &fof::Formula, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<SymbolLang>>) -> Id {
+    fn translate(frm: &fof::Formula, allowed_vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
       match frm {
         fof::Formula::Logic(l) => Self::translate(l, allowed_vars, expr),
         fof::Formula::Sequent(_) => todo!(),
@@ -952,3 +866,5 @@ mod patern_translator {
     }
   }
 }
+
+  */

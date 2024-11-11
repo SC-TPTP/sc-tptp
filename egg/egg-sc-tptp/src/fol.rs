@@ -13,17 +13,19 @@ use egg::ENodeOrVar;
 #[derive(Debug, Clone)]
 #[derive(PartialEq)]
 pub enum Term {
-  Variable(String),
   Function(String, Vec<Box<Term>>),
 }
 
 impl fmt::Display for Term {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
-      Term::Variable(name) => write!(f, "{}", name),
       Term::Function(name, args) => write!(f, "{}({})", name, args.iter().map(|x| x.to_string()).collect::<Vec<String>>().join(", "))
     }
   }
+}
+
+pub fn is_variable(s: &str) -> bool {
+  s.chars().next().unwrap().is_uppercase()
 }
 
 // formulas:
@@ -93,23 +95,22 @@ pub struct AnnotatedStatement {
 
 //functions
 
-pub fn instantiate_term(expr: &Term, map: &HashMap<&str, Term>) -> Term {
+pub fn instantiate_term(expr: &Term, map: &HashMap<String, Term>) -> Term {
   match expr {
-    Term::Variable(name) => 
-      if map.contains_key(name.as_str()) {
+    Term::Function(name, args) => {
+      if is_variable(name) && args.is_empty() && map.contains_key(name.as_str()) {
         map[name.as_str()].clone()
       } else {
-        Term::Variable(name.clone())
-      },
-    Term::Function(name, args) => {
-      let new_args = args.iter().map(|x| Box::new(instantiate_term(x, map))).collect();
-      Term::Function(name.clone(), new_args)
+        let new_args = args.iter().map(|x| Box::new(instantiate_term(x, map))).collect();
+        Term::Function(name.clone(), new_args)
+      }
     }
   }
 }
 
-pub fn instantiate_formula(formula: &Formula, map: &HashMap<&str, Term>) -> Formula {
+pub fn instantiate_formula(formula: &Formula, map: &HashMap<String, Term>) -> Formula {
   match formula {
+    
     Formula::True => Formula::True,
     Formula::False => Formula::False,
     Formula::Predicate(name, args) => {
@@ -136,12 +137,12 @@ pub fn instantiate_formula(formula: &Formula, map: &HashMap<&str, Term>) -> Form
       Formula::Iff(Box::new(new_formula1), Box::new(new_formula2))
     },
     Formula::Forall(vars, formula) => {
-      let new_map = vars.iter().map(|x| (x.as_str(), Term::Variable(x.clone()))).collect();
+      let new_map = vars.iter().map(|x| (x.clone(), Term::Function(x.clone(), Vec::new()))).collect();
       let new_formula = instantiate_formula(formula, &new_map);
       Formula::Forall(vars.clone(), Box::new(new_formula))
     },
     Formula::Exists(vars, formula) => {
-      let new_map = vars.iter().map(|x| (x.as_str(), Term::Variable(x.clone()))).collect();
+      let new_map = vars.iter().map(|x| (x.clone(), Term::Function(x.clone(), Vec::new()))).collect();
       let new_formula = instantiate_formula(formula, &new_map);
       Formula::Exists(vars.clone(), Box::new(new_formula))
     },
@@ -152,25 +153,22 @@ pub fn instantiate_formula(formula: &Formula, map: &HashMap<&str, Term>) -> Form
 
 pub fn matching_term(expr: &Term, expr2: &Term, map: &mut HashMap<String, Term>) -> bool {
   match (expr, expr2) {
-    (Term::Variable(name1), Term::Variable(name2)) if name1 == name2 => 
-      true,
-    (Term::Variable(name), _) => 
-      if map.contains_key(name.as_str()) {
-        return map[name.as_str()] == *expr2;
-      } else {
-        map.insert(name.to_owned(), expr2.clone());
-        return true;
-      },
     (Term::Function(name, args), Term::Function(name2, args2)) => {
-      if name == name2 && args.len() == args2.len() {
+      if is_variable(name) && args.is_empty() {
+        if map.contains_key(name.as_str()) {
+        return map[name.as_str()] == *expr2;
+        } else {
+          map.insert(name.to_owned(), expr2.clone());
+          return true;
+        }
+      } else if name == name2 && args.len() == args2.len() {
         let res = args.iter().zip(args2.iter())
           .all(|(e1, e2)| matching_term(e1, e2, map));
         res
       } else {
         false
       }
-    },
-    _ => false
+    }
   }
 }
 pub fn matching_formula(formula: &Formula, formula2: &Formula, map: &mut HashMap<String, Term>) -> bool {
@@ -229,7 +227,6 @@ define_language! {
     "or" = Or([Id; 2]),
     "=>" = Implies([Id; 2]),
     "<=>" = Iff([Id; 2]),
-    Variable(Symbol),
     Function(Symbol, Vec<Id>),
     Predicate(Symbol, Vec<Id>),
   }
@@ -237,7 +234,6 @@ define_language! {
 
 pub fn term_to_recexpr(term: &Term, expr: &mut RecExpr<FOLLang>) -> Id {
   match term {
-    Term::Variable(name) => expr.add(FOLLang::Variable(Symbol::from(name.clone()))),
     Term::Function(name, args) => {
       let args_ids = args.iter().map(|x| term_to_recexpr(x, expr)).collect::<Vec<Id>>();
       expr.add(FOLLang::Function(Symbol::from(name.clone()), args_ids))
@@ -286,15 +282,13 @@ pub fn formula_to_recexpr(formula: &Formula, expr: &mut RecExpr<FOLLang>) -> Id 
 
 pub fn term_to_recexpr_pattern(term: &Term, vars: &Vec<String>, expr: &mut RecExpr<ENodeOrVar<FOLLang>>) -> Id {
   match term {
-    Term::Variable(name) => 
-      if vars.contains(name) {
+    Term::Function(name, args) => {
+      if is_variable(name) && args.is_empty() {
         expr.add(ENodeOrVar::Var(egg::Var::from_str(&format!("?{}", name)).expect(&format!("incorrect variable name: {}", name)) ))
       } else {
-        expr.add(ENodeOrVar::ENode(FOLLang::Function(Symbol::from(name.clone()), Vec::new())))
-      },
-    Term::Function(name, args) => {
-      let args_ids = args.iter().map(|x| term_to_recexpr_pattern(x, vars, expr)).collect::<Vec<Id>>();
-      expr.add(ENodeOrVar::ENode(FOLLang::Function(Symbol::from(name.clone()), args_ids)))
+        let args_ids = args.iter().map(|x| term_to_recexpr_pattern(x, vars, expr)).collect::<Vec<Id>>();
+        expr.add(ENodeOrVar::ENode(FOLLang::Function(Symbol::from(name.clone()), args_ids)))
+      }
     }
   }
 }
@@ -391,7 +385,7 @@ pub mod tptp_fol_translator {
     fn translate(tm: &fof::Term) -> Self {
         use fof::Term::*;
         match tm {
-            Variable(v) => Term::Variable(v.to_string()),
+            Variable(v) => Term::Function(v.to_string(), Vec::new()),
             Function(f) => Self::translate(&**f),
         }
     }

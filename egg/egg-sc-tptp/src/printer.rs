@@ -1,8 +1,10 @@
+use crate::fol::instantiate_formula;
 use crate::translator::*;
 use egg::{*, rewrite as rw};
 use std::io::Read;
 use std::iter::Map;
 use std::ops::Index;
+use std::path::Display;
 use tptp::TPTPIterator;
 use tptp::fof;
 use tptp::top;
@@ -28,30 +30,9 @@ pub fn get_flat_string(v: &Vec<FlatTerm<FOLLang>>) -> String {
 pub fn expr_to_tptp_res(expr: &FlatTerm<FOLLang>) -> String {
   expr.to_string()
 }
-  /*
-pub fn expr_to_tptp_hole(expr: &FlatTerm<FOLLang>) -> (String, Option<String>) {
-  rewrites_to_holes(expr, "HOLE".into()).0.to_string();
-  if expr.backward_rule.is_some() {
-    ("HOLE".to_owned(), Some(expr.backward_rule.unwrap().to_string().to_owned()))
-  } else if expr.forward_rule.is_some() {
-    ("HOLE".to_owned(), Some(expr.forward_rule.unwrap().to_string().to_owned()))
-  } else {
-    let head = expr.node.op;
-    if expr.children.is_empty() {
-      (format!("{}", head), None)
-    } else {
-      let args = expr.children.iter().skip(1).fold(expr_to_tptp_hole(&expr.children[0]), |acc, e| {
-        let (res, rule) = expr_to_tptp_hole(e);
-        (format!("{}, {}", acc.0, res), rule.or(acc.1))
-      });
-      (format!("{}({})", head, args.0), args.1)
-    }
-  }
-}  */
 
 pub fn flat_term_to_term(expr: &FlatTerm<FOLLang>) -> fol::Term {
   match expr.node {
-    FOLLang::Variable(op) => fol::Term::Variable(op.to_string()),
     FOLLang::Function(op, _) => 
       fol::Term::Function(op.to_string(), expr.children.iter().map(|e| Box::new(flat_term_to_term(e))).collect()),
     _ => panic!("{} is not a term", expr.to_string())
@@ -71,25 +52,24 @@ pub fn flat_term_to_formula(expr: &FlatTerm<FOLLang>) -> fol::Formula {
 
 }
 
-pub fn flat_term_to_term_hole(expr: &FlatTerm<FOLLang>) -> (fol::Term, Option<(fol::Term, bool, String)>) {
+pub fn flat_term_to_term_hole(expr: &FlatTerm<FOLLang>, HOLE: &String) -> (fol::Term, Option<(fol::Term, bool, String)>) {
   if expr.backward_rule.is_some() {
-    (fol::Term::Variable("HOLE".to_owned()), 
+    (fol::Term::Function("HOLE".to_owned(), Vec::new()), 
      Some((flat_term_to_term(&expr.remove_rewrites()), true, expr.backward_rule.unwrap().to_string().to_owned()))
     )
   } else if expr.forward_rule.is_some() {
-    (fol::Term::Variable("HOLE".to_owned()),
+    (fol::Term::Function("HOLE".to_owned(), Vec::new()),
      Some((flat_term_to_term(&expr.remove_rewrites()), false, expr.forward_rule.unwrap().to_string().to_owned())))
   } else {
     match expr.node {
-      FOLLang::Variable(op) => (fol::Term::Variable(op.to_string()), None),
       FOLLang::Function(op, _) => {
         if expr.children.is_empty() {
           (fol::Term::Function(op.to_string(), vec![]), None)
         } else {
-          let first = flat_term_to_term_hole(&expr.children[0]);
+          let first = flat_term_to_term_hole(&expr.children[0], HOLE);
           let mut res_vec = vec![Box::new(first.0)];
           let res_rule = expr.children.iter().skip(1).fold(first.1, |acc, e| {
-            let res = flat_term_to_term_hole(e);
+            let res = flat_term_to_term_hole(e, HOLE);
             res_vec.push(Box::new(res.0));
             res.1.or(acc)
           });
@@ -103,150 +83,353 @@ pub fn flat_term_to_term_hole(expr: &FlatTerm<FOLLang>) -> (fol::Term, Option<(f
 
 //TODO : flat_term_to_formula_hole
 
+enum TermOrFormula {
+  Term(fol::Term),
+  Formula(fol::Formula)
+}
 
-
-
-pub struct HolesRes {with_holes: FlatTerm<FOLLang>, rule: Option<(FlatTerm<FOLLang>, bool, String)>}
-
-pub fn rewrites_to_holes(expr: &FlatTerm<FOLLang>, hole: Symbol) -> HolesRes {
+pub fn flat_term_to_formula_hole(expr: &FlatTerm<FOLLang>, HOLE: &String) -> (fol::Formula, Option<(TermOrFormula, bool, String)>) {
   if expr.backward_rule.is_some() {
-    let res = FlatTerm::<FOLLang> {
-      node: FOLLang::leaf(hole),
-      backward_rule: None,
-      forward_rule: None,
-      children: vec![]
-    };
-    let expr_without_rewrites = expr.remove_rewrites();
-    HolesRes {
-      with_holes: res,
-      rule: Some((expr_without_rewrites, true, expr.backward_rule.unwrap().to_string().to_owned()))
-    }
+    (fol::Formula::Predicate("HOLE".to_owned(), vec![]), 
+     Some((TermOrFormula::Formula(flat_term_to_formula(&expr.remove_rewrites())), true, expr.backward_rule.unwrap().to_string().to_owned()))
+    )
   } else if expr.forward_rule.is_some() {
-    let res = FlatTerm::<FOLLang> {
-      node: FOLLang::leaf(hole),
-      backward_rule: None,
-      forward_rule: None,
-      children: vec![]
-    };
-    let expr_without_rewrites = expr.remove_rewrites();
-    HolesRes {
-      with_holes: res,
-      rule: Some((expr_without_rewrites, false, expr.forward_rule.unwrap().to_string().to_owned()))
-    }
+    (fol::Formula::Predicate("HOLE".to_owned(), vec![]),
+     Some((TermOrFormula::Formula(flat_term_to_formula(&expr.remove_rewrites())), false, expr.forward_rule.unwrap().to_string().to_owned())))
   } else {
-    let first = rewrites_to_holes(&expr.children[0], hole);
-    let mut res_vec = vec![first.with_holes];
-    let res_rule = expr.children.iter().skip(1).fold(first.rule, |acc, e| {
-      let res = rewrites_to_holes(e, hole);
-      res_vec.push(res.with_holes);
-      res.rule.or(acc)
-    });
-    let with_holes = (FlatTerm::<FOLLang> {
-      node: expr.node.clone(),
-      backward_rule: None,
-      forward_rule: None,
-      children: res_vec
-    }, res_rule);
-    HolesRes {
-      with_holes: with_holes.0,
-      rule: with_holes.1
+    match expr.node {
+      FOLLang::True => (fol::Formula::True, None),
+      FOLLang::False => (fol::Formula::False, None),
+      FOLLang::Predicate(op, _) => {
+        if expr.children.is_empty() {
+          (fol::Formula::Predicate(op.to_string(), vec![]), None)
+        } else {
+          let first = flat_term_to_term_hole(&expr.children[0], HOLE);
+          let mut res_vec = vec![Box::new(first.0)];
+          let res_rule = expr.children.iter().skip(1).fold(first.1, |acc, e| {
+            let res = flat_term_to_term_hole(e, HOLE);
+            res_vec.push(Box::new(res.0));
+            res.1.or(acc)
+          });
+          (fol::Formula::Predicate(op.to_string(), res_vec), res_rule.map(|(t, b, r)| (TermOrFormula::Term(t), b, r)))
+        }
+      },
+      FOLLang::Not(_) => {
+        let res = flat_term_to_formula_hole(&expr.children[0], HOLE);
+        (fol::Formula::Not(Box::new(res.0)), res.1)
+      },
+      FOLLang::And(_) => {
+        if expr.children.is_empty() {
+          (fol::Formula::And(vec![]), None)
+        } else {
+          let first = flat_term_to_formula_hole(&expr.children[0], HOLE);
+          let mut res_vec = vec![Box::new(first.0)];
+          let res_rule = expr.children.iter().skip(1).fold(first.1, |acc, e| {
+            let res = flat_term_to_formula_hole(e, HOLE);
+            res_vec.push(Box::new(res.0));
+            res.1.or(acc)
+          });
+          (fol::Formula::And(res_vec), res_rule)
+        }
+      },
+      FOLLang::Or(_) => {
+        if expr.children.is_empty() {
+          (fol::Formula::Or(vec![]), None)
+        } else {
+          let first = flat_term_to_formula_hole(&expr.children[0], HOLE);
+          let mut res_vec = vec![Box::new(first.0)];
+          let res_rule = expr.children.iter().skip(1).fold(first.1, |acc, e| {
+            let res = flat_term_to_formula_hole(e, HOLE);
+            res_vec.push(Box::new(res.0));
+            res.1.or(acc)
+          });
+          (fol::Formula::Or(res_vec), res_rule)
+        }
+      },
+      FOLLang::Implies(_) => {
+        let left = flat_term_to_formula_hole(&expr.children[0], HOLE);
+        let right = flat_term_to_formula_hole(&expr.children[1], HOLE);
+        (fol::Formula::Implies(Box::new(left.0), Box::new(right.0)), left.1.or(right.1))
+      },
+      FOLLang::Iff(_) => {
+        let left = flat_term_to_formula_hole(&expr.children[0], HOLE);
+        let right = flat_term_to_formula_hole(&expr.children[1], HOLE);
+        (fol::Formula::Iff(Box::new(left.0), Box::new(right.0)), left.1.or(right.1))
+      },
+      _ => panic!("{} is not a formula", expr.to_string())
     }
   }
 }
 
-pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, base: &String, left: &String, map_rule: F) -> String where F: Fn(String) -> (Vec<String>, FlatTerm<FOLLang>, FlatTerm<FOLLang>) {
-  let line_to_holes = rewrites_to_holes(line, "HOLE".into());
-  let with_hole = expr_to_tptp_res(&line_to_holes.with_holes);
-  let _rule = line_to_holes.rule;
+pub enum SCTPTPRule {
+  RightTrue {name: String, bot: fol::Sequent},
+  RightRefl {name: String, bot: fol::Sequent, i: i32},
+  //format!("fof(f{i}, plain, [{newleft}] --> [{base} = {res}], inference(rightSubstEq, param(0, $fof({base} = {with_hole}), $fot(HOLE)), [f{}])).\n", *i-1) 
+  RightSubstEq {name: String, bot: fol::Sequent, premise: String, i: i32, phi: fol::Formula, v: String},
+  RightSubstIff {name: String, bot: fol::Sequent, premise: String, i: i32, phi: fol::Formula, v: String},
+  LeftForall {name: String, bot: fol::Sequent, premise: String, i: i32, t: fol::Term},
+  Cut {name: String, bot: fol::Sequent, premise1: String, premise2: String, i1: i32, i2: i32},
+  RightSubstEqForallLocal {name: String, bot: fol::Sequent, premise: String, i: i32, phi: fol::Formula, v: String},
+  RightSubstEqForall {name: String, bot: fol::Sequent, premise1: String, premise2: String, phi: fol::Formula, v: String},
+  RightSubstIffForallLocal {name: String, bot: fol::Sequent, premise: String, i: i32, phi: fol::Formula, v: String},
+  RightSubstIffForall {name: String, bot: fol::Sequent, premise1: String, premise2: String, phi: fol::Formula, v: String},
+}
+
+impl std::fmt::Display for SCTPTPRule {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    match self {
+      SCTPTPRule::RightTrue {name, bot} => 
+        write!(f, "fof({}, plain, {}, inference(rightTrue, param(), [])).", name, bot),
+      SCTPTPRule::RightRefl {name, bot, i} => 
+        write!(f, "fof({}, plain, {}, inference(rightRefl, param({}), [])).", name, bot, i),
+      SCTPTPRule::RightSubstEq {name, bot, premise, i, phi, v} => 
+        write!(f, "fof({}, plain, {}, inference(rightSubstEq, param({}, $fof({}), $fot({})), [{}])).", name, bot, i, phi, v, premise),
+      SCTPTPRule::RightSubstIff {name, bot, premise, i, phi, v} => 
+        write!(f, "fof({}, plain, {}, inference(rightSubstIff, param({}, $fof({}), $fot({})), [{}])).", name, bot, i, phi, v, premise),
+      SCTPTPRule::LeftForall {name, bot, premise, i, t} => 
+        write!(f, "fof({}, plain, {}, inference(leftForall, param({}, $fot({}), $fot({})), [{}])).", name, bot, i, t, t, premise),
+      SCTPTPRule::Cut {name, bot, premise1, premise2, i1, i2} => 
+        write!(f, "fof({}, plain, {}, inference(cut, param({}, {}), [{}, {}])).", name, bot, premise1, premise2, i1, i2),
+      SCTPTPRule::RightSubstEqForallLocal {name, bot, premise, i, phi, v} =>
+        write!(f, "fof({}, plain, {}, inference(rightSubstEqForallLocal, param({}, $fof({}), $fot({})), [{}])).", name, bot, i, phi, v, premise),
+      SCTPTPRule::RightSubstEqForall {name, bot, premise1, premise2, phi, v} =>
+        write!(f, "fof({}, plain, {}, inference(rightSubstEqForall, param($fof({}), $fot({})), [{}, {}])).", name, bot, phi, v, premise1, premise2),
+      SCTPTPRule::RightSubstIffForallLocal {name, bot, premise, i, phi, v} =>
+        write!(f, "fof({}, plain, {}, inference(rightSubstIffForallLocal, param({}, $fof({}), $fot({})), [{}]).", name, bot, i, phi, v, premise),
+      SCTPTPRule::RightSubstIffForall {name, bot, premise1, premise2, phi, v} =>
+        write!(f, "fof({}, plain, {}, inference(rightSubstIffForall, param($fof({}), $fot({})), [{}, {}]).", name, bot, phi, v, premise1, premise2)
+    }
+  }
+}
+
+#[derive(Debug, Clone)]
+pub enum RewriteRule {
+  FormulaRule(Vec<String>, fol::Formula, fol::Formula),
+  TermRule(Vec<String>, fol::Term, fol::Term)
+}
+
+pub fn equals(a: &fol::Term, b: &fol::Term) -> fol::Formula {
+  fol::Formula::Predicate("=".to_owned(), vec![Box::new(a.clone()), Box::new(b.clone())])
+}
+
+pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<fol::Formula>, map_rule: F, proof: &mut Vec<SCTPTPRule>) -> () where F: Fn(String) -> RewriteRule {
+  let line_to_holes = flat_term_to_formula_hole(line, &"HOLE".into());
+  let with_hole = line_to_holes.0;
+  let _rule = line_to_holes.1;
   let (inner, backward, rule_name) = _rule.unwrap();
   let is_local_rule: bool = rule_name.starts_with("$");
-  let res = expr_to_tptp_res(&line.clone().remove_rewrites());
-  let (variables, rule_left, rule_right) = map_rule(rule_name.clone());
+  let res = flat_term_to_formula(&line.clone());
+  let rew_rule = map_rule(rule_name.clone());
+  //let (variables, rule_left, rule_right) = map_rule(rule_name.clone())
+  
   let mut match_map = HashMap::new();
-  let has_matched = if backward { matching(&rule_left, &inner, &mut match_map) } else { matching(&rule_right, &inner, &mut match_map) };
-  let res_string: String = if has_matched {
-    let newleft = format!("{} = {}", expr_to_tptp_res(&instantiate(&rule_left, &match_map)), expr_to_tptp_res(&instantiate(&rule_right, &match_map))) + (if left.is_empty() {""} else {", "}) + left;
-    let mut vars = "".to_owned();
-    *i+=1; 
-    format!("fof(f{i}, plain, [{newleft}] --> [{base} = {res}], inference(rightSubstEq, param(0, $fof({base} = {with_hole}), $fot(HOLE)), [f{}])).\n", *i-1) + 
-    variables.iter().enumerate().rev().map(|(nth, v)| {
-      let inst_term = match_map.get(v as &str).map(expr_to_tptp_res).unwrap_or(v.to_owned());
-      vars.insert_str(0, (v.to_owned() + if vars.is_empty() {""} else {", "}).as_str());
-      match_map.remove(&v as &str);
-      let new_inner = format!("{} = {}", expr_to_tptp_res(&instantiate(&rule_left, &match_map)), expr_to_tptp_res(&instantiate(&rule_right, &match_map)));
-      *i+=1; 
-      let new_quant_formula = if is_local_rule && nth == 0 {"".to_owned()} else {format!("![{vars}]: {new_inner}")};
-      let forall_no = if is_local_rule && nth == 0 {
-        let mut no = rule_name.clone();
-        no.remove(0);
-        no
-      } else {"0".to_owned()};
-      let comma = if left.is_empty() || new_quant_formula.is_empty() {"".to_owned()} else {", ".to_owned()};
-      let s = format!("fof(f{i}, plain, [{new_quant_formula}{comma}{left}] --> [{base} = {res}], inference(leftForall, param({forall_no}, $fot({inst_term})), [f{}])).\n", *i-1);
-      s
-    }).collect::<Vec<String>>().join("").as_str() +
-    (if !is_local_rule {
-      *i+=1; format!("fof(f{i}, plain, [{left}] --> [{base} = {res}], inference(cut, param(0, 0), [{rule_name}, f{}])).", *i-1)
-    } else {"".to_string()}).as_str()
-  } else {
-    panic!("Error: neither {} nor {} does not match {}", expr_to_tptp_res(&rule_left), expr_to_tptp_res(&rule_right), &res);
+  match (rew_rule, inner) {
+    (RewriteRule::FormulaRule(variables, rule_left, rule_right), TermOrFormula::Formula(inner)) => {
+      let has_matched: bool = if backward { fol::matching_formula(&rule_left, &inner, &mut match_map) } else { fol::matching_formula(&rule_right, &inner, &mut match_map) };
+      if !has_matched {panic!("Error: neither {} nor {} does not match {}", rule_left, rule_right, &res);}
+      let subst_form = fol::Formula::Iff(Box::new(instantiate_formula(&rule_left, &match_map)), Box::new(instantiate_formula(&rule_right, &match_map)));
+      let mut newleft = vec![subst_form];
+      newleft.append(&mut left.clone());
+      use SCTPTPRule::*;
+      let subst_step = RightSubstIff {
+        name: format!("f{i}"),
+        bot: fol::Sequent {left: newleft, right: vec![res.clone()]},
+        premise: format!("f{}", *i-1),
+        i: 0,
+        phi: with_hole,
+        v: "HOLE".to_owned()
+      };
+      let mut vars: Vec<String> = Vec::new();
+      proof.push(subst_step);
+      variables.iter().enumerate().rev().for_each(|(nth, v)| {
+        let v_var = fol::Term::Function(v.to_owned(), Vec::new());
+        let inst_term: &fol::Term = match_map.get(v as &str).unwrap_or(&v_var);
+        vars.insert(0, v.to_owned());
+        let new_inner = fol::Formula::Iff(Box::new(instantiate_formula(&rule_left, &match_map)), Box::new(instantiate_formula(&rule_right, &match_map)));
+        *i+=1; 
+        let new_quant_formula = fol::Formula::Forall(vars.clone(), Box::new(new_inner));
+        let forall_no = if is_local_rule && nth == 0 {
+          let mut no = rule_name.clone();
+          no.remove(0);
+          no.parse().expect(&format!("Error: rule name is not a number: {}", rule_name))
+        } else {0};
+        let mut newleft = vec![new_quant_formula];
+        newleft.append(&mut left.clone());
+        let forall_rule = LeftForall {
+          name: format!("f{}", *i),
+          bot: fol::Sequent {left: newleft, right: vec![res.clone()]},
+          premise: format!("f{}", *i-1),
+          i: forall_no,
+          t: inst_term.clone()
+        };
+        match_map.remove(&v as &str);
+        proof.push(forall_rule);
+        
+      });
+      if !is_local_rule {
+        *i+=1;
+        let cut_rule = Cut {
+          name: format!("f{}", *i),
+          bot: fol::Sequent {left: left.clone(), right: vec![res.clone()]},
+          premise1: format!("f{}", *i-1),
+          premise2: rule_name,
+          i1: 0,
+          i2: 0
+        };
+        proof.push(cut_rule);
+      } else {}
+    },
+    (RewriteRule::TermRule(variables, rule_left, rule_right), TermOrFormula::Term(inner)) => {
+      let has_matched: bool = if backward { fol::matching_term(&rule_left, &inner, &mut match_map) } else { fol::matching_term(&rule_right, &inner, &mut match_map) };
+      if !has_matched {panic!("Error: neither {} nor {} does not match {}", rule_left, rule_right, &res);}
+      let subst_form = equals(&fol::instantiate_term(&rule_left, &match_map), &fol::instantiate_term(&rule_right, &match_map));
+      let mut newleft = vec![subst_form];
+      newleft.append(&mut left.clone());
+      use SCTPTPRule::*;
+      let subst_step = RightSubstEq {
+        name: format!("f{i}"),
+        bot: fol::Sequent {left: newleft, right: vec![res.clone()]},
+        premise: format!("f{}", *i-1),
+        i: 0,
+        phi: with_hole,
+        v: "HOLE".to_owned()
+      };
+      proof.push(subst_step);
+      let mut vars: Vec<String> = Vec::new();
+      variables.iter().enumerate().rev().for_each(|(nth, v)| {
+        let v_var = &fol::Term::Function(v.to_owned(), Vec::new());
+        let inst_term: &fol::Term = match_map.get(v as &str).unwrap_or(v_var);
+        vars.insert(0, v.to_owned());
+        let new_inner = equals(&fol::instantiate_term(&rule_left, &match_map), &fol::instantiate_term(&rule_right, &match_map));
+        *i+=1; 
+        let new_quant_formula = fol::Formula::Forall(vars.clone(), Box::new(new_inner));
+        let forall_no = if is_local_rule && nth == 0 {
+          let mut no = rule_name.clone();
+          no.remove(0);
+          no.parse().expect(&format!("Error: rule name is not a number: {}", rule_name))
+        } else {0};
+        let mut newleft = vec![new_quant_formula];
+        newleft.append(&mut left.clone());
+        let forall_rule = LeftForall {
+          name: format!("f{}", *i),
+          bot: fol::Sequent {left: newleft, right: vec![res.clone()]},
+          premise: format!("f{}", *i-1),
+          i: forall_no,
+          t: inst_term.clone()
+        };
+        match_map.remove(&v as &str);
+        proof.push(forall_rule);
+        
+      });
+      if !is_local_rule {
+        *i+=1;
+        let cut_rule = Cut {
+          name: format!("f{}", *i),
+          bot: fol::Sequent {left: left.clone(), right: vec![res]},
+          premise1: format!("f{}", *i-1),
+          premise2: rule_name,
+          i1: 0,
+          i2: 0
+        };
+        proof.push(cut_rule);
+      } else {}
+    },
+    _ => panic!("Should not happen")
   };
-  res_string
 }
 
-pub fn line_to_tptp_level2(line: &FlatTerm<FOLLang>, i: &mut i32, base: &String, left: &String) -> String {
-  let line_to_holes = rewrites_to_holes(line, "HOLE".into());
-  let with_hole = expr_to_tptp_res(&line_to_holes.with_holes);
-  let _rule = line_to_holes.rule;
-  let (_, _, rule_name) = _rule.unwrap();
+pub fn line_to_tptp_level2(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<fol::Formula>, proof: &mut Vec<SCTPTPRule>) -> () {
+  use SCTPTPRule::*;
+  let line_to_holes = flat_term_to_formula_hole(line, &"HOLE".into());
+  let with_hole = line_to_holes.0;
+  let _rule = line_to_holes.1;
+  let (inner, backward, rule_name) = _rule.unwrap();
   let is_local_rule: bool = rule_name.starts_with("$");
-  let res = expr_to_tptp_res(&line.clone().remove_rewrites());
-  *i+=1; 
-  if is_local_rule {
-    let forall_no = if is_local_rule {
-      let mut no = rule_name.clone();
-      no.remove(0);
-      no
-    } else {"0".to_owned()};
-    format!("fof(f{i}, plain, [{left}] --> [{base} = {res}], inference(substWithMatchingLocal, param({forall_no}, $fof({base} = {with_hole}), $fot(HOLE)), [f{}])).", *i-1)
-  } else {
-    format!("fof(f{i}, plain, [{left}] --> [{base} = {res}], inference(substWithMatching, param($fof({base} = {with_hole}), $fot(HOLE)), [{rule_name}, f{}])).", *i-1)
-  }
+  let res = flat_term_to_formula(&line.clone());
+  //let (variables, rule_left, rule_right) = map_rule(rule_name.clone())
+  match inner {
+    TermOrFormula::Formula(_) => {
+      if is_local_rule {
+        let forall_no = if is_local_rule {
+          let mut no = rule_name.clone();
+          no.remove(0);
+          no.parse().expect(&format!("Error: rule name is not a number: {}", rule_name))
+        } else {0};
+        let subst_step = RightSubstIffForallLocal {
+          name: format!("f{i}"),
+          bot: fol::Sequent {left: left.clone(), right: vec![res.clone()]},
+          premise: format!("f{}", *i-1),
+          i: forall_no,
+          phi: with_hole,
+          v: "HOLE".to_owned()
+        };
+        proof.push(subst_step);
+      } else {
+        let subst_step = RightSubstIffForall {
+          name: format!("f{i}"),
+          bot: fol::Sequent {left: left.clone(), right: vec![res.clone()]},
+          premise1: rule_name,
+          premise2: format!("f{}", *i-1),
+          phi: with_hole,
+          v: "HOLE".to_owned()
+        };
+        proof.push(subst_step);
+      }
+    },
+    TermOrFormula::Term(_) => {
+      if is_local_rule {
+        let forall_no = if is_local_rule {
+          let mut no = rule_name.clone();
+          no.remove(0);
+          no.parse().expect(&format!("Error: rule name is not a number: {}", rule_name))
+        } else {0};
+        let subst_step = RightSubstEqForallLocal {
+          name: format!("f{i}"),
+          bot: fol::Sequent {left: left.clone(), right: vec![res.clone()]},
+          premise: format!("f{}", *i-1),
+          i: forall_no,
+          phi: with_hole,
+          v: "HOLE".to_owned()
+        };
+        proof.push(subst_step);
+      } else {
+        let subst_step = RightSubstEqForall {
+          name: format!("f{i}"),
+          bot: fol::Sequent {left: left.clone(), right: vec![res.clone()]},
+          premise1: rule_name,
+          premise2: format!("f{}", *i-1),
+          phi: with_hole,
+          v: "HOLE".to_owned()
+        };
+        proof.push(subst_step);
+      }
+    },
+    _ => panic!("Should not happen")
+  };
 }
 
 
 
-pub fn make_cut_line<F>(left: &String, res: &String, rule_name: &String, i: i32, map: F) -> String where F: Fn(String) -> i32 {
-  format!("fof(f{}, plain, [{}] --> [{}], inference(cut, param(0, {}), [{}, f{}])).", i, left, res, map((&rule_name).to_string()), rule_name, i-1)
-}
-
-
-
-
-pub fn proof_to_tptp(header: &String, proof: &Vec<FlatTerm<FOLLang>>, axioms: &Vec<(Vec<String>, FlatTerm<FOLLang>, FlatTerm<FOLLang>)>, problem: &TPTPProblem, level1:bool) -> String {
+pub fn proof_to_tptp(header: &String, proof: &Vec<FlatTerm<FOLLang>>, axioms: Vec<RewriteRule>, problem: &TPTPProblem, level1:bool) -> String {
   let rules_names = problem.axioms.iter().map(|axiom| axiom.0.clone()).collect::<Vec<String>>();
   let map_rule = |s: String| {
-
-    let rule = 
-      axioms.iter().zip(&rules_names).find(|axiom| *axiom.1 == s).expect(format!("Rule not found: {}", s).as_str());
-    
-    (rule.0.0.clone(), rule.0.1.clone(), rule.0.2.clone())
+    axioms.iter().zip(&rules_names).find(|axiom| *axiom.1 == s).expect(format!("Rule not found: {}", s).as_str()).0.clone()
   };
-  let left = &problem.left_string.join(", ");
 
-  let base = expr_to_tptp_res(&proof[0]);
-  let first = format!("fof(f0, plain, [{left}] --> [{base} = {base}], inference(rightRefl, param(0), [])).\n");
+  let first_seq = fol::Sequent {left: problem.left.clone(), right: vec![fol::Formula::True]};
+  let first_step = SCTPTPRule::RightTrue {name: "f0".to_owned(), bot: first_seq};
   let mut i = 0;
 
-  let proofstring = header.to_owned() + "\n" + &first + &proof.iter().skip(1).map( |line| {
-    let res =if level1 {
-      line_to_tptp_level1(line, &mut i, &base, &left, &map_rule)
+  let mut proof_vec = Vec::<SCTPTPRule>::new();
+  proof.iter().skip(1).for_each( |line| {
+    let res = if level1 {
+      line_to_tptp_level1(line, &mut i, &problem.left, &map_rule, &mut proof_vec)
     } else {
-      line_to_tptp_level2(line, &mut i, &base, &left)
+      line_to_tptp_level2(line, &mut i, &problem.left, &mut proof_vec)
     };
     res
-  }).collect::<Vec<String>>().join("\n");
-  proofstring
+  });
+  format!("{}\n{}\n{}", header, first_step, proof_vec.iter().map(|step| step.to_string()).collect::<Vec<String>>().join("\n"))
 
 }
 
@@ -254,9 +437,9 @@ pub struct TPTPProblem {
   pub path: std::path::PathBuf,
   pub header: Header,
   pub axioms: Vec<(String, RecExpr<ENodeOrVar<FOLLang>>, RecExpr<ENodeOrVar<FOLLang>>)>,
-  pub left_string: Vec<String>,
+  pub left: Vec<fol::Formula>,
   pub axioms_as_roots: Vec<(Vec<String>, RecExpr<FOLLang>, RecExpr<FOLLang>)>,
-  pub conjecture: (String, RecExpr<FOLLang>, RecExpr<FOLLang>),
+  pub conjecture: (String, RecExpr<FOLLang>),
   pub string_rules: Vec<(String, String)>,
   pub options: Vec<String>
 }

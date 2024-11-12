@@ -4,6 +4,7 @@ use nom::InputLength;
 use tptp::top::AnnotatedFormula;
 use core::panic;
 use core::time;
+use std::f32::consts::E;
 use std::fmt::format;
 use std::io::Read;
 use tptp::fof;
@@ -133,11 +134,9 @@ pub fn parse_tptp_problem(path: &std::path::PathBuf) -> TPTPProblem {
   let bytes = take_input(path);
   let header = parse_header(&bytes.clone());
   let mut parser = TPTPIterator::<()>::new(bytes.as_slice());
-  let mut rules: Vec<(String, RecExpr<ENodeOrVar<fol::FOLLang>>, RecExpr<ENodeOrVar<fol::FOLLang>>)> = Vec::new();
-  let mut string_rules: Vec<(String, String)> = Vec::new();
-  let mut conjecture: (String, RecExpr<fol::FOLLang>) = ("".to_string(), RecExpr::default());
-  let mut axioms_as_roots: Vec<(Vec<String>, RecExpr<fol::FOLLang>, RecExpr<fol::FOLLang>)> = Vec::new();
-  let mut left_string: Vec<String> = Vec::new();
+  let mut rules: Vec<(String, RewriteRule)> = Vec::new();
+  let mut conjecture: (String, fol::Formula) = ("".to_string(), fol::Formula::True);
+  let mut left: Vec<fol::Formula> = Vec::new();
   for result in &mut parser {
     match result {
       Ok(r) => {
@@ -165,42 +164,27 @@ pub fn parse_tptp_problem(path: &std::path::PathBuf) -> TPTPProblem {
 
                 //Handles rewrite rules on the left
                 conditions.iter().enumerate().for_each(|(no, c)| {
-                  left_string.push(c.to_string());
+                  left.push(c.clone());
                   let formula = &mut c.clone();
                   let mut vars =  Vec::<String>::new();
                   get_head_vars_logic(&c, formula, &mut vars);
 
                   match formula {
-                    fol::Formula::Predicate(op, args ) => 
-                      if op == "=" && args.len() == 2 {
-                        {
-                          let mut expr_left: RecExpr<ENodeOrVar<fol::FOLLang>> = RecExpr::default();
-                          let mut expr_right: RecExpr<ENodeOrVar<fol::FOLLang>> = RecExpr::default();
-                          fol::term_to_recexpr_pattern(&*args[0], &vars, &mut expr_left);
-                          fol::term_to_recexpr_pattern(&*args[1], &vars, &mut expr_right);
-                          rules.push((format!("${no}"), expr_left, expr_right));
-                        }
-                        {
-                          let mut expr_left: RecExpr<fol::FOLLang> = RecExpr::default();
-                          let mut expr_right: RecExpr<fol::FOLLang> = RecExpr::default();
-                          fol::term_to_recexpr(&*args[0], &mut expr_left);
-                          fol::term_to_recexpr(&*args[1], &mut expr_right);
-                          axioms_as_roots.push((vars, expr_left, expr_right));
-                        }
-                        string_rules.push((args[0].to_string(), args[1].to_string()));
-                      } else {},
-                    _ => panic!("formulas must be equalities")
+                    fol::Formula::Predicate(op, args ) if op == "=" && args.len() == 2 => 
+                      rules.push((format!("${no}"), RewriteRule::TermRule(vars, *args[0].clone(), *args[1].clone()))),
+                    fol::Formula::Iff(l, r) => 
+                      rules.push((format!("${no}"), RewriteRule::FormulaRule(vars, *l.clone(), *r.clone()))),
+                        
+                    _ => ()
                   }
                 });
 
 
 
                 //Handles the conjecture
-                let formula = &mut main_formula.clone();
-                get_head_logic(&main_formula, formula);
-                let mut expr: RecExpr<fol::FOLLang> = RecExpr::default();
-                fol::formula_to_recexpr(formula, &mut expr);
-                conjecture = (name, expr);
+                let mut formula =  main_formula.clone();
+                get_head_logic(&main_formula, &mut formula);
+                conjecture = (name, formula);
                 
               }
               "axiom" => {
@@ -208,26 +192,11 @@ pub fn parse_tptp_problem(path: &std::path::PathBuf) -> TPTPProblem {
                 let mut vars =  Vec::<String>::new();
                 get_head_vars_logic(&main_formula, formula, &mut vars);
                 match formula {
-                  fol::Formula::Predicate(op, args ) => {
-                    if op == "=" {
-                      {
-                        let mut expr_left: RecExpr<ENodeOrVar<fol::FOLLang>> = RecExpr::default();
-                        let mut expr_right: RecExpr<ENodeOrVar<fol::FOLLang>> = RecExpr::default();
-                        fol::term_to_recexpr_pattern(&*args[0], &vars, &mut expr_left);
-                        fol::term_to_recexpr_pattern(&*args[1], &vars, &mut expr_right);
-                        rules.push((name, expr_left, expr_right));
-                      }
-                      {
-                        let mut expr_left: RecExpr<fol::FOLLang> = RecExpr::default();
-                        let mut expr_right: RecExpr<fol::FOLLang> = RecExpr::default();
-                        fol::term_to_recexpr(&*args[0], &mut expr_left);
-                        fol::term_to_recexpr(&*args[1], &mut expr_right);
-                        axioms_as_roots.push((vars, expr_left, expr_right));
-                      }
-                      string_rules.push((args[0].to_string(), args[1].to_string()));
-                    }
-                  }
-                  _ => panic!("formulas must be equalities unitary")
+                  fol::Formula::Predicate(op, args ) if op == "=" && args.len() == 2 => 
+                    rules.push((name, RewriteRule::TermRule(vars, *args[0].clone(), *args[1].clone()))),
+                  fol::Formula::Iff(l, r) => 
+                    rules.push((name, RewriteRule::FormulaRule(vars, *l.clone(), *r.clone()))),
+                  _ => panic!("formulas must be equalities or biimplications")
                 }
               }
               _ => ()
@@ -248,25 +217,54 @@ pub fn parse_tptp_problem(path: &std::path::PathBuf) -> TPTPProblem {
     path: path.clone(),
     header: header,
     axioms: rules,
-    left_string: left_string,
+    left: left,
     conjecture: conjecture,
-    string_rules: string_rules,
-    axioms_as_roots: axioms_as_roots,
     options: Vec::new(),
   }
 }
 
 
 pub fn solve_tptp_problem(problem: &TPTPProblem) -> Explanation<FOLLang> {
-  let rules: Vec<Rewrite<FOLLang, ()>> = problem.axioms.iter().map(|(name, l, r)| {
-    Rewrite::<FOLLang, ()>::new(name, egg::Pattern::new(l.clone()), egg::Pattern::new(r.clone())).expect("failed to create rewrite rule")
+  let rules: Vec<Rewrite<FOLLang, ()>> = problem.axioms.iter().map(|(name,rew)| { match rew
+    {
+      RewriteRule::FormulaRule(vars, l, r ) => {
+        let mut expr_left: RecExpr<ENodeOrVar<fol::FOLLang>> = RecExpr::default();
+        let mut expr_right: RecExpr<ENodeOrVar<fol::FOLLang>> = RecExpr::default();
+        fol::formula_to_recexpr_pattern(l, &vars, &mut expr_left);
+        fol::formula_to_recexpr_pattern(r, &vars, &mut expr_right);
+        Rewrite::<FOLLang, ()>::new(name, egg::Pattern::new(expr_left), egg::Pattern::new(expr_right)).expect("failed to create rewrite rule")
+      }
+      RewriteRule::TermRule(vars, l, r ) => {
+        let mut expr_left: RecExpr<ENodeOrVar<fol::FOLLang>> = RecExpr::default();
+        let mut expr_right: RecExpr<ENodeOrVar<fol::FOLLang>> = RecExpr::default();
+        fol::term_to_recexpr_pattern(l, &vars, &mut expr_left);
+        fol::term_to_recexpr_pattern(r, &vars, &mut expr_right);
+        Rewrite::<FOLLang, ()>::new(name, egg::Pattern::new(expr_left), egg::Pattern::new(expr_right)).expect("failed to create rewrite rule")
+      }
+    }
   }).collect::<Vec<_>>();
 
   let mut top_expr: RecExpr<FOLLang> = RecExpr::default();
   fol::formula_to_recexpr(&fol::Formula::True, &mut top_expr);
+  
     
-  let start = &top_expr;
-  let end = &problem.conjecture.1;
+  let (start, end) = match &problem.conjecture.1 {
+    fol::Formula::Predicate(op, args ) if op == "=" && args.len() == 2 => {
+      let mut expr_start: RecExpr<fol::FOLLang> = RecExpr::default();
+      fol::formula_to_recexpr(&fol::Formula::Predicate("=".to_owned(), vec![args[0].clone(), args[0].clone()]), &mut expr_start);
+      let mut expr_end: RecExpr<fol::FOLLang> = RecExpr::default();
+      fol::formula_to_recexpr(&problem.conjecture.1, &mut expr_end);
+      (expr_start, expr_end)
+    },
+    fol::Formula::Iff(l, _) => {
+      let mut expr_start: RecExpr<fol::FOLLang> = RecExpr::default();
+      fol::formula_to_recexpr(&fol::Formula::Iff(l.clone(), l.clone()), &mut expr_start);
+      let mut expr_end: RecExpr<fol::FOLLang> = RecExpr::default();
+      fol::formula_to_recexpr(&problem.conjecture.1, &mut expr_end);
+      (expr_start, expr_end)
+    },
+    _ => panic!("conjecture must be an equality")
+  };
   
   let mut runner: Runner<FOLLang, ()> = Runner::default().with_explanations_enabled()
     .with_expr(&start)
@@ -276,7 +274,24 @@ pub fn solve_tptp_problem(problem: &TPTPProblem) -> Explanation<FOLLang> {
     runner = runner.with_time_limit(std::time::Duration::from_secs(time_limit));
     println!("Time limit set to {} seconds", time_limit); 
   }
-  runner = problem.axioms_as_roots.iter().fold(runner, |r, e| r.with_expr(&e.1).with_expr(&e.2));
+  runner = problem.axioms.iter().fold(runner, |runner, (_name, rw) |{
+    match rw {
+      RewriteRule::FormulaRule(_vars, l, r ) => {
+        let mut expr_left: RecExpr<fol::FOLLang> = RecExpr::default();
+        let mut expr_right: RecExpr<fol::FOLLang> = RecExpr::default();
+        fol::formula_to_recexpr(l, &mut expr_left);
+        fol::formula_to_recexpr(r, &mut expr_right);
+        runner.with_expr(&expr_left).with_expr(&expr_right)
+      },
+      RewriteRule::TermRule(_vars, l, r ) => {
+      let mut expr_left: RecExpr<fol::FOLLang> = RecExpr::default();
+      let mut expr_right: RecExpr<fol::FOLLang> = RecExpr::default();
+      fol::term_to_recexpr(l, &mut expr_left);
+      fol::term_to_recexpr(r, &mut expr_right);
+      runner.with_expr(&expr_left).with_expr(&expr_right)
+      }
+    }
+  });
   runner = runner.run(&rules);
   let e = runner.explain_equivalence(&start, &end);
   e
@@ -313,15 +328,8 @@ pub fn tptp_problem_to_tptp_solution(path: &std::path::PathBuf, output: &std::pa
   let init = format!("{}", newheader);
   let mut proof = solve_tptp_problem(&problem);
   let expl = proof.make_flat_explanation();
-  let axioms: Vec<(Vec<String>, FlatTerm<FOLLang>, FlatTerm<FOLLang>)> = problem.axioms_as_roots.iter().map(|(vars, l, r)| {
-    let mut runner1: Runner<FOLLang, ()> = Runner::default().with_explanations_enabled().with_expr(&l).run(&[]);
-    let mut runner2: Runner<FOLLang, ()> = Runner::default().with_explanations_enabled().with_expr(&l).run(&[]);
-    let left_ft = runner1.explain_equivalence(&l, &l).make_flat_explanation()[0].clone();
-    let right_ft = runner2.explain_equivalence(&r, &r).make_flat_explanation()[0].clone();
-  (vars.clone(), left_ft, right_ft)
-  }).collect();
 
-  let res = proof_to_tptp(&init, expl, &axioms, &problem, level1);
+  let res = proof_to_tptp(&init, expl, &problem, level1);
   let mut file = std::fs::File::create(output).unwrap();
   use std::io::Write;
   file.write_all(res.as_bytes()).unwrap();

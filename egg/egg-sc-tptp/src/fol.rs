@@ -1,6 +1,7 @@
 use core::panic;
 use std::fmt;
 use std::collections::HashMap;
+use std::fmt::write;
 use std::str::FromStr;
 use egg::Symbol;
 use egg::ENodeOrVar;
@@ -19,7 +20,10 @@ pub enum Term {
 impl fmt::Display for Term {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
-      Term::Function(name, args) => write!(f, "{}({})", name, args.iter().map(|x| x.to_string()).collect::<Vec<String>>().join(", "))
+      Term::Function(name, args) => {
+        if args.len() > 0 {write!(f, "{}({})", name, args.iter().map(|x| x.to_string()).collect::<Vec<String>>().join(", "))}
+        else {write!(f, "{}", name)}
+      }
     }
   }
 }
@@ -50,7 +54,10 @@ impl fmt::Display for Formula {
     match self {
       Formula::True => write!(f, "$true"),
       Formula::False => write!(f, "$false"),
-      Formula::Predicate(name, args) => write!(f, "{}({})", name, args.iter().map(|x| x.to_string()).collect::<Vec<String>>().join(", ")),
+      Formula::Predicate(op, args) => 
+        if op == "=" {write!(f, "({} = {})", args[0], args[1])}
+        else if args.len() > 0 {write!(f, "{}({})", op, args.iter().map(|x| x.to_string()).collect::<Vec<String>>().join(", "))}
+        else {write!(f, "{}", op)}
       Formula::Not(formula) => write!(f, "¬{}", formula),
       Formula::And(formulas) => write!(f, "({})", formulas.iter().map(|x| x.to_string()).collect::<Vec<String>>().join(" && ")),
       Formula::Or(formulas) => write!(f, "({})", formulas.iter().map(|x| x.to_string()).collect::<Vec<String>>().join(" || ")),

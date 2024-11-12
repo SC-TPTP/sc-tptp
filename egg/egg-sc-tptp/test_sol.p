@@ -23,9 +23,9 @@ fof(a2, axiom, (! [Xx]: ((Xx = sf(sf(sf(sf(sf(Xx))))))))).
 fof(c3, conjecture, (cemptySet = sf(cemptySet))).
 
 
-fof(f0, plain, [] --> [cemptySet = cemptySet], inference(rightRefl, param(0), [])).
-fof(f1, plain, [] --> [cemptySet = sf(sf(sf(sf(sf(sf(sf(sf(cemptySet))))))))], inference(substWithMatching, param($fof(cemptySet = HOLE), $fot(HOLE)), [a1, f0])).
-fof(f2, plain, [] --> [cemptySet = sf(sf(sf(cemptySet)))], inference(substWithMatching, param($fof(cemptySet = sf(sf(HOLE))), $fot(HOLE)), [a2, f1])).
-fof(f3, plain, [] --> [cemptySet = sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(cemptySet)))))))))))], inference(substWithMatching, param($fof(cemptySet = sf(sf(sf(HOLE)))), $fot(HOLE)), [a1, f2])).
-fof(f4, plain, [] --> [cemptySet = sf(sf(sf(sf(sf(sf(cemptySet))))))], inference(substWithMatching, param($fof(cemptySet = sf(sf(sf(sf(sf(HOLE)))))), $fot(HOLE)), [a2, f3])).
-fof(f5, plain, [] --> [cemptySet = sf(cemptySet)], inference(substWithMatching, param($fof(cemptySet = HOLE), $fot(HOLE)), [a2, f4])).
+fof(f0, plain, [] --> [(cemptySet = cemptySet)], inference(rightRefl, param(0), [])).
+fof(f1, plain, [] --> [(cemptySet = sf(sf(sf(sf(sf(sf(sf(sf(cemptySet)))))))))], inference(rightSubstEqForall, param($fof((cemptySet = HOLE)), $fot(HOLE)), [a1, f0])).
+fof(f2, plain, [] --> [(cemptySet = sf(sf(sf(cemptySet))))], inference(rightSubstEqForall, param($fof((cemptySet = sf(sf(HOLE)))), $fot(HOLE)), [a2, f1])).
+fof(f3, plain, [] --> [(cemptySet = sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(cemptySet))))))))))))], inference(rightSubstEqForall, param($fof((cemptySet = sf(sf(sf(HOLE))))), $fot(HOLE)), [a1, f2])).
+fof(f4, plain, [] --> [(cemptySet = sf(sf(sf(sf(sf(sf(cemptySet)))))))], inference(rightSubstEqForall, param($fof((cemptySet = sf(sf(sf(sf(sf(HOLE))))))), $fot(HOLE)), [a2, f3])).
+fof(f5, plain, [] --> [(cemptySet = sf(cemptySet))], inference(rightSubstEqForall, param($fof((cemptySet = sf(HOLE))), $fot(HOLE)), [a2, f4])).

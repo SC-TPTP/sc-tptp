@@ -43,7 +43,14 @@ use nom::sequence::{delimited, pair, preceded, terminated,  tuple};
 impl std::fmt::Display for HeaderLine {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     match self {
-      HeaderLine::Comment(tag, value) => write!(f, "% {tag} : {value}\n"),
+      HeaderLine::Comment(tag, value) =>
+        if value.len() == 0 {
+          write!(f, "% {tag}\n")
+        } else {
+          let n = tag.len();
+          let rest = value.iter().skip(1).map(|v| format!("% {: <n$} : {v}\n", "")).collect::<String>();
+          write!(f, "% {tag} : {}\n{}", value[0], rest)
+        },
       HeaderLine::Whiteline => write!(f, "\n"),
       HeaderLine::Other(o) => write!(f, "%{}", o),
     }
@@ -53,9 +60,12 @@ impl std::fmt::Display for HeaderLine {
 fn fmt_with_spaces(line: &HeaderLine, f: &mut std::fmt::Formatter, n: usize) -> std::fmt::Result {
   match line {
     HeaderLine::Comment(tag, value) => {
-      // add spaces to tag to  reach len n:
-      let new_tag = format!("{tag:n$}");
-      write!(f, "% {new_tag} : {value}\n")
+      if value.len() == 0 {
+        write!(f, "% {tag: <n$}\n")
+      } else {
+        let rest = value.iter().skip(1).map(|v| format!("% {: <n$} : {v}\n", "")).collect::<String>();
+        write!(f, "% {tag: <n$} : {}\n{}", value[0], rest)
+      }
     },
     HeaderLine::Whiteline => write!(f, "\n"),
     HeaderLine::Other(o) => write!(f, "{}\n", o),
@@ -65,7 +75,7 @@ fn fmt_with_spaces(line: &HeaderLine, f: &mut std::fmt::Formatter, n: usize) -> 
 #[derive(Clone)]
 #[derive(Debug)]
 pub enum HeaderLine {
-  Comment(String, String),
+  Comment(String, Vec<String>),
   Whiteline,
   Other(String),
 }
@@ -73,13 +83,15 @@ pub enum HeaderLine {
 impl std::fmt::Display for Header {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     let n = self.comments.iter().map(|l| match l {
-      HeaderLine::Comment(tag, _) => tag.len(),
+      HeaderLine::Comment(tag, _) => {
+        tag.len()},
       _ => 0,
     }).max().unwrap_or(0);
+    let mut result: std::result::Result<(), _> = Ok(());
     for line in &self.comments {
-      fmt_with_spaces(line, f, n)?;
+      result = fmt_with_spaces(line, f, n);
     }
-    Ok(())
+    result
   }
 }
 #[derive(Clone)]
@@ -96,13 +108,26 @@ pub fn line_or_file_ending<'a, E: Error<'a>>(x: &'a [u8]) -> Result<'a, (), E> {
   alt((value((), line_ending), value((), eof)))(x)
 }
 
+pub fn comment_block<'a, E: Error<'a>>(x: &'a [u8]) -> Result<'a, HeaderLine, E> {
+  use HeaderLine::*;
+  alt((value(Whiteline, terminated(space0, line_or_file_ending)),
+
+      complete(map(pair(comment_tag,
+         delimited(space0,  not_line_ending, line_or_file_ending)), |(tag, s)| {
+          Comment(tag.to_string(), vec![String::from_utf8(s.to_vec()).unwrap()])
+      })),
+      
+      map(terminated( not_line_ending, line_or_file_ending), |s: &[u8]|Other(String::from_utf8(s.to_vec()).unwrap())),
+
+    ))(x)
+}
 
 pub fn comment_line<'a, E: Error<'a>>(x: &'a [u8]) -> Result<'a, HeaderLine, E> {
   use HeaderLine::*;
   alt((value(Whiteline, terminated(space0, line_or_file_ending)),
       complete(map(pair(comment_tag,
          delimited(space0,  not_line_ending, line_or_file_ending)), |(tag, s)| {
-          Comment(tag.to_string(), String::from_utf8(s.to_vec()).unwrap())
+          Comment(tag.to_string(), vec![String::from_utf8(s.to_vec()).unwrap()])
       })),
       map(terminated( not_line_ending, line_or_file_ending), |s: &[u8]|Other(String::from_utf8(s.to_vec()).unwrap())),
 
@@ -116,7 +141,21 @@ pub fn parse_header(mut bytes: &[u8]) -> Header {
     
     match r {
       Ok((reminder, comment)) => {
-        header.push(comment);
+        match &comment
+        {
+          HeaderLine::Comment(tag, values) => {
+            if header.is_empty() || !(tag.is_empty()) {
+              header.push(comment);
+            } else {
+              match header.last_mut().unwrap() {
+                HeaderLine::Comment(_, v) => v.push(values[0].clone()),
+                _ => panic!("Error: parsing header failed")
+              }
+            } 
+            
+          },
+          _ => header.push(comment),
+        }
         bytes = reminder;
         if reminder.input_len() == 0 {
           break;
@@ -137,6 +176,8 @@ pub fn parse_tptp_problem(path: &std::path::PathBuf) -> TPTPProblem {
   let mut rules: Vec<(String, RewriteRule)> = Vec::new();
   let mut conjecture: (String, fol::Formula) = ("".to_string(), fol::Formula::True);
   let mut left: Vec<fol::Formula> = Vec::new();
+  let mut simplify = false;
+  let mut number_of_questions = 0;
   for result in &mut parser {
     match result {
       Ok(r) => {
@@ -160,32 +201,29 @@ pub fn parse_tptp_problem(path: &std::path::PathBuf) -> TPTPProblem {
             };
             //let annotations = &anot_form.0.annotations;
             match role.as_str() {
-              "conjecture" => {     
-
+              "conjecture" => {
+                if number_of_questions > 0 {
+                  panic!("Error: only one conjecture or simplification at a time is allowed")
+                }
+                number_of_questions += 1;
                 //Handles rewrite rules on the left
                 conditions.iter().enumerate().for_each(|(no, c)| {
                   left.push(c.clone());
                   let formula = &mut c.clone();
                   let mut vars =  Vec::<String>::new();
                   get_head_vars_logic(&c, formula, &mut vars);
-
                   match formula {
                     fol::Formula::Predicate(op, args ) if op == "=" && args.len() == 2 => 
                       rules.push((format!("${no}"), RewriteRule::TermRule(vars, *args[0].clone(), *args[1].clone()))),
                     fol::Formula::Iff(l, r) => 
                       rules.push((format!("${no}"), RewriteRule::FormulaRule(vars, *l.clone(), *r.clone()))),
-                        
                     _ => ()
                   }
                 });
-
-
-
                 //Handles the conjecture
                 let mut formula =  main_formula.clone();
                 get_head_logic(&main_formula, &mut formula);
                 conjecture = (name, formula);
-                
               }
               "axiom" => {
                 let formula = &mut main_formula.clone();
@@ -198,6 +236,31 @@ pub fn parse_tptp_problem(path: &std::path::PathBuf) -> TPTPProblem {
                     rules.push((name, RewriteRule::FormulaRule(vars, *l.clone(), *r.clone()))),
                   _ => panic!("formulas must be equalities or biimplications")
                 }
+              }
+              "simplify" => {
+                if number_of_questions > 0 {
+                  panic!("Error: only one conjecture or simplification at a time is allowed")
+                }
+                number_of_questions += 1;
+                //Handles rewrite rules on the left
+                conditions.iter().enumerate().for_each(|(no, c)| {
+                  left.push(c.clone());
+                  let formula = &mut c.clone();
+                  let mut vars =  Vec::<String>::new();
+                  get_head_vars_logic(&c, formula, &mut vars);
+                  match formula {
+                    fol::Formula::Predicate(op, args ) if op == "=" && args.len() == 2 => 
+                      rules.push((format!("${no}"), RewriteRule::TermRule(vars, *args[0].clone(), *args[1].clone()))),
+                    fol::Formula::Iff(l, r) => 
+                      rules.push((format!("${no}"), RewriteRule::FormulaRule(vars, *l.clone(), *r.clone()))),
+                    _ => ()
+                  }
+                });
+                //Handles the conjecture
+                let mut formula =  main_formula.clone();
+                get_head_logic(&main_formula, &mut formula);
+                conjecture = (name, formula);
+                simplify = true;
               }
               _ => ()
             }
@@ -220,6 +283,7 @@ pub fn parse_tptp_problem(path: &std::path::PathBuf) -> TPTPProblem {
     left: left,
     conjecture: conjecture,
     options: Vec::new(),
+    simplify: simplify,
   }
 }
 
@@ -247,28 +311,7 @@ pub fn solve_tptp_problem(problem: &TPTPProblem) -> Explanation<FOLLang> {
   let mut top_expr: RecExpr<FOLLang> = RecExpr::default();
   fol::formula_to_recexpr(&fol::Formula::True, &mut top_expr);
   
-    
-  let (start, end) = match &problem.conjecture.1 {
-    fol::Formula::Predicate(op, args ) if op == "=" && args.len() == 2 => {
-      let mut expr_start: RecExpr<fol::FOLLang> = RecExpr::default();
-      fol::formula_to_recexpr(&fol::Formula::Predicate("=".to_owned(), vec![args[0].clone(), args[0].clone()]), &mut expr_start);
-      let mut expr_end: RecExpr<fol::FOLLang> = RecExpr::default();
-      fol::formula_to_recexpr(&problem.conjecture.1, &mut expr_end);
-      (expr_start, expr_end)
-    },
-    fol::Formula::Iff(l, _) => {
-      let mut expr_start: RecExpr<fol::FOLLang> = RecExpr::default();
-      fol::formula_to_recexpr(&fol::Formula::Iff(l.clone(), l.clone()), &mut expr_start);
-      let mut expr_end: RecExpr<fol::FOLLang> = RecExpr::default();
-      fol::formula_to_recexpr(&problem.conjecture.1, &mut expr_end);
-      (expr_start, expr_end)
-    },
-    _ => panic!("conjecture must be an equality")
-  };
-  
-  let mut runner: Runner<FOLLang, ()> = Runner::default().with_explanations_enabled()
-    .with_expr(&start)
-    .with_expr(&end);
+  let mut runner: Runner<FOLLang, ()> = Runner::default().with_explanations_enabled();
   if problem.options.len() >= 2 && problem.options[0] == "--time-limit" {
     let time_limit = problem.options[1].parse::<u64>().expect("time limit must be a number");
     runner = runner.with_time_limit(std::time::Duration::from_secs(time_limit));
@@ -292,7 +335,42 @@ pub fn solve_tptp_problem(problem: &TPTPProblem) -> Explanation<FOLLang> {
       }
     }
   });
-  runner = runner.run(&rules);
+  
+  let (start, end, mut runner) = if problem.simplify == true {
+    let mut expr_start: RecExpr<fol::FOLLang> = RecExpr::default();
+    fol::formula_to_recexpr(&problem.conjecture.1, &mut expr_start);
+    runner = runner.with_expr(&expr_start);
+    runner = runner.run(&rules);
+    let root = *runner.roots.last().unwrap();
+    let extractor = Extractor::new(&runner.egraph, AstSize);
+    let (_, best) = extractor.find_best(root);
+    println!("best: {}", best);
+    println!("start: {}", expr_start);
+    (expr_start, best, runner)
+  } else { 
+    let (start, end) = 
+    match &problem.conjecture.1 {
+    fol::Formula::Predicate(op, args ) if op == "=" && args.len() == 2 => {
+      let mut expr_start: RecExpr<fol::FOLLang> = RecExpr::default();
+      fol::formula_to_recexpr(&fol::Formula::Predicate("=".to_owned(), vec![args[0].clone(), args[0].clone()]), &mut expr_start);
+      let mut expr_end: RecExpr<fol::FOLLang> = RecExpr::default();
+      fol::formula_to_recexpr(&problem.conjecture.1, &mut expr_end);
+      (expr_start, expr_end)
+    },
+    fol::Formula::Iff(l, _) => {
+      let mut expr_start: RecExpr<fol::FOLLang> = RecExpr::default();
+      fol::formula_to_recexpr(&fol::Formula::Iff(l.clone(), l.clone()), &mut expr_start);
+      let mut expr_end: RecExpr<fol::FOLLang> = RecExpr::default();
+      fol::formula_to_recexpr(&problem.conjecture.1, &mut expr_end);
+      (expr_start, expr_end)
+    },
+    _ => panic!("conjecture must be an equality")
+  };
+    runner = runner.with_expr(&start).with_expr(&end);
+    runner = runner.run(&rules);
+    (start, end, runner)
+
+  };
   let e = runner.explain_equivalence(&start, &end);
   e
 }
@@ -308,15 +386,15 @@ pub fn tptp_problem_to_tptp_solution(path: &std::path::PathBuf, output: &std::pa
     HeaderLine::Comment(tag, value) => {
       if tag == "EggOptions" {
         newcomments.push(l.clone());
-          let mut opts: Vec<String> = value.split_whitespace().map(|v| v.to_string()).collect(); 
+          let mut opts: Vec<String> = value.iter().map(|v| v.to_string()).collect(); 
           problem.options.append(&mut opts);
       } else if tag == "Status" {
-        newcomments.push(HeaderLine::Comment(tag.clone(), "Theorem".to_string()));
+        newcomments.push(HeaderLine::Comment(tag.clone(), vec!["Theorem".to_string()]));
       } else if tag == "Comments" && !contains_solver {
         newcomments.push(l.clone());
-        newcomments.push(HeaderLine::Comment("Solver".to_string(), format!("egg v0.9.5, egg-sc-tptp v{}", env!("CARGO_PKG_VERSION"))));
+        newcomments.push(HeaderLine::Comment("Solver".to_string(), vec![format!("egg v0.9.5",), format!("egg-sc-tptp v{}", env!("CARGO_PKG_VERSION"))]));
       } else if tag == "Solver" {
-        newcomments.push(HeaderLine::Comment("Solver".to_string(), format!("egg v0.9.5, egg-sc-tptp v{}", env!("CARGO_PKG_VERSION"))));
+        newcomments.push(HeaderLine::Comment("Solver".to_string(), vec![format!("egg v0.9.5",), format!("egg-sc-tptp v{}", env!("CARGO_PKG_VERSION"))]));
       } else {
         newcomments.push(HeaderLine::Comment(tag.clone(), value.clone()));
       }

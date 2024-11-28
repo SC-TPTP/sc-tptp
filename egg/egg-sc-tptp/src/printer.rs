@@ -425,6 +425,10 @@ pub fn proof_to_tptp(header: &String, proof: &Vec<FlatTerm<FOLLang>>, problem: &
     fol::Formula::True => SCTPTPRule::RightTrue {name: "f0".to_owned(), bot: first_seq},
     fol::Formula::Predicate(op, _) if op == "=" => SCTPTPRule::RightRefl {name: "f0".to_owned(), bot: first_seq, i: 0},
     fol::Formula::Iff(_, _) => SCTPTPRule::RightReflIff {name: "f0".to_owned(), bot: first_seq, i: 0},
+    _ if problem.simplify => {
+      let first_seq = fol::Sequent {left: problem.left.clone(), right: vec![fol::Formula::Iff(Box::new(init_formula.clone()), Box::new(init_formula.clone()))]};
+      SCTPTPRule::RightReflIff {name: "f0".to_owned(), bot: first_seq, i: 0}
+    }
     _ => panic!("unexpected starting expression")
   };
   let mut i = 0;
@@ -448,5 +452,6 @@ pub struct TPTPProblem {
   pub axioms: Vec<(String, RewriteRule)>,
   pub left: Vec<fol::Formula>,
   pub conjecture: (String, fol::Formula),
-  pub options: Vec<String>
+  pub options: Vec<String>,
+  pub simplify: bool
 }

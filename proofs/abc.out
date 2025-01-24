@@ -1,0 +1,12 @@
+fof(0, axiom, [(v0 = v0)] --> []).
+fof(1, conjecture, [(b = c)] --> []).
+fof(2, axiom, [(a = b)] --> []).
+fof(3, plain, [(b = a)] --> [], inference(flip, [status(thm), 0] , [2])).
+fof(5, axiom, [(a = c)] --> []).
+fof(6, plain, [(c = a)] --> [], inference(flip, [status(thm), 0] , [5])).
+fof(7, negated_conjecture, [~((c = b))] --> []).
+fof(8A, plain, [~((a = b))] --> [], inference(paramod , [status(thm)], [6, 7])).
+fof(8B, plain, [~((a = a))] --> [], inference(paramod , [status(thm)], [3, 8A])).
+fof(11, plain, [(a = a)] --> [], inference(instantiate_l, [status(???), 0, v0, a], [0])).
+fof(8, plain, [$false] --> [], inference(res, [status(thm), 0, 0], [8B, 11])).
+

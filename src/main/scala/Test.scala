@@ -5,6 +5,7 @@ import Parser.*
 import FOL.*
 import SequentCalculus.*
 import CoqOutput.CoqProof
+import sctptp.SequentCalculus.SCProofStep
 
 object Test {
 
@@ -25,13 +26,15 @@ object Test {
     // val problem = reconstructProof(new File("proofs/Test.gothm8.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm9.p"))
     val problem = reconstructProof(new File("proofs/Test.gothm10.p"))
-
+    // val problem = reconstructProof(new File("proofs/example.out"))
+    
     println("\nProblem TPTP:")
     println(problem.toString())
+    println(checkProof(problem))
 
-    println("\nProblem Coq:")
-    val problemCoq = CoqProof(problem, Map.empty[String, Int], Map.empty[String, Int])
-    println(problemCoq.toString())
+    // println("\nProblem Coq:")
+    // val problemCoq = CoqProof(problem, Map.empty[String, Int], Map.empty[String, Int])
+    // println(problemCoq.toString())
   }
 
   def testSC(): Unit = {

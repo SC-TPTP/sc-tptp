@@ -156,7 +156,7 @@ object SequentCalculus {
   case class Hyp(name: String, bot: Sequent, i: Int, j: Int) extends LVL1ProofStep {
     val premises = Seq()
     override def toString: String = SCProofStep.outputDoubleIndexes(name, HypRuleName, "assumption", bot, i, j, premises)
-    def checkCorrectness(premises: String => Sequent): Boolean = bot.left(i) == bot.left(j)
+    def checkCorrectness(premises: String => Sequent): Boolean = bot.left(i) == bot.right(j)
   }
 
   /**

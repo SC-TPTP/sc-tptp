@@ -92,7 +92,7 @@ object Parser {
     }
     if steps.forall(_.isInstanceOf[LVL1ProofStep]) then LVL1Proof(steps.reverse.toIndexedSeq.asInstanceOf[IndexedSeq[LVL1ProofStep]], file.getName().replace(".", "_"))
     if steps.forall(_.isInstanceOf[LVL2ProofStep]) then LVL2Proof(steps.reverse.toIndexedSeq.asInstanceOf[IndexedSeq[LVL2ProofStep]], file.getName().replace(".", "_"))
-    else throw new Exception("Some proof steps could not be reconstructed")
+     else throw new Exception("Some proof steps could not be reconstructed")
   }
 
   def annotatedStatementToProofStep(ann: FOFAnnotated, sequentmap: String => Sequent): Option[SCProofStep] = {
@@ -122,6 +122,7 @@ object Parser {
       case Inference.RightEx(step) => Some(step)
       case Inference.RightAll(step) => Some(step)
       case Inference.Congruence(step) => Some(step)
+      case Inference.NegatedConjecture(step) => Some(step)
       case _ => None
     }
     r
@@ -515,6 +516,15 @@ object Parser {
         ann_seq match {
           case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("congruence", Seq(), Seq())) =>
             Some(LVL2.Congruence(name, convertSequentToFol(sequent)))
+          case _ => None
+        }
+    }
+
+    object NegatedConjecture {
+      def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] = 
+        ann_seq match {
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("negated_conjecture", Seq(_), Seq(t1))) =>
+            Some(LVL2.NegatedConjecture(name, convertSequentToFol(sequent), t1))
           case _ => None
         }
     }

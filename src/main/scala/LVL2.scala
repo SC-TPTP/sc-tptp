@@ -93,4 +93,39 @@ object LVL2 {
       }
   }
 
+  case class Res(name: String, bot: Sequent, i1: Int, i2: Int, t1: String, t2: String) extends StrictLVL2ProofStep {
+    val premises = Seq(t1, t2)
+    override def toString: String = SCProofStep.outputDoubleIndexes(name, "res", "plain", bot, i1, i2, premises)
+    def checkCorrectness(premises: String => Sequent): Boolean = 
+      val A = premises(t1).left(i1)
+      val negA = premises(t2).left(i2)
+
+      (negA == ~A) &&
+      (isSameSet(A +: bot.left, premises(t1).left) && 
+      isSameSet(bot.right, premises(t1).right) &&
+      isSameSet(negA +: bot.left, premises(t2).left) && 
+      isSameSet(bot.right, premises(t2).right)) ||
+      (isSameSet(negA +: bot.left, premises(t1).left) && 
+      isSameSet(bot.right, premises(t1).right) &&
+      isSameSet(A +: bot.left, premises(t2).left) && 
+      isSameSet(bot.right, premises(t2).right))
+  }
+
+
+    /**
+   *    Γ |- 
+   * -------------
+   *    Δ |-
+   *  And Δ is a subset of Γ
+   * @param bot Resulting formula
+   */
+  case class NegatedConjecture(name: String, bot: Sequent, t1: String) extends StrictLVL2ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = s"fof(${name}, negated_conjecture, ${bot}, inference(negated_conjecture, [status(thm)], [1])).";
+    def checkCorrectness(premises: String => Sequent): Boolean = 
+      isSubset(bot.left, premises(t1).left) && 
+      isSubset(bot.right, premises(t1).right)
+      
+  }
+
 }

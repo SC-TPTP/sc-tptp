@@ -190,9 +190,9 @@ impl std::fmt::Display for SCTPTPRule {
       SCTPTPRule::RightSubstIff {name, bot, premise, i, phi, v} => 
         write!(f, "fof({}, plain, {}, inference(rightSubstIff, param({}, $fof({}), $fof({})), [{}])).", name, bot, i, phi, v, premise),
       SCTPTPRule::LeftForall {name, bot, premise, i, t} => 
-        write!(f, "fof({}, plain, {}, inference(leftForall, param({}, $fot({}), $fot({})), [{}])).", name, bot, i, t, t, premise),
+        write!(f, "fof({}, plain, {}, inference(leftForall, param({}, $fot({})), [{}])).", name, bot, i, t, premise),
       SCTPTPRule::Cut {name, bot, premise1, premise2, i1, i2} => 
-        write!(f, "fof({}, plain, {}, inference(cut, param({}, {}), [{}, {}])).", name, bot, premise1, premise2, i1, i2),
+        write!(f, "fof({}, plain, {}, inference(cut, param({}, {}), [{}, {}])).", name, bot, i1, i2, premise1, premise2),
       SCTPTPRule::RightSubstEqForallLocal {name, bot, premise, i, phi, v} =>
         write!(f, "fof({}, plain, {}, inference(rightSubstEqForallLocal, param({}, $fof({}), $fot({})), [{}])).", name, bot, i, phi, v, premise),
       SCTPTPRule::RightSubstEqForall {name, bot, premise1, premise2, phi, v} =>

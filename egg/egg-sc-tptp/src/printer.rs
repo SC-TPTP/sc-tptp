@@ -275,8 +275,8 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
         let cut_rule = Cut {
           name: format!("f{}", *i),
           bot: fol::Sequent {left: left.clone(), right: vec![res.clone()]},
-          premise1: format!("f{}", *i-1),
-          premise2: rule_name,
+          premise1: rule_name,
+          premise2: format!("f{}", *i-1),
           i1: 0,
           i2: 0
         };
@@ -330,8 +330,8 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
         let cut_rule = Cut {
           name: format!("f{}", *i),
           bot: fol::Sequent {left: left.clone(), right: vec![res]},
-          premise1: format!("f{}", *i-1),
-          premise2: rule_name,
+          premise1: rule_name,
+          premise2: format!("f{}", *i-1),
           i1: 0,
           i2: 0
         };

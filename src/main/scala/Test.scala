@@ -25,12 +25,15 @@ object Test {
     // val problem = reconstructProof(new File("proofs/Test.gothm7.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm8.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm9.p"))
-    val problem = reconstructProof(new File("proofs/Test.gothm10.p"))
+    // val problem = reconstructProof(new File("proofs/Test.gothm10.p"))
     // val problem = reconstructProof(new File("proofs/example.out"))
+    val problem = reconstructProof(new File("proofs/clausified.p"))
+
     
     println("\nProblem TPTP:")
     println(problem.toString())
-    println(checkProof(problem))
+    println(s"CheckProof : ${checkProof(problem)}")
+
 
     // println("\nProblem Coq:")
     // val problemCoq = CoqProof(problem, Map.empty[String, Int], Map.empty[String, Int])

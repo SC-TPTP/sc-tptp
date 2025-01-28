@@ -122,7 +122,9 @@ object Parser {
       case Inference.RightEx(step) => Some(step)
       case Inference.RightAll(step) => Some(step)
       case Inference.Congruence(step) => Some(step)
+      case Inference.Res(step) => Some(step)
       case Inference.NegatedConjecture(step) => Some(step)
+      case Inference.Instantiate_L(step) => Some(step)
       case _ => None
     }
     r
@@ -520,6 +522,15 @@ object Parser {
         }
     }
 
+    object Res {
+      def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] = 
+        ann_seq match {
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("res", Seq(_, StrOrNum(i), StrOrNum(j)), Seq(t1, t2))) =>
+            Some(LVL2.Res(name, convertSequentToFol(sequent), i.toInt, j.toInt, t1, t2))
+          case _ => None
+        }
+    }
+
     object NegatedConjecture {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] = 
         ann_seq match {
@@ -529,5 +540,16 @@ object Parser {
         }
     }
 
+    object Instantiate_L {
+      def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] = 
+        ann_seq match {
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instantiate_l", Seq(_, StrOrNum(i), GenTerm(x), GenTerm(t)), Seq(t1))) =>
+            val x2 = x match 
+              case Term(xs: VariableSymbol, Seq()) => xs
+              case _ => throw new Exception(s"Expected a variable, but got $x")
+            Some(LVL2.Instantiate_L(name, convertSequentToFol(sequent), i.toInt, x2, t, t1))
+          case _ => None
+        }
+    }
   }
 }

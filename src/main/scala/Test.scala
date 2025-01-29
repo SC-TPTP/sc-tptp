@@ -27,8 +27,8 @@ object Test {
     // val problem = reconstructProof(new File("proofs/Test.gothm9.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm10.p"))
     // val problem = reconstructProof(new File("proofs/example.out"))
-    val problem = reconstructProof(new File("proofs/clausified.p"))
-
+    // val problem = reconstructProof(new File("proofs/clausified.p"))
+    val problem = reconstructProof(new File("proofs/big.p"))
     
     println("\nProblem TPTP:")
     println(problem.toString())
@@ -103,7 +103,7 @@ object Test {
     val ax1 = Axiom("ax1", s1)
     val hyp = Hyp("hyp", s1, 0, 1)
     val leftHyp = LeftHyp("leftHyp", s1, 0, 1)
-    val weakening = Weakening("weakening", s1,"p1")
+    val weakening = LeftWeakening("weakening", s1,"p1")
     val cut = Cut("cut", s1, 0, 1, "p1", "p2")
     val leftAnd = LeftAnd("leftAnd", s1, 0, "p1")
     val leftOr = LeftOr("leftOr", s1, 0, "p1", "p2")
@@ -135,7 +135,7 @@ object Test {
     println("ax1: " + ax1.toString())
     println("hyp: " + hyp.toString())
     println("leftHyp: " + leftHyp.toString())
-    println("eakening: " + weakening.toString())
+    println("leftWeakening: " + weakening.toString())
     println("cut: " + cut.toString())
     println("leftAnd: " + leftAnd.toString())
     println("leftOr: " + leftOr.toString())

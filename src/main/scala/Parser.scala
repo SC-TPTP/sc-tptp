@@ -99,7 +99,8 @@ object Parser {
     given (String => Sequent) = sequentmap
     val r: Option[SequentCalculus.SCProofStep] = ann match {
       case Inference.Hyp(step) => Some(step)
-      case Inference.Weakening(step) => Some(step)
+      case Inference.LeftWeakening(step) => Some(step)
+      case Inference.RightWeakening(step) => Some(step)
       case Inference.Cut(step) => Some(step)
       case Inference.LeftHyp(step) => Some(step)
       case Inference.LeftNotNot(step) => Some(step)
@@ -226,11 +227,21 @@ object Parser {
         }
     }
 
-    object Weakening {
+    object LeftWeakening {
+      def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] = 
+        println("Test")
+        ann_seq match {
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftWeaken", Seq(_, StrOrNum(n)), Seq(t1))) =>
+            Some(SC.LeftWeakening(name, convertSequentToFol(sequent), t1))
+          case _ => None
+        }
+    }
+
+    object RightWeakening {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("weakening", Seq(_, StrOrNum(n)), Seq(t1))) =>
-            Some(SC.Weakening(name, convertSequentToFol(sequent), t1))
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightWeaken", Seq(_, StrOrNum(n)), Seq(t1))) =>
+            Some(SC.RightWeakening(name, convertSequentToFol(sequent), t1))
           case _ => None
         }
     }

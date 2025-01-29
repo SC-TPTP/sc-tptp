@@ -89,7 +89,7 @@ object CoqOutput {
     case LeftHyp(name, bot, i, j) => (s"(* [${name}] *) " + "auto.", 0)
     //case LeftWeakening(name, bot, i, t1) => (s"(* [${name}] *) " + s"clear H${i}.", 0)
     //case RightWeakening(name, bot, i, t1) => (s"(* [${name}] *) " + s"clear ${bot.right(i).toString()}.", 0)
-    case Weakening(name, bot, t1) => ???
+    case LeftWeakening(name, bot, t1) => ???
     case Cut(name, bot, i, j, t1, t2) => ("", 1)
     case LVL2.Congruence(name, bot) => (s"(* [${name}] *) congruence.", 0)
 

@@ -14,7 +14,8 @@ object SequentCalculus {
     type RulesName = Value
     val HypRuleName = "hyp"
     val LeftHypRuleName = "leftHyp"
-    val WeakeningRuleName = "Weakening"
+    val LeftWeakeningRuleName = "leftWeakening"
+    val RightWeakeningRuleName = "rightWeakening"
     val CutRuleName = "cut"
     val LeftAndRuleName = "leftAnd"
     val LeftOrRuleName = "leftOr"
@@ -122,6 +123,7 @@ object SequentCalculus {
     val premises: scala.collection.mutable.Map[String, Sequent] = scala.collection.mutable.Map()
     steps.forall(step =>
       premises.update(step.name, step.bot)
+      println(s"Check correctness of : ${premises} : ${step.checkCorrectness(premises)}")
       step.checkCorrectness(premises)
     )
   }
@@ -174,16 +176,33 @@ object SequentCalculus {
   }
 
   /**
-   *    Γ1 |- Δ1
+   *    Γ |- Δ
    * -------------
-   *   Γ1, Γ2 |- Δ1, Δ2
+   *   Γ, A |- Δ1
    *
    * @param bot Resulting formula
    * @param i Index of A on the left
    */
-  case class Weakening(name: String, bot: Sequent, t1: String) extends LVL1ProofStep {
+  case class LeftWeakening(name: String, bot: Sequent, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputNIndexes(name, WeakeningRuleName, bot, List(), Seq(t1))
+    override def toString: String = SCProofStep.outputNIndexes(name, LeftWeakeningRuleName, bot, List(), Seq(t1))
+    def checkCorrectness(premises: String => Sequent): Boolean = 
+      isSubset(premises(t1).left, bot.left) && isSubset(premises(t1).right, bot.right)
+      
+  }
+
+
+   /**
+   *    Γ |- Δ
+   * -------------
+   *   Γ |- Δ, A
+   *
+   * @param bot Resulting formula
+   * @param i Index of A on the right
+   */
+  case class RightWeakening(name: String, bot: Sequent, t1: String) extends LVL1ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = SCProofStep.outputNIndexes(name, RightWeakeningRuleName, bot, List(), Seq(t1))
     def checkCorrectness(premises: String => Sequent): Boolean = 
       isSubset(premises(t1).left, bot.left) && isSubset(premises(t1).right, bot.right)
       

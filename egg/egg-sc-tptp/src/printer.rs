@@ -190,9 +190,9 @@ impl std::fmt::Display for SCTPTPRule {
       SCTPTPRule::RightSubstIff {name, bot, premise, i, phi, v} => 
         write!(f, "fof({}, plain, {}, inference(rightSubstIff, param({}, $fof({}), $fof({})), [{}])).", name, bot, i, phi, v, premise),
       SCTPTPRule::LeftForall {name, bot, premise, i, t} => 
-        write!(f, "fof({}, plain, {}, inference(leftForall, param({}, $fot({}), $fot({})), [{}])).", name, bot, i, t, t, premise),
+        write!(f, "fof({}, plain, {}, inference(leftForall, param({}, $fot({})), [{}])).", name, bot, i, t, premise),
       SCTPTPRule::Cut {name, bot, premise1, premise2, i1, i2} => 
-        write!(f, "fof({}, plain, {}, inference(cut, param({}, {}), [{}, {}])).", name, bot, premise1, premise2, i1, i2),
+        write!(f, "fof({}, plain, {}, inference(cut, param({}, {}), [{}, {}])).", name, bot, i1, i2, premise1, premise2),
       SCTPTPRule::RightSubstEqForallLocal {name, bot, premise, i, phi, v} =>
         write!(f, "fof({}, plain, {}, inference(rightSubstEqForallLocal, param({}, $fof({}), $fot({})), [{}])).", name, bot, i, phi, v, premise),
       SCTPTPRule::RightSubstEqForall {name, bot, premise1, premise2, phi, v} =>
@@ -247,7 +247,8 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
       proof.push(subst_step);
       variables.iter().enumerate().rev().for_each(|(nth, v)| {
         let v_var = fol::Term::Function(v.to_owned(), Vec::new());
-        let inst_term: &fol::Term = match_map.get(v as &str).unwrap_or(&v_var);
+        let inst_term: fol::Term = match_map.get(v as &str).unwrap_or(&v_var).clone();
+        match_map.remove(&v as &str);
         vars.insert(0, v.to_owned());
         let new_inner = fol::Formula::Iff(Box::new(instantiate_formula(&rule_left, &match_map)), Box::new(instantiate_formula(&rule_right, &match_map)));
         *i+=1; 
@@ -264,9 +265,8 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
           bot: fol::Sequent {left: newleft, right: vec![res.clone()]},
           premise: format!("f{}", *i-1),
           i: forall_no,
-          t: inst_term.clone()
+          t: inst_term
         };
-        match_map.remove(&v as &str);
         proof.push(forall_rule);
         
       });
@@ -275,8 +275,8 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
         let cut_rule = Cut {
           name: format!("f{}", *i),
           bot: fol::Sequent {left: left.clone(), right: vec![res.clone()]},
-          premise1: format!("f{}", *i-1),
-          premise2: rule_name,
+          premise1: rule_name,
+          premise2: format!("f{}", *i-1),
           i1: 0,
           i2: 0
         };
@@ -302,7 +302,8 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
       let mut vars: Vec<String> = Vec::new();
       variables.iter().enumerate().rev().for_each(|(nth, v)| {
         let v_var = &fol::Term::Function(v.to_owned(), Vec::new());
-        let inst_term: &fol::Term = match_map.get(v as &str).unwrap_or(v_var);
+        let inst_term: fol::Term = match_map.get(v as &str).unwrap_or(v_var).clone();
+        match_map.remove(&v as &str);
         vars.insert(0, v.to_owned());
         let new_inner = equals(&fol::instantiate_term(&rule_left, &match_map), &fol::instantiate_term(&rule_right, &match_map));
         *i+=1; 
@@ -319,9 +320,8 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
           bot: fol::Sequent {left: newleft, right: vec![res.clone()]},
           premise: format!("f{}", *i-1),
           i: forall_no,
-          t: inst_term.clone()
+          t: inst_term
         };
-        match_map.remove(&v as &str);
         proof.push(forall_rule);
         
       });
@@ -330,8 +330,8 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
         let cut_rule = Cut {
           name: format!("f{}", *i),
           bot: fol::Sequent {left: left.clone(), right: vec![res]},
-          premise1: format!("f{}", *i-1),
-          premise2: rule_name,
+          premise1: rule_name,
+          premise2: format!("f{}", *i-1),
           i1: 0,
           i2: 0
         };

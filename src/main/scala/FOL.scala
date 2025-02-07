@@ -150,6 +150,10 @@ object FOL {
   /** Formulas of first order logic, which can be either Quantified formulas, connector formulas or atomic formulas */
   sealed trait Formula {
     def freeVariables: Set[VariableSymbol]
+
+    def getFreeVariables(): Seq[Term] = {
+      freeVariables.foldLeft(Seq())((acc, x) => acc :+ Variable(x))
+    }
   }
 
   /** Formulas made of an atomic symbol and a (possibly empty) list of terms */

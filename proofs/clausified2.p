@@ -14,7 +14,7 @@ fof(nc1, negated_conjecture,
 ).
 
 fof(nc2, plain,
-  (~q(Y) || p(f(Y))) && (~q(Y) || p(b))   &&   ( p(X) || q(Y) )   &&   ( ~p(f(f(a))) || ~p(c) ),
+  (~q(Y) || p(f(Y))) && (~q(Y) || p(c))   &&   ( p(X) || q(Y) )   &&   ( ~p(f(f(a))) || ~p(c) ),
   inference(tseitin, [], [nc1])
 ).
 
@@ -89,7 +89,7 @@ fof(nc1, plain,
 inference(Hyp, fof(phi), [])
 ).
 
-let(ts_q, Q(Y) <=> (p(f(Y)) || p(c)))
+let(ts_q, Q(Y) <=> (p(f(Y)) && p(c)))
 
 fof(nc2, plain, 
   [~phi, ts_q] --> [p(X) || Q(Y) && ~p(f(f(a))) || ~p(c)],

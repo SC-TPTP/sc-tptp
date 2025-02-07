@@ -89,27 +89,27 @@ fof(nc1, plain,
 inference(Hyp, fof(phi), [])
 ).
 
-let(ts_q, q(Y) <=> (p(f(Y)) || p(c)))
+let(ts_q, Q(Y) <=> (p(f(Y)) || p(c)))
 
 fof(nc2, plain, 
-  [~phi, ts_q] --> [p(X) || q(Y) && ~p(f(f(a))) || ~p(c)],
+  [~phi, ts_q] --> [p(X) || Q(Y) && ~p(f(f(a))) || ~p(c)],
   inference(rightSubstIff, [2, ..., ...], [nc1])
 ).
 
   %%-------- Initial Clauses --------
 
 fof(f1, plain
-  [~phi, ts_q] --> [~q(Y), p(f(Y))],
+  [~phi, ts_q] --> [~Q(Y), p(f(Y))],
   inference(conj, [...], [])
 ).
 
 fof(f2, plain
-  [~phi, ts_q] --> [~q(Y), p(c)],
+  [~phi, ts_q] --> [~Q(Y), p(c)],
   inference(conj, [...], [])
 ).
 
 fof(f3, plain
-  [~phi, ts_q] --> [p(X), q(Y)],
+  [~phi, ts_q] --> [p(X), Q(Y)],
   inference(conj, [...], [])
 ).
 
@@ -150,16 +150,16 @@ fof(f10, plain
   inference(resolution, [1, 1], [f8, f9])
 ).
 
+  %%-------- Elimination of Tseitin Assumptions --------
+  
 fof(lem1, plain
   [] --> [A <=> A]
   inference(iff_refl, [], [])
 ).
 
-
-  %%-------- Elimination of Tseitin Assumptions --------
 fof(s1, plain
   [~phi, (p(f(Y)) || p(c)) <=> (p(f(Y)) || p(c))] --> [],
-  inference(inst, [q(Y), (p(f(Y)) || p(c))], [f10])
+  inference(inst, [Q(Y), (p(f(Y)) || p(c))], [f10])
 ).
 
 fof(s2, plain

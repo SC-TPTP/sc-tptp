@@ -95,7 +95,7 @@ object CoqOutput {
 
     case LeftAnd(name, bot, i, t1) => (s"(* [${name}] *) " + makeAlphaStep(LeftAndRuleName, i, indexNextIntro, 2), 2)
     case LeftOr(name, bot, i, t1, t2) => (s"(* [${name}] *) " + makeBetaStep(LeftOrRuleName, i, indexNextIntro, 2), 1)
-    case LeftImp1(name, bot, i, t1, t2) => (s"(* [${name}] *) " + makeBetaStep(LeftImp1RuleName, i, indexNextIntro, 2), 1)
+    case LeftImplies(name, bot, i, t1, t2) => (s"(* [${name}] *) " + makeBetaStep(LeftImpliesRuleName, i, indexNextIntro, 2), 1)
     case LeftImp2(name, bot, i, t1, t2) => (s"(* [${name}] *) " + makeBetaStep(LeftImp2RuleName, i, indexNextIntro, 2), 1)
     case LeftIff(name, bot, i, t1) => (s"(* [${name}] *) " + makeAlphaStep(LeftIffRuleName, i, indexNextIntro, 2), 2)
     case LeftNot(name, bot, i, t1) => (s"(* [${name}] *) " + makeAlphaStep(LeftNotRuleName, i, indexNextIntro, 1), 2)
@@ -104,7 +104,7 @@ object CoqOutput {
 
     case RightAnd(name, bot, i, t1, t2) => (s"(* [${name}] *) " + makeBetaStep(RightAndRuleName, i, indexNextIntro, 2), 1)
     case RightOr(name, bot, i, t1) => (s"(* [${name}] *) " + makeAlphaStep(RightOrRuleName, i, indexNextIntro, 2), 2)
-    case RightImp(name, bot, i, t1) => (s"(* [${name}] *) " + makeAlphaStep(RightImpRuleName, i, indexNextIntro, 2), 2)
+    case RightImplies(name, bot, i, t1) => (s"(* [${name}] *) " + makeAlphaStep(RightImpliesRuleName, i, indexNextIntro, 2), 2)
     case RightIff(name, bot, i, t1, t2) => (s"(* [${name}] *) " + makeBetaStep(RightIffRuleName, i, indexNextIntro, 1), 1)
     case RightNot(name, bot, i, t1) => (s"(* [${name}] *) " + makeAlphaStep(RightNotRuleName, i, indexNextIntro, 1), 2)
     case RightEx(name, bot, i, y, t1) => (s"(* [${name}] *) apply H${i}. exists ${y}. apply NNPP. intros H${indexNextIntro}. ", 1)

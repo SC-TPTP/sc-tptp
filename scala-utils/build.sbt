@@ -16,7 +16,7 @@ ThisBuild / scalafixDependencies += "com.github.liancheng" %% "organize-imports"
 
 def githubProject(repo: String, commitHash: String) = RootProject(uri(s"$repo#$commitHash"))
 
-lazy val customTstpParser = githubProject("https://github.com/SimonGuilloud/scala-tptp-parser.git", "eae9c1b7a9546f74779d77ff50fa6e8a1654cfa0")
+lazy val customTstpParser = githubProject("https://github.com/SC-TPTP/scala-tptp-parser.git", "01677c630e080c7e453361d682efb09e5aac2c76")
 
 lazy val root = project
   .in(file("."))

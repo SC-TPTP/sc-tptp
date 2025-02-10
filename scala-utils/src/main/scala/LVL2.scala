@@ -20,9 +20,9 @@ object LVL2 {
    * @param P Shape of the formula in which the substitution occurs
    * @param x Variable indicating where in P the substitution occurs
    */
-  case class RightSubstMulti(name: String, bot: Sequent, is: List[Int], j: Int, P: Formula, xs: List[VariableSymbol], t1: String) extends StrictLVL2ProofStep {
+  case class RightSubstMulti(name: String, bot: Sequent, is: List[Int], P: Formula, xs: List[VariableSymbol], t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithSubstMany(name, "rightSubstMulti", bot, is, j, P.toString(), xs.map(_.toString()), premises)
+    override def toString: String = SCProofStep.outputWithSubstMany(name, "rightSubstMulti", bot, is, P.toString(), xs.map(_.toString()), premises)
 
     def checkCorrectness(premises: String => Sequent): Boolean =
       val (ls, rs) = is.foldLeft(None: Option[(List[Term], List[Term])]) {
@@ -51,9 +51,9 @@ object LVL2 {
    * @param P Shape of the formula in which the substitution occurs
    * @param x Variable indicating where in P the substitution occurs
    */
-  case class LeftSubstMulti(name: String, bot: Sequent, is: List[Int], j: Int, P: Formula, xs: List[VariableSymbol], t1: String) extends StrictLVL2ProofStep {
+  case class LeftSubstMulti(name: String, bot: Sequent, is: List[Int], P: Formula, xs: List[VariableSymbol], t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithSubstMany(name, "leftSubstMulti", bot, is, j, P.toString(), xs.map(_.toString()), premises)
+    override def toString: String = SCProofStep.outputWithSubstMany(name, "leftSubstMulti", bot, is, P.toString(), xs.map(_.toString()), premises)
 
     def checkCorrectness(premises: String => Sequent): Boolean =
       val (ls, rs) = is.foldLeft(None: Option[(List[Term], List[Term])]) {

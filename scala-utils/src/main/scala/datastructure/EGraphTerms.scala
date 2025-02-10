@@ -159,7 +159,7 @@ class EGraphTerms() {
             else
               val x = VariableSymbol(freshId(id1.freeVariables.map(_.name), "x"))
               val leftIndex = ctx1.indexWhere(f => f == (left === right) || f == (right === left))
-              val newstep = SC.RightSubst(s"$stepString$no", SC.Sequent(ctx1, (id1 === right) +: ctx2), leftIndex, 0, id1 === x(), x, s"$stepString${no-1}")
+              val newstep = SC.RightSubst(s"$stepString$no", SC.Sequent(ctx1, (id1 === right) +: ctx2), leftIndex, id1 === x(), x, s"$stepString${no-1}")
               proof = newstep :: proof
               no += 1
 
@@ -180,7 +180,7 @@ class EGraphTerms() {
             if !first then {
               val x = VariableSymbol(freshId(id1.freeVariables.map(_.name), "X"))
               val leftIndex = ctx1.find(_ == (left === right))
-              val cond_id1_eq_r = SC.RightSubst(name1, SC.Sequent((left === right) +: ctx1, (id1 === right) +: ctx2), 0, 0, id1 === x(), x, s"$stepString${no-1}") // ** 1.
+              val cond_id1_eq_r = SC.RightSubst(name1, SC.Sequent((left === right) +: ctx1, (id1 === right) +: ctx2), 0, id1 === x(), x, s"$stepString${no-1}") // ** 1.
               proof = cond_id1_eq_r :: proof
               no += 1
               assert(left.label == right.label, s"Congruence: left and right should have the same label but obtained\n left: $left\n right: $right")
@@ -211,8 +211,7 @@ class EGraphTerms() {
             val left_eq_right = sctptp.LVL2.RightSubstMulti(
               name3, 
               SC.Sequent(eqs.map(_ === _) ++ ctx1, (left === right) +: ctx2),
-              (0 until eqs.size).toList, 
-              0, 
+              (0 until eqs.size).toList,
               P, 
               freeVars.toList, 
               name2

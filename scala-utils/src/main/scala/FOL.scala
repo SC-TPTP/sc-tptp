@@ -26,6 +26,8 @@ object FOL {
     require(Identifier.isValidIdentifier(name), "Identifier " + name + "is not valid.")
     override def toString(): String = if (no == 0) name else name + Identifier.counterSeparator + no
 
+    def isUpper: Boolean = name(0).isUpper
+
 
   }
   object Identifier {
@@ -211,6 +213,15 @@ object FOL {
     case Term(label, args) => Term(label, args.map(substituteVariablesInTerm(_, m)))
   }
 
+  def substituteFunctionsInTerm(t: Term, m: Map[FunctionSymbol, (Term, List[VariableSymbol])]): Term = t match {
+    case Term(label: FunctionSymbol, args) => 
+      if m.contains(label) then 
+        val (newTerm, vars) = m(label)
+        val newSubst = vars.zip(args).toMap
+        substituteVariablesInTerm(newTerm, newSubst)
+      else Term(label, args.map(substituteFunctionsInTerm(_, m)))
+  }
+
   /** Computes the (simultaneous) substitution of some variables by some terms, in a formula */
   def substituteVariablesInFormula(phi: Formula, m: Map[VariableSymbol, Term], takenIds: Seq[Identifier] = Seq[Identifier]()): Formula = phi match {
     case AtomicFormula(label, args) => AtomicFormula(label, args.map(substituteVariablesInTerm(_, m)))
@@ -225,6 +236,57 @@ object FOL {
         BinderFormula(label, newBoundVariable, substituteVariablesInFormula(newInner, newSubst, newTaken))
       } else BinderFormula(label, bound, substituteVariablesInFormula(inner, newSubst, newTaken))
   }
+
+  /** Computes the simultaneous substitution of some schematics function symbols by some terms (with holes), in a formula */
+  def substituteFunctionsInFormula(phi: Formula, m: Map[FunctionSymbol, (Term, List[VariableSymbol])], takenIds: Seq[Identifier] = Seq[Identifier]()): Formula = phi match {
+    case AtomicFormula(label, args) => AtomicFormula(label, args.map(substituteFunctionsInTerm(_, m)))
+    case ConnectorFormula(label, args) => ConnectorFormula(label, args.map(substituteFunctionsInFormula(_, m))
+    )
+    case BinderFormula(label, bound, inner) => 
+      val newTaken = takenIds :+ bound.id
+      val fv = m.values.flatMap((t, lv) => t.freeVariables -- lv.toSet).toSet
+      if (fv.contains(bound)) {
+        val newBoundVariable = VariableSymbol(freshId(fv.map(_.name) ++ m.keys.map(_.id) ++ newTaken, bound.name))
+        val newInner = substituteVariablesInFormula(inner, Map(bound -> Variable(newBoundVariable)), newTaken)
+        BinderFormula(label, newBoundVariable, substituteFunctionsInFormula(newInner, m, newTaken))
+      } else BinderFormula(label, bound, substituteFunctionsInFormula(inner, m, newTaken))
+  }
+
+
+  def substituteAtomicsInFormula(phi: Formula, m: Map[AtomicSymbol, Formula], takenIds: Seq[Identifier] = Seq[Identifier]()): Formula = phi match {
+    case AtomicFormula(label, args) => if args.size == 0 then m.getOrElse(label, phi) else phi
+    case ConnectorFormula(label, args) => ConnectorFormula(label, args.map(substituteAtomicsInFormula(_, m))
+    )
+    case BinderFormula(label, bound, inner) => 
+      val newTaken = takenIds :+ bound.id
+      val fv = m.values.flatMap(_.freeVariables).toSet
+      if (fv.contains(bound)) {
+        val newBoundVariable = VariableSymbol(freshId(fv.map(_.name) ++ m.keys.map(_.id) ++ newTaken, bound.name))
+        val newInner = substituteVariablesInFormula(inner, Map(bound -> Variable(newBoundVariable)), newTaken)
+        BinderFormula(label, newBoundVariable, substituteAtomicsInFormula(newInner, m, newTaken))
+      } else BinderFormula(label, bound, substituteAtomicsInFormula(inner, m, newTaken))
+  }
+
+
+  def substitutePredicatesInFormula(phi: Formula, m: Map[AtomicSymbol, (Formula, List[VariableSymbol])], takenIds: Seq[Identifier] = Seq[Identifier]()): Formula = phi match {
+    case AtomicFormula(label, args) => 
+      if m.contains(label) then
+        val (newFormula, vars) = m(label)
+        val newSubst = vars.zip(args).toMap
+        substituteVariablesInFormula(newFormula, newSubst)
+      else phi
+    case ConnectorFormula(label, args) => ConnectorFormula(label, args.map(substitutePredicatesInFormula(_, m)))
+    case BinderFormula(label, bound, inner) => 
+      val newTaken = takenIds :+ bound.id
+      val fv = m.values.flatMap((t, lv) => t.freeVariables -- lv.toSet).toSet
+      if (fv.contains(bound)) {
+        val newBoundVariable = VariableSymbol(freshId(fv.map(_.name) ++ m.keys.map(_.id) ++ newTaken, bound.name))
+        val newInner = substituteVariablesInFormula(inner, Map(bound -> Variable(newBoundVariable)), newTaken)
+        BinderFormula(label, newBoundVariable, substitutePredicatesInFormula(newInner, m, newTaken))
+      } else BinderFormula(label, bound, substitutePredicatesInFormula(inner, m, newTaken))
+  }
+
+
 
   extension (tl: TermSymbol) {
     def apply(args: Term*): Term = Term(tl, args)

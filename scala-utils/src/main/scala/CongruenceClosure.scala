@@ -87,7 +87,6 @@ object CongruenceClosure {
               congName, 
               SC.Sequent(childrenPairs.map(_ === _) ++ bot.left, bot.right),
               (0 until childrenPairs.size).toList,
-              i,
               la.label(xs map (_())),
               xs,
               s"${sname}_${unfoldCounter}_h"

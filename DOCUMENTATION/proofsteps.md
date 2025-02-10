@@ -5,32 +5,32 @@
 | :--       | :--      | :--        | :--          |  :--     |
 | `rightTrue` | 0      | $$\frac{}{\Gamma \vdash \top, \Delta}$$ | `i:Int`: Index of $\top$ on the right | |
 | `leftFalse` | 0      | $$\frac{}{\Gamma, \bot \vdash \Delta}$$ | `i:Int`: Index of $\bot$ on the left | |
-| `hyp`    | 0        | $$\frac{}{\Gamma, A \vdash A, \Delta}$$ | `i:Int`: Index of $A$ on the left   <br> `j:Int`: Index of $A$ on the right | |
-| `leftHyp` | 0       | $$\frac{}{\Gamma, A, \neg A \vdash \Delta}$$ | `i:Int`: Index of $A$ on the left   <br> `j:Int`: Index of $\neg A$ on the left. | |
-| `leftWeaken` | 1    | $$\frac{\Gamma \vdash \Delta}{\Gamma, A \vdash \Delta}$$ | `i:Int`: Index of $A$ on the left | |
-| `rightWeaken` | 1   | $$\frac{\Gamma \vdash \Delta}{\Gamma \vdash A, \Delta}$$ | `i:Int`: Index of $A$ on the right | |
-| `cut` | 2           | $$\frac{\Gamma \vdash A, \Delta \quad \Sigma, A \vdash \Pi}{\Gamma, \Sigma \vdash \Delta, \Pi}$$ |`i:Int`: Index of the cut formula on the right of the first premise | |
-| `leftAnd` | 1       | $$\frac{\Gamma, A, B \vdash \Delta}{\Gamma, A \land B \vdash \Delta}$$ | `i:Int`: Index of $A \land B$ on the left | |
-| `leftOr` | 2        | $$\frac{\Gamma, A \vdash \Delta \quad \Sigma, B \vdash \Pi}{\Gamma, \Sigma, A \lor B \vdash \Delta, \Pi}$$ | `i:Int`: Index of $A \lor B$ on the left | |
-| `leftImplies` | 2   | $$\frac{\Gamma \vdash A, \Delta \quad \Sigma, B \vdash \Pi}{\Gamma, \Sigma, A \Rightarrow B \vdash \Delta, \Pi}$$ | `i:Int`: Index of $A \Rightarrow B$ on the left | |
-| `leftIff` | 1       | $$\frac{\Gamma, A \Rightarrow B, B \Rightarrow A \vdash \Delta}{\Gamma, A \Leftrightarrow B \vdash \Delta}$$ | `i:Int`: Index of $A \Leftrightarrow B$ on the left | |
-| `leftNot` | 1       | $$\frac{\Gamma \vdash A, \Delta}{\Gamma, \neg A \vdash \Delta}$$ | `i:Int`: Index of $\neg A$ on the left | |
-| `leftEx` | 1        | $$\frac{\Gamma, A \vdash \Delta}{\Gamma, \exists x. A \vdash \Delta}$$ | `i:Int`: Index of $\exists x. A$ on the left <br> `y:Var`: Variable in place of $x$ in the premise | |
-| `leftAll` | 1       | $$\frac{\Gamma, A[x := t] \vdash \Delta}{\Gamma, \forall x. A  \vdash \Delta}$$ | `i:Int`: Index of $\forall x. A$ on the left <br> `t:Term`: Term in place of $x$ in the premise | |
-| `rightAnd` | 2      | $$\frac{\Gamma \vdash A \Delta \quad \Sigma, B \vdash \Pi}{\Gamma, \Sigma \vdash A \land B, \Delta, \Pi}$$ | `i:Int`: Index of $A \land B$ on the right | |
-| `rightOr` | 1       | $$\frac{\Gamma \vdash A, \Delta}{\Gamma \vdash A \lor B, \Delta}$$ | `i:Int`: Index of $A \lor B$ on the right | |
-| `rightImplies` | 1  | $$\frac{\Gamma, A \vdash B, \Delta}{\Gamma \vdash A \Rightarrow B, \Delta}$$ | `i:Int`: Index of $A \Rightarrow B$ on the right | |
-| `rightIff` | 1      | $$\frac{\Gamma \vdash A \Rightarrow B, B \Rightarrow A, \Delta}{\Gamma \vdash A \Leftrightarrow B, \Delta}$$ | `i:Int`: Index of $A \Leftrightarrow B$ on the right | |
-| `rightNot` | 1      | $$\frac{\Gamma \vdash A, \Delta}{\Gamma \vdash \neg A, \Delta}$$ | `i:Int`: Index of $\neg A$ on the right | |
-| `rightEx` | 1       | $$\frac{\Gamma \vdash A, \Delta}{\Gamma \vdash \exists x. A, \Delta}$$ | `i:Int`: Index of $\exists x. A$ on the right <br> `y:Var`: Variable in place of $x$ in the premise | |
-| `rightAll` | 1      | $$\frac{\Gamma \vdash A[x := y], \Delta}{\Gamma \vdash \forall x. A, \Delta}$$ | `i:Int`: Index of $\forall x. A$ on the right <br> `y:Var`: Variable in place of $x$ in the premise | |
-| `rightRefl` | 0     | $$\frac{}{\Gamma \vdash t = t, \Delta}$$ | `i:Int`: Index of $ t = t $ on the right | |
-| `rightSubst` | 1    | $$\frac{\Gamma \vdash P(t), \Delta}{\Gamma, t = u \vdash P(u), \Delta}$$ | `i:Int`: Index of $t = u$ on the left <br> `P(Z):Var`: Shape of the predicate on the right <br> `Z:Var`: unifiable sub-term in the predicate | |
-| `leftSubst` | 1     | $$\frac{\Gamma, P(t) \vdash \Delta}{\Gamma, t = u,  P(u) \vdash \Delta}$$ | `i:Int`: Index of $t = u$ on the left <br> `P(Z):Term`: Shape of the predicate on the left <br> `Z:Var`: variable indicating where to substitute | |
-| `rightSubstIff` | 1 | $$\frac{\Gamma\vdash R(\phi), \Delta}{\Gamma, \phi \Leftrightarrow \psi \vdash R(\psi), \Delta}$$ | `i:Int`: Index of $\phi \Leftrightarrow \psi$ on the left <br> `R(Z):Var`: Shape of the predicate on the right <br> `Z:FormVar`: unifiable sub-term in the predicate | Requires `Schematic` enabled.|
-| `leftSubstIff` | 1  | $$\frac{\Gamma, R(\phi),  \vdash \Delta}{\Gamma, \phi \Leftrightarrow \psi, R(\psi) \vdash \Delta}$$ | `i:Int`: Index of $\phi \Leftrightarrow \psi$ on the left <br> `R(Z):Var`: Shape of the predicate on the right <br> `Z:FormVar`: unifiable sub-term in the predicate | Requires `Schematic` enabled.|
-| `InstFun` | 1  | $$\frac{\Gamma[F_X] \vdash \Delta[F_X]}{\Gamma[F_X := t_X] \vdash \Delta[F_X := t_X]}$$ | `F(X1, ..., Xn):Term`: Schematic function to substitue. `n`can be $0$. `t:Term`: Term, possibly containing $X_1, ..., X_n$, to instantiate $F$ with. | Requires `Schematic` enabled. If $n$ is 0, $F$ is a variable. Otherwise it is a function of arity $n$, starting with a capital letter.|
-| `InstPred` | 1  | $$\frac{\Gamma[P_X] \vdash \Delta[P_X]}{\Gamma[P_X := \phi_X] \vdash \Delta[P_X := \phi_X]}$$ | `P(X1, ..., Xn):Formula`: Schematic predicate to substitue. `n`can be $0$. `\phi:Formula`: Formula, possibly containing $X_1, ..., X_n$, to instantiate $F$ with. | Requires `Schematic` enabled. If $n$ is 0, $F$ is a formula variable. Otherwise it is a predicate of arity $n$, starting with a capital letter.|
+| `hyp`    | 0         | $$\frac{}{\Gamma, A \vdash A, \Delta}$$ | `i:Int`: Index of $A$ on the left   <br> `j:Int`: Index of $A$ on the right | |
+| `leftHyp` | 0        | $$\frac{}{\Gamma, A, \neg A \vdash \Delta}$$ | `i:Int`: Index of $A$ on the left   <br> `j:Int`: Index of $\neg A$ on the left. | |
+| `leftWeaken` | 1     | $$\frac{\Gamma \vdash \Delta}{\Gamma, A \vdash \Delta}$$ | `i:Int`: Index of $A$ on the left | |
+| `rightWeaken` | 1    | $$\frac{\Gamma \vdash \Delta}{\Gamma \vdash A, \Delta}$$ | `i:Int`: Index of $A$ on the right | |
+| `cut` | 2            | $$\frac{\Gamma \vdash A, \Delta \quad \Sigma, A \vdash \Pi}{\Gamma, \Sigma \vdash \Delta, \Pi}$$ |`i:Int`: Index of the cut formula on the right of the first premise | |
+| `leftAnd` | 1        | $$\frac{\Gamma, A, B \vdash \Delta}{\Gamma, A \land B \vdash \Delta}$$ | `i:Int`: Index of $A \land B$ on the left | |
+| `leftOr` | 2         | $$\frac{\Gamma, A \vdash \Delta \quad \Sigma, B \vdash \Pi}{\Gamma, \Sigma, A \lor B \vdash \Delta, \Pi}$$ | `i:Int`: Index of $A \lor B$ on the left | |
+| `leftImplies` | 2    | $$\frac{\Gamma \vdash A, \Delta \quad \Sigma, B \vdash \Pi}{\Gamma, \Sigma, A \Rightarrow B \vdash \Delta, \Pi}$$ | `i:Int`: Index of $A \Rightarrow B$ on the left | |
+| `leftIff` | 1        | $$\frac{\Gamma, A \Rightarrow B, B \Rightarrow A \vdash \Delta}{\Gamma, A \Leftrightarrow B \vdash \Delta}$$ | `i:Int`: Index of $A \Leftrightarrow B$ on the left | |
+| `leftNot` | 1        | $$\frac{\Gamma \vdash A, \Delta}{\Gamma, \neg A \vdash \Delta}$$ | `i:Int`: Index of $\neg A$ on the left | |
+| `leftEx` | 1         | $$\frac{\Gamma, A \vdash \Delta}{\Gamma, \exists x. A \vdash \Delta}$$ | `i:Int`: Index of $\exists x. A$ on the left <br> `y:Var`: Variable in place of $x$ in the premise | |
+| `leftAll` | 1        | $$\frac{\Gamma, A[x := t] \vdash \Delta}{\Gamma, \forall x. A  \vdash \Delta}$$ | `i:Int`: Index of $\forall x. A$ on the left <br> `t:Term`: Term in place of $x$ in the premise | |
+| `rightAnd` | 2       | $$\frac{\Gamma \vdash A \Delta \quad \Sigma, B \vdash \Pi}{\Gamma, \Sigma \vdash A \land B, \Delta, \Pi}$$ | `i:Int`: Index of $A \land B$ on the right | |
+| `rightOr` | 1        | $$\frac{\Gamma \vdash A, \Delta}{\Gamma \vdash A \lor B, \Delta}$$ | `i:Int`: Index of $A \lor B$ on the right | |
+| `rightImplies` | 1   | $$\frac{\Gamma, A \vdash B, \Delta}{\Gamma \vdash A \Rightarrow B, \Delta}$$ | `i:Int`: Index of $A \Rightarrow B$ on the right | |
+| `rightIff` | 1       | $$\frac{\Gamma \vdash A \Rightarrow B, B \Rightarrow A, \Delta}{\Gamma \vdash A \Leftrightarrow B, \Delta}$$ | `i:Int`: Index of $A \Leftrightarrow B$ on the right | |
+| `rightNot` | 1       | $$\frac{\Gamma \vdash A, \Delta}{\Gamma \vdash \neg A, \Delta}$$ | `i:Int`: Index of $\neg A$ on the right | |
+| `rightEx` | 1        | $$\frac{\Gamma \vdash A, \Delta}{\Gamma \vdash \exists x. A, \Delta}$$ | `i:Int`: Index of $\exists x. A$ on the right <br> `y:Var`: Variable in place of $x$ in the premise | |
+| `rightAll` | 1       | $$\frac{\Gamma \vdash A[x := y], \Delta}{\Gamma \vdash \forall x. A, \Delta}$$ | `i:Int`: Index of $\forall x. A$ on the right <br> `y:Var`: Variable in place of $x$ in the premise | |
+| `rightRefl` | 0      | $$\frac{}{\Gamma \vdash t = t, \Delta}$$ | `i:Int`: Index of $ t = t $ on the right | |
+| `rightSubst` | 1     | $$\frac{\Gamma \vdash P(t), \Delta}{\Gamma, t = u \vdash P(u), \Delta}$$ | `i:Int`: Index of $t = u$ on the left <br> `P(Z):Var`: Shape of the predicate on the right <br> `Z:Var`: unifiable sub-term in the predicate | |
+| `leftSubst` | 1      | $$\frac{\Gamma, P(t) \vdash \Delta}{\Gamma, t = u,  P(u) \vdash \Delta}$$ | `i:Int`: Index of $t = u$ on the left <br> `P(Z):Term`: Shape of the predicate on the left <br> `Z:Var`: variable indicating where to substitute | |
+| `rightSubstIff` | 1  | $$\frac{\Gamma\vdash R(\phi), \Delta}{\Gamma, \phi \Leftrightarrow \psi \vdash R(\psi), \Delta}$$ | `i:Int`: Index of $\phi \Leftrightarrow \psi$ on the left <br> `R(Z):Var`: Shape of the predicate on the right <br> `Z:FormVar`: unifiable sub-term in the predicate | Requires `Schematic` enabled.|
+| `leftSubstIff` | 1   | $$\frac{\Gamma, R(\phi),  \vdash \Delta}{\Gamma, \phi \Leftrightarrow \psi, R(\psi) \vdash \Delta}$$ | `i:Int`: Index of $\phi \Leftrightarrow \psi$ on the left <br> `R(Z):Var`: Shape of the predicate on the right <br> `Z:FormVar`: unifiable sub-term in the predicate | Requires `Schematic` enabled.|
+| `instFun` | 1        | $$\frac{\Gamma[F_X] \vdash \Delta[F_X]}{\Gamma[F_X := t_X] \vdash \Delta[F_X := t_X]}$$ | `F(X1, ..., Xn):Term`: Schematic function to substitue. `n`can be $0$. `t:Term`: Term, possibly containing $X_1, ..., X_n$, to instantiate $F$ with. | Requires `Schematic` enabled. If $n$ is 0, $F$ is a variable. Otherwise it is a function of arity $n$, starting with a capital letter.|
+| `instPred` | 1       | $$\frac{\Gamma[P_X] \vdash \Delta[P_X]}{\Gamma[P_X := \phi_X] \vdash \Delta[P_X := \phi_X]}$$ | `P(X1, ..., Xn):Formula`: Schematic predicate to substitue. `n`can be $0$. `\phi:Formula`: Formula, possibly containing $X_1, ..., X_n$, to instantiate $F$ with. | Requires `Schematic` enabled. If $n$ is 0, $F$ is a formula variable. Otherwise it is a predicate of arity $n$, starting with a capital letter.|
 
 
 # Level 2 Proof Steps

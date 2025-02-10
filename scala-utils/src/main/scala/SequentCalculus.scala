@@ -82,10 +82,17 @@ object SequentCalculus {
     def outputWithSubst(name: String, rule: String, bot: Sequent, i: Int, term: String, subterm: String, premises: Seq[String]): String = 
       s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${i}, $$fof(${term})) $$fot(${subterm})], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
 
+    def outputWithSubstIff(name: String, rule: String, bot: Sequent, i: Int, term: String, subterm: String, premises: Seq[String]): String = 
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${i}, $$fof(${term})) $$fof(${subterm})], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+
     def outputWithSubstMany(name: String, rule: String, bot: Sequent, is: List[Int], term: String, subterms: List[String], premises: Seq[String]): String = 
       s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), [${is.mkString(", ")}], $$fof(${term}), [${subterms.map(st => s"$$fot(${st})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
 
+    def outputWithInstFun(name: String, rule: String, bot: Sequent, F: FunctionSymbol, t: (Term, List[VariableSymbol]), premises: Seq[String]): String = 
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), $$fot(${F.toString()}), $$fot(${t._1.toString()}), [${t._2.map(st => s"$$fot(${st.toString()})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
 
+    def outputWithInstPred(name: String, rule: String, bot: Sequent, P: AtomicSymbol, phi: (Formula, List[VariableSymbol]), premises: Seq[String]): String = 
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), $$fof(${P.toString()}), $$fot(${phi._1.toString()}), [${phi._2.map(st => s"$$fot(${st.toString()})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
   }
 
   trait SCProof[Steps<:SCProofStep] {
@@ -597,7 +604,7 @@ object SequentCalculus {
    */
   case class RightSubst(name: String, bot: Sequent, i: Int, P: Formula, x: VariableSymbol, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithSubst(name, RightSubstRuleName, bot, i, P.toString(), x.toString(), premises)
+    override def toString: String = SCProofStep.outputWithSubstIff(name, RightSubstRuleName, bot, i, P.toString(), x.toString(), premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       val (t, u) = bot.left(i) match
         case AtomicFormula(`equality`, Seq(t1, t2)) => (t1, t2)
@@ -621,7 +628,7 @@ object SequentCalculus {
    */
   case class LeftSubstIff(name: String, bot: Sequent, i: Int, R: Formula, A: AtomicSymbol, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithSubst(name, LeftSubstIffRuleName, bot, i, R.toString(), A.toString(), premises)
+    override def toString: String = SCProofStep.outputWithSubstIff(name, LeftSubstIffRuleName, bot, i, R.toString(), A.toString(), premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       if A.arity != 0 || !A.id.isUpper then return false
       val (phi, psi) = bot.right(i) match
@@ -633,6 +640,61 @@ object SequentCalculus {
       isSameSet(bot.right, premises(t1).right)
   }
 
+  /**
+   *   Γ |- R[A:=ϕ], Δ
+   * ----------------
+   *  Γ, ϕ <=> ψ |- R[A:=ψ], Δ
+   *
+   * @param bot Resulting formula
+   * @param i Index of ϕ <=> ψ on the left
+   * @param R Shape of the formula in which the substitution occurs
+   * @param A Formula Variable indicating where in P the substitution occurs
+   */
+  case class RightSubstIff(name: String, bot: Sequent, i: Int, R: Formula, A: AtomicSymbol, t1: String) extends LVL1ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = SCProofStep.outputWithSubst(name, RightSubstIffRuleName, bot, i, R.toString(), A.toString(), premises)
+    def checkCorrectness(premises: String => Sequent): Boolean = 
+      if A.arity != 0 || !A.id.isUpper then return false
+      val (phi, psi) = bot.left(i) match
+        case ConnectorFormula(Iff, Seq(phi, psi)) => (phi, psi)
+        case _ => return false
+      val R_phi = substituteAtomicsInFormula(R, Map(A -> phi))
+      val R_psi = substituteAtomicsInFormula(R, Map(A -> psi))
+      isSameSet(bot.left, bot.left(i) +: premises(t1).left) &&
+      isSameSet(R_phi +: bot.right, R_psi +: premises(t1).right)
+  }
+
+  // Γ [ F X ] ⊢ Δ [ F X ] Γ [ F X := t X ] ⊢ Δ [ F X := t X ] 
+
+  /**
+   *   Γ[F(Xi)] |- Δ[F(Xi)]
+   * -------------------------------------------------------------------------------
+   *  Γ[F(Xi) := t(Xi)] |- Δ[F(Xi) := t(Xi)]
+   *
+   */
+  case class InstFun(name: String, bot: Sequent, F: FunctionSymbol, t: (Term, List[VariableSymbol]), t1: String) extends LVL1ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = SCProofStep.outputWithInstFun(name, InstFunRuleName, bot, F, t, premises)
+    def checkCorrectness(premises: String => Sequent): Boolean = 
+      val newleft = bot.left.map(substituteFunctionsInFormula(_, Map(F -> t)))
+      val newright = bot.right.map(substituteFunctionsInFormula(_, Map(F -> t)))
+      isSameSet(newleft, premises(t1).left) && isSameSet(newright, premises(t1).right)
+  }   
+
+  /**
+   *   Γ[P(Xi)] |- Δ[P(Xi)]
+   * -------------------------------------------------------------------------------
+   *  Γ[P(Xi) := ϕ(Xi)] |- Δ[P(Xi) := ϕ(Xi)]
+   *
+   */
+  case class InstPred(name: String, bot: Sequent, P: AtomicSymbol, phi: (Formula, List[VariableSymbol]), t1: String) extends LVL1ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = SCProofStep.outputWithInstPred(name, InstPredRuleName, bot, P, phi, premises)
+    def checkCorrectness(premises: String => Sequent): Boolean = 
+      val newleft = bot.left.map(substitutePredicatesInFormula(_, Map(P -> phi)))
+      val newright = bot.right.map(substitutePredicatesInFormula(_, Map(P -> phi)))
+      isSameSet(newleft, premises(t1).left) && isSameSet(newright, premises(t1).right)
+  }
 
 
 

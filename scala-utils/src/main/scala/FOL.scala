@@ -220,6 +220,7 @@ object FOL {
         val newSubst = vars.zip(args).toMap
         substituteVariablesInTerm(newTerm, newSubst)
       else Term(label, args.map(substituteFunctionsInTerm(_, m)))
+    case Term(label, args) => Term(label, args.map(substituteFunctionsInTerm(_, m)))
   }
 
   /** Computes the (simultaneous) substitution of some variables by some terms, in a formula */

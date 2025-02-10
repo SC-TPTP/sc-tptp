@@ -8,8 +8,13 @@ import sctptp.FOL.AtomicFormula
 import java.text.Normalizer.Form
 import sctptp.FOL.Forall
 import sctptp.FOL.Variable
+import javax.imageio.plugins.tiff.ExifGPSTagSet
 
 class Tseitin {
+
+  val varName = "x"
+  var varCpt = 0
+
   var tseitinVarTerm: Map[sctptp.FOL.Formula, sctptp.FOL.Formula] = Map[sctptp.FOL.Formula, sctptp.FOL.Formula]()
   var tseitinTermVar: Map[sctptp.FOL.Formula, sctptp.FOL.Formula] = Map[sctptp.FOL.Formula, sctptp.FOL.Formula]()
 
@@ -105,8 +110,29 @@ class Tseitin {
     reInsertQT(accQT, accF)
   }
 
-  // Instantiate universal quantifiers and returns a map [oldName, newName]
-  def toInstantiated(f: sctptp.FOL.Formula): sctptp.FOL.Formula = ???
+  // Instantiate universal quantifiers and returns a map [oldName, newName], the new formula, and has renamed them according to P9 standard
+  def toInstantiated(f: sctptp.FOL.Formula): (sctptp.FOL.Formula, Map[VariableSymbol, Term]) = {
+      def toInstantiatedAux(f2: sctptp.FOL.Formula, acc: Map[VariableSymbol, Term]): (sctptp.FOL.Formula, Map[VariableSymbol, Term]) = {
+        f2 match 
+          case BinderFormula(label, bound, inner) => {
+            label match
+              case Forall => {
+                val new_symbol = Variable(VariableSymbol(varName+varCpt))
+                val new_acc = acc + (bound -> new_symbol)
+                varCpt = varCpt+1
+                val (new_f, new_acc_next_steps) = toInstantiatedAux(substituteVariablesInFormula(inner, new_acc), new_acc)
+                (new_f, new_acc_next_steps)
+              }
+              case Exists => {
+                val (new_f, new_acc) = toInstantiatedAux(inner, acc)
+                (BinderFormula(Exists, bound, new_f), new_acc)
+              }
+          }
+          case _ => (f2, acc)
+      }
+
+      toInstantiatedAux(f, Map[VariableSymbol, Term]())
+  }
 
 
   // Go through the formula and associate each subformula to a variable
@@ -148,7 +174,7 @@ class Tseitin {
       }
   }
 
-  // Transform a formula in Prenex Negation Normal form into Tseitin Normal Form with variable stored in tseitinVarTerm
+  // Transform a formula in Prenex Negatted Normal form into Tseitin Normal Form with variable stored in tseitinVarTerm
   def toTseitin(f: sctptp.FOL.Formula): sctptp.FOL.Formula =  ???
 
 
@@ -176,17 +202,28 @@ class Tseitin {
   def addEpsilonTerms(f: sctptp.FOL.Formula): sctptp.FOL.Formula = ??? 
 
 
+  // Prend une preuve et remplace les variable x), .. par les variables initiales
+  // def desInstantiate()
 
-  // Theorie : search equivalence of formula (/\, \/, =>, <=>) into tseitin => done for /\, ~ et \/, fpr the rest, juste simplify
+
+
+  // Theorie : search equivalence of formula (/\, \/, =>, <=>) into tseitin => done for /\, ~ et \/, for the rest, juste simplify
+
+  /** Attention
+  * Les constantes ne doivent pas être en paramètre des ts
+  * Les ts doivent appeler d'autres ts
+  * Function replace formula by term to solve the line above
+  **/
 
   /** Schéma global de la preuve :
   * Formule f en entrée, fof
   * [x] Mise en NFF
-  * [ ] Mise sous forme prénexe
-  * [ ] Renomer variable forall
-  * [ ] Instanciation forall
+  * [x] Mise sous forme prénexe
+  * [x] Renommer variable forall
+  * [x] Instanciation forall
   * [x] récupération des variable schématiques
   * [ ] Ajout des variable tseitin level 0 (pour avoir une formule en CNF) et de leur traduction en forme étendue (i.e., j'introduis X <=> (a /\ b), et je rajoute dans la formule (¬X ∨ a), (¬X ∨ b), (X ∨ ¬a ∨ ¬b)) -> Faire ça récursivement (si la subformula n'est pas atomic)
+  * [ ] Ajouter les let
   * [ ] donner la formule finale P9
   * [ ] Récupérer preuve
   * [ ] Derenommer les variables

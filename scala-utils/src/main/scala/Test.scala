@@ -191,8 +191,12 @@ object Test {
   println("Formula in NNF Form : " + parsedProblem3)
 
   // Prenex
-    val parsedProblem4 = myTseitin.toPrenex(parsedProblem3)
+  val parsedProblem4 = myTseitin.toPrenex(parsedProblem3)
   println("Formula in Prenex Form : " + parsedProblem4)
+
+  // Instantiated
+  val parsedProblem5 = myTseitin.toInstantiated(parsedProblem4)
+  println("Formula instantiated : " + parsedProblem5)
 
   }
 }

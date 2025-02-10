@@ -45,32 +45,32 @@ object Test {
   }
 
   def testSC(): Unit = {
-    // Terms
-    val x_id = Identifier("X")
-    val x_label = VariableSymbol(x_id)
-    val x = Variable(x_label)
+    // // Terms
+    // val x_id = Identifier("X")
+    // val x_label = VariableSymbol(x_id)
+    // val x = Variable(x_label)
 
-    val a_id = Identifier("a")
-    val a_term_label = FunctionSymbol(a_id, 0)
-    val a_term = Term(a_term_label, Seq())
+    // val a_id = Identifier("a")
+    // val a_term_label = FunctionSymbol(a_id, 0)
+    // val a_term = Term(a_term_label, Seq())
 
-    val f_id = Identifier("f")
-    val f_label = FunctionSymbol(f_id, 3)
-    val fx = Term(f_label, Seq(x, a_term, x))
+    // val f_id = Identifier("f")
+    // val f_label = FunctionSymbol(f_id, 3)
+    // val fx = Term(f_label, Seq(x, a_term, x))
 
     // println("x.toString: " + x.toString())
     // println("a_term.toString: " + a_term.toString())
     // println("fx.toString: " + fx.toString())
 
-    // Atomic Formulas
-    val a_atomic_label = AtomicSymbol(a_id, 0)
-    val a = AtomicFormula(a_atomic_label, Seq())
-    val af_top = AtomicFormula(top, Seq())
-    val af_bot = AtomicFormula(bot, Seq())
-    val eq_a_a = AtomicFormula(equality, Seq(a_term, a_term))
-    val p_id = Identifier("p")
-    val p_atomic_label = AtomicSymbol(p_id, 2)
-    val p_a_x = AtomicFormula(p_atomic_label, Seq(a_term, x))
+    // // Atomic Formulas
+    // val a_atomic_label = AtomicSymbol(a_id, 0)
+    // val a = AtomicFormula(a_atomic_label, Seq())
+    // val af_top = AtomicFormula(top, Seq())
+    // val af_bot = AtomicFormula(bot, Seq())
+    // val eq_a_a = AtomicFormula(equality, Seq(a_term, a_term))
+    // val p_id = Identifier("p")
+    // val p_atomic_label = AtomicSymbol(p_id, 2)
+    // val p_a_x = AtomicFormula(p_atomic_label, Seq(a_term, x))
 
     // println("a.toString: " + a.toString())
     // println("p_a_x.toString: " + p_a_x.toString())
@@ -78,12 +78,12 @@ object Test {
     // println("af_bot.toString: " + af_bot.toString())
     // println("eq_a_a.toString: " + eq_a_a.toString())
 
-    // Connector formulas
-    val neg_a = ConnectorFormula(Neg, Seq(a))
-    val imp_a_a = ConnectorFormula(Implies, Seq(a, a))
-    val iff_a_a = ConnectorFormula(Iff, Seq(a, a))
-    val and_a_a_a = ConnectorFormula(And, Seq(a, a, a))
-    val or_a_a_a = ConnectorFormula(Or, Seq(a, a, a))
+    // // Connector formulas
+    // val neg_a = ConnectorFormula(Neg, Seq(a))
+    // val imp_a_a = ConnectorFormula(Implies, Seq(a, a))
+    // val iff_a_a = ConnectorFormula(Iff, Seq(a, a))
+    // val and_a_a_a = ConnectorFormula(And, Seq(a, a, a))
+    // val or_a_a_a = ConnectorFormula(Or, Seq(a, a, a))
 
     // println("neg_a.toString: " + neg_a.toString())
     // println("imp_a.toString: " + imp_a_a.toString())
@@ -91,9 +91,9 @@ object Test {
     // println("and_a.toString: " + and_a_a_a.toString())
     // println("or_a.toString: " + or_a_a_a.toString())
 
-    // Binder formulas
-    val forall_x = BinderFormula(Forall, x_label, a)
-    val exists_x = BinderFormula(Exists, x_label, a)
+    // // Binder formulas
+    // val forall_x = BinderFormula(Forall, x_label, a)
+    // val exists_x = BinderFormula(Exists, x_label, a)
 
     // println("forall_x.toString: " + forall_x.toString())
     // println("exists_x.toString: " + exists_x.toString())
@@ -103,26 +103,6 @@ object Test {
     
     // println("s1: " + s1.toString())
 
-    // Create var
-    // val f1 = ConnectorFormula(Or, Seq(or_a_a_a, iff_a_a, p_a_x))
-    // println("Formula : " + f1.toString())
-    // val myTseitin = new Tseitin()
-    // val premap = myTseitin.createTseitinVariables(f1)
-    // myTseitin.makeTseitinMaps(premap._1)
-    // myTseitin.printTseitinVarTerm()
-
-    // println("----------------------------------")
-
-    val problem = reconstructProof(new File("proofs/clause_parse.p"))
-    val parsedProblem = problem.getSequent(0).right(0)
-    println("Formula : " + parsedProblem)
-    val myTseitin2 = new Tseitin()
-    val premap2 = myTseitin2.createTseitinVariables(parsedProblem)
-    myTseitin2.makeTseitinMaps(premap2._1)
-    myTseitin2.printTseitinVarTerm()
-    val parsedProblem2 = ConnectorFormula(Neg , Seq(parsedProblem))
-    println("Formula : " + parsedProblem2)
-    println("Formula in prenex Form : " + myTseitin2.toNNF(parsedProblem2))
 
   //   // Proof step
   //   val ax1 = Axiom("ax1", s1)
@@ -187,5 +167,32 @@ object Test {
   //   println("rightRefl: " + rightRefl.toString())
   //   println("leftSubst: " + leftSubst.toString())
   //   println("rightSubst: " + rightSubst.toString())
+
+
+
+
+  val problem = reconstructProof(new File("../proofs/clausification/clause_parse.p"))
+  val parsedProblem = problem.getSequent(0).right(0)
+  println("Formula : " + parsedProblem)
+
+  
+  val myTseitin = new Tseitin()
+  // Creation of tseitin terms
+  val premap2 = myTseitin.createTseitinVariables(parsedProblem)
+  myTseitin.makeTseitinMaps(premap2._1)
+  myTseitin.printTseitinVarTerm()
+
+  // Take the negation (for tests)
+  val parsedProblem2 = ConnectorFormula(Neg , Seq(parsedProblem))
+  println("Formula : " + parsedProblem2)
+
+  // NNF
+  val parsedProblem3 = myTseitin.toNNF(parsedProblem2)
+  println("Formula in NNF Form : " + parsedProblem3)
+
+  // Prenex
+    val parsedProblem4 = myTseitin.toPrenex(parsedProblem3)
+  println("Formula in Prenex Form : " + parsedProblem4)
+
   }
 }

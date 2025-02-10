@@ -79,13 +79,18 @@ class Tseitin {
 
     def retrieveQT(f2 : sctptp.FOL.Formula): (List[(BinderSymbol, VariableSymbol)], sctptp.FOL.Formula) = {
       f2 match 
-         case AtomicFormula(label, args) => (List(), f) 
-         case BinderFormula(label, bound, inner) => {
+        case AtomicFormula(label, args) => (List(), f2) 
+        case BinderFormula(label, bound, inner) => {
           val (accQT2, accF2) = retrieveQT(inner)
-          ((label, bound) +: accQT2, accF2)
-         } 
-         // TODO
-        //  case ... 
+          (accQT2 :+ (label, bound), accF2)
+        } 
+        case ConnectorFormula(label, args) => {
+          val (accQT2, accF2) = args.foldLeft((List[(BinderSymbol, VariableSymbol)](), List[Formula]()))((acc, x) => {
+             val (accQT3, accF3) = retrieveQT(x)
+             (accQT3 ++ acc._1,  acc._2 :+ accF3)
+          })
+          (accQT2, ConnectorFormula(label, accF2))
+        }
     }
 
     def reInsertQT(accQT: List[(BinderSymbol, VariableSymbol)], accF2 : sctptp.FOL.Formula) : sctptp.FOL.Formula = {

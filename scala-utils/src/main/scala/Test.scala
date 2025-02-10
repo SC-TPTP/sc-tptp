@@ -104,14 +104,14 @@ object Test {
     // println("s1: " + s1.toString())
 
     // Create var
-    val f1 = ConnectorFormula(Or, Seq(or_a_a_a, iff_a_a, p_a_x))
-    println("Formula : " + f1.toString())
-    val myTseitin = new Tseitin()
-    val premap = myTseitin.createTseitinVariables(f1)
-    myTseitin.makeTseitinMaps(premap._1)
-    myTseitin.printTseitinVarTerm()
+    // val f1 = ConnectorFormula(Or, Seq(or_a_a_a, iff_a_a, p_a_x))
+    // println("Formula : " + f1.toString())
+    // val myTseitin = new Tseitin()
+    // val premap = myTseitin.createTseitinVariables(f1)
+    // myTseitin.makeTseitinMaps(premap._1)
+    // myTseitin.printTseitinVarTerm()
 
-    println("----------------------------------")
+    // println("----------------------------------")
 
     val problem = reconstructProof(new File("proofs/clause_parse.p"))
     val parsedProblem = problem.getSequent(0).right(0)
@@ -120,7 +120,7 @@ object Test {
     val premap2 = myTseitin2.createTseitinVariables(parsedProblem)
     myTseitin2.makeTseitinMaps(premap2._1)
     myTseitin2.printTseitinVarTerm()
-    val parsedProblem2 = ConnectorFormula(Neg , Seq(parsedProblem.asInstanceOf[BinderFormula].inner.asInstanceOf[BinderFormula].inner))
+    val parsedProblem2 = ConnectorFormula(Neg , Seq(parsedProblem))
     println("Formula : " + parsedProblem2)
     println("Formula in prenex Form : " + myTseitin2.toNNF(parsedProblem2))
 

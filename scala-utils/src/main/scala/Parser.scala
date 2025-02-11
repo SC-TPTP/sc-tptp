@@ -20,12 +20,15 @@ object Parser {
 
 
   def convertTermToFOL(term: FOF.Term)(using context: DefContext): Term = term match {
-
     case FOF.AtomicTerm(f, args) =>
       context._2(f) match 
         case Some(t) => t
         case None => Term(FunctionSymbol(f, args.size), args map convertTermToFOL)
-    case FOF.Variable(name) => Variable(name)
+    case FOF.Variable(name) => {
+      if (name(0).isUpper) 
+        then Variable(name)
+        else Term(FunctionSymbol(name, 0), Seq())
+    }
     case FOF.DistinctObject(name) => throw new Exception("Distinct objects are not supported in pure FOL")
     case FOF.NumberTerm(value) => throw new Exception("Numbers are not supported in pure FOL")
 

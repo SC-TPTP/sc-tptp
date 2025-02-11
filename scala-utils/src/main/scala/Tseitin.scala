@@ -9,18 +9,27 @@ import java.text.Normalizer.Form
 import sctptp.FOL.Forall
 import sctptp.FOL.Variable
 import javax.imageio.plugins.tiff.ExifGPSTagSet
+import scala.util.boundary
+import scala.annotation.switch
 
 class Tseitin {
 
-  val varName = "x"
+  val varName = "V"
   var varCpt = 0
 
+  // Var = Tseitin Var, Term = Original formula Term
   var tseitinVarTerm: Map[sctptp.FOL.Formula, sctptp.FOL.Formula] = Map[sctptp.FOL.Formula, sctptp.FOL.Formula]()
   var tseitinTermVar: Map[sctptp.FOL.Formula, sctptp.FOL.Formula] = Map[sctptp.FOL.Formula, sctptp.FOL.Formula]()
+  var tseitinVarTermUp: Map[sctptp.FOL.Formula, sctptp.FOL.Formula] = Map[sctptp.FOL.Formula, sctptp.FOL.Formula]()
+  var tseitinTermVarUp: Map[sctptp.FOL.Formula, sctptp.FOL.Formula] = Map[sctptp.FOL.Formula, sctptp.FOL.Formula]()
 
   def getTseitinVarTerm(): Map[sctptp.FOL.Formula, sctptp.FOL.Formula] = tseitinVarTerm
 
   def getTseitinTermVar(): Map[sctptp.FOL.Formula, sctptp.FOL.Formula] = tseitinTermVar
+
+  def getTseitinVarTermUp(): Map[sctptp.FOL.Formula, sctptp.FOL.Formula] = tseitinVarTermUp
+
+  def getTseitinTermVarUp(): Map[sctptp.FOL.Formula, sctptp.FOL.Formula] = tseitinTermVarUp
 
   def printTseitinVarTerm() = {
     for ((k, v) <- getTseitinVarTerm()) {
@@ -28,9 +37,20 @@ class Tseitin {
     }
   }
 
+  def printTseitinVarTermUp() = {
+    for ((k, v) <- getTseitinVarTermUp()) {
+      println(k.toString() + " : " + v.toString())
+    }
+  }
+
   def makeTseitinMaps(TermVar: Map[sctptp.FOL.Formula, sctptp.FOL.Formula]) = {
-    tseitinTermVar = TermVar
-    tseitinVarTerm = TermVar.map(_.swap)
+    tseitinTermVar = tseitinTermVar ++ TermVar
+    tseitinVarTerm = tseitinVarTerm ++ TermVar.map(_.swap)
+  }
+
+  def makeTseitinMapsUp(TermVar: Map[sctptp.FOL.Formula, sctptp.FOL.Formula]) = {
+    tseitinTermVarUp = tseitinTermVarUp ++ TermVar
+    tseitinVarTermUp = tseitinVarTermUp ++ TermVar.map(_.swap)
   }
 
   // Transform a formula into nnf
@@ -111,27 +131,58 @@ class Tseitin {
   }
 
   // Instantiate universal quantifiers and returns a map [oldName, newName], the new formula, and has renamed them according to P9 standard
-  def toInstantiated(f: sctptp.FOL.Formula): (sctptp.FOL.Formula, Map[VariableSymbol, Term]) = {
-      def toInstantiatedAux(f2: sctptp.FOL.Formula, acc: Map[VariableSymbol, Term]): (sctptp.FOL.Formula, Map[VariableSymbol, Term]) = {
+  def toInstantiated(f: sctptp.FOL.Formula): (sctptp.FOL.Formula, Map[VariableSymbol, VariableSymbol]) = {
+      def toInstantiatedAux(f2: sctptp.FOL.Formula, accVS: Map[VariableSymbol, VariableSymbol], accT: Map[VariableSymbol, Term]): (sctptp.FOL.Formula, Map[VariableSymbol, VariableSymbol]) = {
         f2 match 
           case BinderFormula(label, bound, inner) => {
             label match
               case Forall => {
-                val new_symbol = Variable(VariableSymbol(varName+varCpt))
-                val new_acc = acc + (bound -> new_symbol)
+                val new_symbol =VariableSymbol(varName+varCpt)
+                val new_accVS = accVS + (bound -> new_symbol)
+                val new_accT = accT + (bound -> Variable(new_symbol))
                 varCpt = varCpt+1
-                val (new_f, new_acc_next_steps) = toInstantiatedAux(substituteVariablesInFormula(inner, new_acc), new_acc)
+                val (new_f, new_acc_next_steps) = toInstantiatedAux(substituteVariablesInFormula(inner, new_accT), new_accVS, new_accT)
                 (new_f, new_acc_next_steps)
               }
               case Exists => {
-                val (new_f, new_acc) = toInstantiatedAux(inner, acc)
-                (BinderFormula(Exists, bound, new_f), new_acc)
+                
+                val new_symbol = VariableSymbol(varName+varCpt)
+                val new_accVS = accVS + (bound -> new_symbol)
+                val new_accT = accT + (bound -> Variable(new_symbol))
+                varCpt = varCpt+1
+                val (new_f, new_acc_next_steps) = toInstantiatedAux(substituteVariablesInFormula(inner, new_accT), new_accVS, new_accT)
+                (BinderFormula(Exists, new_symbol, new_f), new_acc_next_steps)
               }
           }
-          case _ => (f2, acc)
+          case _ => (f2, accVS)
       }
 
-      toInstantiatedAux(f, Map[VariableSymbol, Term]())
+      toInstantiatedAux(f,  Map[VariableSymbol, VariableSymbol](), Map[VariableSymbol, Term]())
+  }
+
+  // Retrieve the original name of variables
+  def UnRenameVariables(f: sctptp.FOL.Formula,  map: Map[VariableSymbol, VariableSymbol]): sctptp.FOL.Formula = {
+    val reverseMap = for ((k, v) <- map) yield (v, k) 
+    val accT = Map[VariableSymbol, Term]()
+
+    def unRenameVariablesInTerm(t: sctptp.FOL.Term) : sctptp.FOL.Term = {
+      t match
+        case Term(label: VariableSymbol, _) if (reverseMap contains label) =>  Term(reverseMap(label), Seq())
+        case Term(label, args) => Term(label, args.map(unRenameVariablesInTerm(_)))
+    }
+
+    def UnRenameVariablesAux(f2: sctptp.FOL.Formula): sctptp.FOL.Formula = {
+      f2 match 
+        case AtomicFormula(label, args) => AtomicFormula(label, args.map(unRenameVariablesInTerm(_)))
+        case BinderFormula(label, bound, inner) => {
+            if (reverseMap contains bound)
+                then BinderFormula(label, reverseMap(bound), UnRenameVariablesAux(substituteVariablesInFormula(inner, accT + (bound -> Variable(reverseMap(bound))))))
+                else BinderFormula(label, bound, UnRenameVariablesAux(inner))
+            }
+        case ConnectorFormula(label, args) => ConnectorFormula(label, args.map(UnRenameVariablesAux(_)))
+    }
+
+    UnRenameVariablesAux(f)
   }
 
 
@@ -174,8 +225,34 @@ class Tseitin {
       }
   }
 
+  // Take tseitinTermVar et return tseitinTermVar updated
+  def updateTseitinVariables(map: Map[sctptp.FOL.Formula, sctptp.FOL.Formula]) : Map[sctptp.FOL.Formula, sctptp.FOL.Formula] = {
+    map.foldLeft(Map[sctptp.FOL.Formula, sctptp.FOL.Formula]())((acc, x) =>
+      val (termForm, varTseitin) = x
+      termForm match {
+        case AtomicFormula(label, args) => acc + (termForm -> varTseitin)
+        case ConnectorFormula(label, args) => acc + (ConnectorFormula(label, args.map(x => map(x))) -> varTseitin)
+        case  BinderFormula(label, bound, inner) => acc + (BinderFormula(label, bound, map(inner)) -> varTseitin)
+      }
+    )
+  }
+
   // Transform a formula in Prenex Negatted Normal form into Tseitin Normal Form with variable stored in tseitinVarTerm
-  def toTseitin(f: sctptp.FOL.Formula): sctptp.FOL.Formula =  ???
+  def toTseitin(f: sctptp.FOL.Formula): sctptp.FOL.Formula =  {
+    f match
+      case AtomicFormula(label, args) => f // getTseitinTermVar()(f) //ConnectorFormula(Iff, Seq(getTseitinTermVar()(f), f))
+      case ConnectorFormula(label, args) => {
+        val varT = getTseitinTermVar()(f)
+        val varTneg = ConnectorFormula(And, Seq(ConnectorFormula(Neg, Seq(getTseitinTermVar()(f))), toTseitin(args(0))))
+        label match {
+          case Neg =>  ConnectorFormula(Neg, Seq(toTseitin(args(0))))
+          case And => ConnectorFormula(And, ConnectorFormula(Or, varT +: args.map(x => ConnectorFormula(Neg, Seq(toTseitin(x))))) +: args.map(x => ConnectorFormula(Or, Seq(varTneg, toTseitin(x)))))
+          case Or =>  ConnectorFormula(And, ConnectorFormula(Or, varTneg +: args.map(x => toTseitin(x))) +: args.map(x => ConnectorFormula(Or, Seq(varTneg, ConnectorFormula(Neg, Seq(toTseitin(x)))))))
+          case _ => throw new Exception("toTseitin failed")
+        }
+      }
+      case BinderFormula(label, bound, inner) => BinderFormula(label, bound, toTseitin(inner))
+  }
 
 
 
@@ -183,17 +260,7 @@ class Tseitin {
   // Input : a formula f with a subformula sf
   // Output : a formula f in which the subformula sf have be changed to sf <=> its equivalence
   def addEquivalences(f: sctptp.FOL.Formula, sf: sctptp.FOL.Formula): sctptp.FOL.Formula = {
-    f match
-      case AtomicFormula(label, args) => ConnectorFormula(Iff, Seq(getTseitinTermVar()(f), f))
-      case ConnectorFormula(label, args) => {
-        label match {
-          // en fold
-          case Or => ConnectorFormula(Iff, Seq(getTseitinTermVar()(f), f))
-          // recreate a big OR
-          // ConnectorFormla, OR, result)
-        }
-      }
-      case BinderFormula(label, bound, inner) => ???
+    ???
   }
 
   // replace exists x by #x + the formula it satisfy (let too?)
@@ -209,12 +276,6 @@ class Tseitin {
 
   // Theorie : search equivalence of formula (/\, \/, =>, <=>) into tseitin => done for /\, ~ et \/, for the rest, juste simplify
 
-  /** Attention
-  * Les constantes ne doivent pas être en paramètre des ts
-  * Les ts doivent appeler d'autres ts
-  * Function replace formula by term to solve the line above
-  **/
-
   /** Schéma global de la preuve :
   * Formule f en entrée, fof
   * [x] Mise en NFF
@@ -224,11 +285,13 @@ class Tseitin {
   * [x] récupération des variable schématiques
   * [ ] Ajout des variable tseitin level 0 (pour avoir une formule en CNF) et de leur traduction en forme étendue (i.e., j'introduis X <=> (a /\ b), et je rajoute dans la formule (¬X ∨ a), (¬X ∨ b), (X ∨ ¬a ∨ ¬b)) -> Faire ça récursivement (si la subformula n'est pas atomic)
   * [ ] Ajouter les let
-  * [ ] donner la formule finale P9
+  * [ ] donner la formule finale P9 (sous forme axiom et sans quantifier universel)
   * [ ] Récupérer preuve
-  * [ ] Derenommer les variables
+  * [x] Derenommer les variables
   * [ ] Epslion-termes 
   * [ ] Introduce a routine to elaborate the rule for prenex and nnf
+  * [ ] Res -> coq
+  * [ ] schematique : `X`
   * 
   * Annex function 
   * Generation of scheme equivalent rule directly as strings (i.e., fof(axiom, tseq1, a <=>))

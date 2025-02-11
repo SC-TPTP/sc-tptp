@@ -4,7 +4,7 @@ fof(f1, plain, [r] --> [p | q], inference(rightOr, [0], [a1])).
 fof(a2, axiom, [r] --> [a, p, q]).
 fof(f2, plain, [r] --> [a, p | q], inference(rightOr, [1], [a2])).
 
-fof(a3, axiom, [R] --> [P(X), Q(X)],).
+fof(a3, axiom, [R] --> [P(X), Q(X)]).
 fof(f3, plain, [R] --> [P(X) | Q(X)], inference(rightOr, [0], [a3])).
 
 fof(a4, axiom, [u] --> [s, p, t, q]).

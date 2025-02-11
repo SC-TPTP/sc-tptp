@@ -14,7 +14,7 @@ fof(a5, axiom, [p(X)=>q(Y), q(Y)=>p(X)] --> [r(X, Y)]).
 fof(f5, plain, [p(X) <=> q(Y)] --> [r(X, Y)], inference(leftIff, [0], [a5])).
 
 
-fof(a6, axiom, [![X]: (p(X) & q(X))=>(r(X) | s(X)), (r(X) | s(X))=>![X]: (p(X) & q(X))=] --> [(t(X) & u(X)), v(X)]).
+fof(a6, axiom, [![X]: (p(X) & q(X))=>(r(X) | s(X)), (r(X) | s(X))=>![X]: (p(X) & q(X))] --> [(t(X) & u(X)), v(X)]).
 fof(f6, plain, [![X]: (p(X) & q(X)) <=> (r(X) | s(X)), (r(X) | s(X))] --> [(t(X) & u(X)), v(X)], inference(leftIff, [0], [a6])).
 
 fof(a7, axiom, [q=>s(Y), ![X]: (p(X) & q(X)), s(Y)=>q] --> []).

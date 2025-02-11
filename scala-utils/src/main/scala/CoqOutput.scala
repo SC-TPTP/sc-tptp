@@ -21,11 +21,11 @@ object CoqOutput {
   def retrieveUninstantiatedVariables(steps: IndexedSeq[SCProofStep]): (Set[VariableSymbol]) = {
     steps.foldLeft(Set())((acc, e) => {
       e match
-        case LeftEx(name, bot, i, y, t1) => acc - y
-        case LeftAll(name, bot, i, t, t1) => acc ++ t.freeVariables
+        case LeftExists(name, bot, i, y, t1) => acc - y
+        case LeftForall(name, bot, i, t, t1) => acc ++ t.freeVariables
 
-        case RightEx(name, bot, i, y, t1) => acc ++ y.freeVariables
-        case RightAll(name, bot, i, t, t1) => acc - t
+        case RightExists(name, bot, i, y, t1) => acc ++ y.freeVariables
+        case RightForall(name, bot, i, t, t1) => acc - t
 
         case LeftNotEx(name, bot, i, y, t1) => acc ++ y.freeVariables
         case LeftNotAll(name, bot, i, t, t1) => acc - t
@@ -87,9 +87,9 @@ object CoqOutput {
     case Axiom(name, bot) => ("", 0)
     case Hyp(name, bot, i, j) => (s"(* [${name}] *) " + "auto.", 0)
     case LeftHyp(name, bot, i, j) => (s"(* [${name}] *) " + "auto.", 0)
-    //case LeftWeakening(name, bot, i, t1) => (s"(* [${name}] *) " + s"clear H${i}.", 0)
-    //case RightWeakening(name, bot, i, t1) => (s"(* [${name}] *) " + s"clear ${bot.right(i).toString()}.", 0)
-    case LeftWeakening(name, bot, t1) => ???
+    //case LeftWeaken(name, bot, i, t1) => (s"(* [${name}] *) " + s"clear H${i}.", 0)
+    //case RightWeaken(name, bot, i, t1) => (s"(* [${name}] *) " + s"clear ${bot.right(i).toString()}.", 0)
+    case LeftWeaken(name, bot, t1) => ???
     case Cut(name, bot, i, j, t1, t2) => ("", 1)
     case LVL2.Congruence(name, bot) => (s"(* [${name}] *) congruence.", 0)
 
@@ -99,16 +99,16 @@ object CoqOutput {
     case LeftImp2(name, bot, i, t1, t2) => (s"(* [${name}] *) " + makeBetaStep(LeftImp2RuleName, i, indexNextIntro, 2), 1)
     case LeftIff(name, bot, i, t1) => (s"(* [${name}] *) " + makeAlphaStep(LeftIffRuleName, i, indexNextIntro, 2), 2)
     case LeftNot(name, bot, i, t1) => (s"(* [${name}] *) " + makeAlphaStep(LeftNotRuleName, i, indexNextIntro, 1), 2)
-    case LeftEx(name, bot, i, y, t1) => ( s"(* [${name}] *) elim H${i}. intros ${y}. intros  H${indexNextIntro}. ", 1)
-    case LeftAll(name, bot, i, t, t1) => (s"(* [${name}] *) generalize (H${i} (${t})). intros H${indexNextIntro}. ", 1)
+    case LeftExists(name, bot, i, y, t1) => ( s"(* [${name}] *) elim H${i}. intros ${y}. intros  H${indexNextIntro}. ", 1)
+    case LeftForall(name, bot, i, t, t1) => (s"(* [${name}] *) generalize (H${i} (${t})). intros H${indexNextIntro}. ", 1)
 
     case RightAnd(name, bot, i, t1, t2) => (s"(* [${name}] *) " + makeBetaStep(RightAndRuleName, i, indexNextIntro, 2), 1)
     case RightOr(name, bot, i, t1) => (s"(* [${name}] *) " + makeAlphaStep(RightOrRuleName, i, indexNextIntro, 2), 2)
     case RightImplies(name, bot, i, t1) => (s"(* [${name}] *) " + makeAlphaStep(RightImpliesRuleName, i, indexNextIntro, 2), 2)
     case RightIff(name, bot, i, t1, t2) => (s"(* [${name}] *) " + makeBetaStep(RightIffRuleName, i, indexNextIntro, 1), 1)
     case RightNot(name, bot, i, t1) => (s"(* [${name}] *) " + makeAlphaStep(RightNotRuleName, i, indexNextIntro, 1), 2)
-    case RightEx(name, bot, i, y, t1) => (s"(* [${name}] *) apply H${i}. exists ${y}. apply NNPP. intros H${indexNextIntro}. ", 1)
-    case RightAll(name, bot, i, t, t1) => (s"(* [${name}] *) apply H${i}. intros ${t}. apply NNPP. intros  H${indexNextIntro}. ", 1)
+    case RightExists(name, bot, i, y, t1) => (s"(* [${name}] *) apply H${i}. exists ${y}. apply NNPP. intros H${indexNextIntro}. ", 1)
+    case RightForall(name, bot, i, t, t1) => (s"(* [${name}] *) apply H${i}. intros ${t}. apply NNPP. intros  H${indexNextIntro}. ", 1)
 
     case LeftNotAnd(name, bot, i, t1, t2) => (s"(* [${name}] *) " + makeBetaStep(LeftNotAndRuleName, i, indexNextIntro, 2), 1)
     case LeftNotOr(name, bot, i, t1) => (s"(* [${name}] *) " + makeAlphaStep(LeftNotOrRuleName, i, indexNextIntro, 2), 2)

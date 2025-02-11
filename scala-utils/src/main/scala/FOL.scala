@@ -348,10 +348,12 @@ object FOL {
   }
 
   def toLocallyNameless(phi:Formula): Formula = {
+    val default_bound = VariableSymbol("%")
     def toLocallyNamelessTerm(t: Term, subst: Map[Identifier, Int], i: Int): Term = {
       t match {
         case Term(label: VariableSymbol, _) =>
-          if (subst.contains(label.id)) Variable(Identifier("", i - subst(label.id)))
+          if (subst.contains(label.id)) Variable(Identifier("%", i - subst(label.id)))
+          else if label.id.name(0) == '%' then Variable(Identifier("%" + label.id.name, i - subst(label.id)))
           else t
         case Term(label, args) => Term(label, args.map(c => toLocallyNamelessTerm(c, subst, i)))
       }
@@ -360,7 +362,7 @@ object FOL {
       phi match {
         case AtomicFormula(id, args) => AtomicFormula(id, args.map(c => toLocallyNamelessTerm(c, subst, i)))
         case ConnectorFormula(id, args) => ConnectorFormula(id, args.map(f => toLocallyNamelessInner(f, subst, i)))
-        case BinderFormula(id, bound, inner) => BinderFormula(id, bound, toLocallyNamelessInner(inner, subst + (bound.id -> i), i + 1))
+        case BinderFormula(id, bound, inner) => BinderFormula(id, default_bound, toLocallyNamelessInner(inner, subst + (bound.id -> i), i + 1))
 
       }
     }
@@ -368,7 +370,7 @@ object FOL {
   }
 
   def areAlphaEquivalent(phi: Formula, psi: Formula) = (phi eq psi) || (toLocallyNameless(phi) == toLocallyNameless(psi))
-
+  def isSame (phi: Formula, psi: Formula) = areAlphaEquivalent(phi, psi)
   def isSubset(s1: Iterable[Formula], s2: Iterable[Formula]): Boolean = 
     val s2Local = s2.map(toLocallyNameless).toSet
     s1.map(toLocallyNameless).forall(s2Local.contains)

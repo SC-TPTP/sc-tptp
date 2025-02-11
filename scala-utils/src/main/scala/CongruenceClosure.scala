@@ -126,7 +126,7 @@ object CongruenceClosure {
               case Some((a, b, i)) =>
                 val chpr = egraph.proveInner(a, b, 0, bot.left, bot.right, s"${sname}_${unfoldCounter}_").get
                 subProof = chpr.toList ++ subProof
-                val weakStep = SC.LeftWeakening(s"${sname}_${unfoldCounter}_w", bot, chpr.head.name)
+                val weakStep = SC.LeftWeaken(s"${sname}_${unfoldCounter}_w", bot, chpr.head.name)
                 subProof.reverse
                 
 

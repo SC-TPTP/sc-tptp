@@ -15,23 +15,23 @@ object SequentCalculus {
     val RightTrueRuleName = "rightTrue"
     val LeftFalseRuleName = "leftFalse"
     val HypRuleName = "hyp"
-    val LeftWeakeningRuleName = "leftWeaken"
-    val RightWeakeningRuleName = "rightWeaken"
+    val LeftWeakenRuleName = "leftWeaken"
+    val RightWeakenRuleName = "rightWeaken"
     val CutRuleName = "cut"
     val LeftAndRuleName = "leftAnd"
     val LeftOrRuleName = "leftOr"
     val LeftImpliesRuleName = "leftImplies"
     val LeftIffRuleName = "leftIff"
     val LeftNotRuleName = "leftNot"
-    val LeftExRuleName = "leftEx"
-    val LeftAllRuleName = "leftAll"
+    val LeftExistsRuleName = "leftEx"
+    val LeftForallRuleName = "leftAll"
     val RightAndRuleName = "rightAnd"
     val RightOrRuleName = "rightOr"
     val RightImpliesRuleName = "rightImplies"
     val RightIffRuleName = "rightIff"
     val RightNotRuleName = "rightNot"
-    val RightExRuleName = "rightEx"
-    val RightAllRuleName = "rightAll"
+    val RightExistsRuleName = "rightEx"
+    val RightForallRuleName = "rightAll"
     val RightReflRuleName = "rightRefl"
     val LeftSubstRuleName = "leftSubst"
     val RightSubstRuleName = "rightSubst"
@@ -202,9 +202,9 @@ object SequentCalculus {
    * @param bot Resulting formula
    * @param i Index of A on the left
    */
-  case class LeftWeakening(name: String, bot: Sequent, t1: String) extends LVL1ProofStep {
+  case class LeftWeaken(name: String, bot: Sequent, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputNIndexes(name, LeftWeakeningRuleName, bot, List(), Seq(t1))
+    override def toString: String = SCProofStep.outputNIndexes(name, LeftWeakenRuleName, bot, List(), Seq(t1))
     def checkCorrectness(premises: String => Sequent): Boolean = 
       isSubset(premises(t1).left, bot.left) && isSubset(premises(t1).right, bot.right)
       
@@ -219,9 +219,9 @@ object SequentCalculus {
    * @param bot Resulting formula
    * @param i Index of A on the right
    */
-  case class RightWeakening(name: String, bot: Sequent, t1: String) extends LVL1ProofStep {
+  case class RightWeaken(name: String, bot: Sequent, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputNIndexes(name, RightWeakeningRuleName, bot, List(), Seq(t1))
+    override def toString: String = SCProofStep.outputNIndexes(name, RightWeakenRuleName, bot, List(), Seq(t1))
     def checkCorrectness(premises: String => Sequent): Boolean = 
       isSubset(premises(t1).left, bot.left) && isSubset(premises(t1).right, bot.right)
       
@@ -377,9 +377,9 @@ object SequentCalculus {
    * @param i Index of ∃x. A on the left
    * @param y Variable in place of x in the premise
    */
-  case class LeftEx(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) extends LVL1ProofStep {
+  case class LeftExists(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithTerm(name, LeftExRuleName, bot, i, y.toString(), premises)
+    override def toString: String = SCProofStep.outputWithTerm(name, LeftExistsRuleName, bot, i, y.toString(), premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.left(i) match
         case ex @ BinderFormula(Exists, x, a) => 
@@ -399,9 +399,9 @@ object SequentCalculus {
    * @param i Index of ∀x. A on the left
    * @param t Term in in place of x in the premise
    */
-  case class LeftAll(name: String, bot: Sequent, i: Int, t: Term, t1: String) extends LVL1ProofStep {
+  case class LeftForall(name: String, bot: Sequent, i: Int, t: Term, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithTerm(name, LeftAllRuleName, bot, i, t.toString(), premises)
+    override def toString: String = SCProofStep.outputWithTerm(name, LeftForallRuleName, bot, i, t.toString(), premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.left(i) match
         case all @ BinderFormula(Forall, x, a) => 
@@ -521,9 +521,9 @@ object SequentCalculus {
    * @param i Index of ∃x. A on the right
    * @param t Term in place of x in the premise
    */
-  case class RightEx(name: String, bot: Sequent, i: Int, t: Term, t1: String) extends LVL1ProofStep {
+  case class RightExists(name: String, bot: Sequent, i: Int, t: Term, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithTerm(name, RightExRuleName, bot, i, t.toString(), premises)
+    override def toString: String = SCProofStep.outputWithTerm(name, RightExistsRuleName, bot, i, t.toString(), premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.right(i) match
         case ex @ BinderFormula(Exists, x, a) => 
@@ -542,9 +542,9 @@ object SequentCalculus {
    * @param i Index of ∀x. A on the right
    * @param y Variable in place of x in the premise
    */
-  case class RightAll(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) extends LVL1ProofStep {
+  case class RightForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithTerm(name, RightAllRuleName, bot, i, y.toString(), premises)
+    override def toString: String = SCProofStep.outputWithTerm(name, RightForallRuleName, bot, i, y.toString(), premises)
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.right(i) match
         case all @ BinderFormula(Forall, x, a) => 

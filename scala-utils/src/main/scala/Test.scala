@@ -50,9 +50,23 @@ object Test {
     // val x_label = VariableSymbol(x_id)
     // val x = Variable(x_label)
 
-    // val a_id = Identifier("a")
-    // val a_term_label = FunctionSymbol(a_id, 0)
-    // val a_term = Term(a_term_label, Seq())
+    val a_id = Identifier("a")
+    val a_term_label = FunctionSymbol(a_id, 0)
+    val a_term = Term(a_term_label, Seq())
+    val a_atomic_label = AtomicSymbol(a_id, 0)
+    val a = AtomicFormula(a_atomic_label, Seq())
+
+    val b_id = Identifier("b")
+    val b_term_label = FunctionSymbol(b_id, 0)
+    val b_term = Term(b_term_label, Seq())
+    val b_atomic_label = AtomicSymbol(b_id, 0)
+    val b = AtomicFormula(b_atomic_label, Seq())
+
+    val c_id = Identifier("c")
+    val c_term_label = FunctionSymbol(c_id, 0)
+    val c_term = Term(c_term_label, Seq())
+    val c_atomic_label = AtomicSymbol(c_id, 0)
+    val c = AtomicFormula(c_atomic_label, Seq())
 
     // val f_id = Identifier("f")
     // val f_label = FunctionSymbol(f_id, 3)
@@ -171,32 +185,47 @@ object Test {
 
 
 
-  val problem = reconstructProof(new File("../proofs/clausification/clause_parse.p"))
-  val parsedProblem = problem.getSequent(0).right(0)
-  println("Formula : " + parsedProblem)
+    // val problem = reconstructProof(new File("../proofs/clausification/clause_parse.p"))
+    // val parsedProblem = problem.getSequent(0).right(0)
 
-  
-  val myTseitin = new Tseitin()
-  // Creation of tseitin terms
-  val premap2 = myTseitin.createTseitinVariables(parsedProblem)
-  myTseitin.makeTseitinMaps(premap2._1)
-  myTseitin.printTseitinVarTerm()
+    val parsedProblem = ConnectorFormula(Or, Seq(ConnectorFormula(Or, Seq(a, b)), c))
 
-  // Take the negation (for tests)
-  val parsedProblem2 = ConnectorFormula(Neg , Seq(parsedProblem))
-  println("Formula : " + parsedProblem2)
+    println("Formula : " + parsedProblem)
 
-  // NNF
-  val parsedProblem3 = myTseitin.toNNF(parsedProblem2)
-  println("Formula in NNF Form : " + parsedProblem3)
+    
+    val myTseitin = new Tseitin()
 
-  // Prenex
-  val parsedProblem4 = myTseitin.toPrenex(parsedProblem3)
-  println("Formula in Prenex Form : " + parsedProblem4)
+    // Take the negation (for tests)
+    val parsedProblem1 = ConnectorFormula(Neg , Seq(parsedProblem))
+    println("Formula : " + parsedProblem1)
 
-  // Instantiated
-  val parsedProblem5 = myTseitin.toInstantiated(parsedProblem4)
-  println("Formula instantiated : " + parsedProblem5)
+    // NNF
+    val parsedProblem2 = myTseitin.toNNF(parsedProblem1)
+    println("Formula in NNF Form : " + parsedProblem2)
 
+    // Prenex
+    val parsedProblem3 = myTseitin.toPrenex(parsedProblem2)
+    println("Formula in Prenex Form : " + parsedProblem3)
+
+    // Instantiated and renamed
+    val (parsedProblem4, mapVar) = myTseitin.toInstantiated(parsedProblem3)
+    println("Formula instantiated : " + parsedProblem4)
+
+    // Unrenamed formula 
+    val parsedProblem5 = myTseitin.UnRenameVariables(parsedProblem4, mapVar)
+    println("Formula with original names : " + parsedProblem5)
+
+    // Creation of tseitin terms beforme renaming
+    val premap = myTseitin.createTseitinVariables(parsedProblem4)
+    myTseitin.makeTseitinMaps(premap._1)
+    println("TS variables :")
+    myTseitin.printTseitinVarTerm()
+    myTseitin.makeTseitinMapsUp(myTseitin.updateTseitinVariables(myTseitin.getTseitinTermVar()))
+    println("Updated Variables :")
+    myTseitin.printTseitinVarTermUp()
+
+    // Tseitin Normal Form
+    val parsedProblem6 = myTseitin.toTseitin(parsedProblem4)
+    println("TseitinForm : " + parsedProblem6)
   }
 }

@@ -160,7 +160,7 @@ object LVL2 {
    */
   case class Instantiate_L(name: String, bot: Sequent, i: Int, x: VariableSymbol, t: Term, parent: String) extends StrictLVL2ProofStep {
     val premises = Seq(parent)
-    override def toString: String = s"fof(${name}, plain, ${bot}, inference(instantiate_l, [status(thm), ${i}, $$fot(${x.toString()}), $$fot(${t.toString()})], [${parent}])).";
+    override def toString: String = s"fof(${name}, plain, ${bot}, inference(instantiate, [status(thm), ${i}, $$fot(${x.toString()}), $$fot(${t.toString()})], [${parent}])).";
     def checkCorrectness(premises: String => Sequent): Boolean = 
       bot.left(i) match
         case AtomicFormula(p, args) => {

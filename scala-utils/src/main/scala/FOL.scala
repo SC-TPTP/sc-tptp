@@ -213,7 +213,7 @@ object FOL {
     case Term(label, args) => Term(label, args.map(substituteVariablesInTerm(_, m)))
   }
 
-  def substituteFunctionsInTerm(t: Term, m: Map[FunctionSymbol, (Term, List[VariableSymbol])]): Term = t match {
+  def substituteFunctionsInTerm(t: Term, m: Map[FunctionSymbol, (Term, Seq[VariableSymbol])]): Term = t match {
     case Term(label: FunctionSymbol, args) => 
       if m.contains(label) then 
         val (newTerm, vars) = m(label)
@@ -239,7 +239,7 @@ object FOL {
   }
 
   /** Computes the simultaneous substitution of some schematics function symbols by some terms (with holes), in a formula */
-  def substituteFunctionsInFormula(phi: Formula, m: Map[FunctionSymbol, (Term, List[VariableSymbol])], takenIds: Seq[Identifier] = Seq[Identifier]()): Formula = phi match {
+  def substituteFunctionsInFormula(phi: Formula, m: Map[FunctionSymbol, (Term, Seq[VariableSymbol])], takenIds: Seq[Identifier] = Seq[Identifier]()): Formula = phi match {
     case AtomicFormula(label, args) => AtomicFormula(label, args.map(substituteFunctionsInTerm(_, m)))
     case ConnectorFormula(label, args) => ConnectorFormula(label, args.map(substituteFunctionsInFormula(_, m))
     )
@@ -269,7 +269,7 @@ object FOL {
   }
 
 
-  def substitutePredicatesInFormula(phi: Formula, m: Map[AtomicSymbol, (Formula, List[VariableSymbol])], takenIds: Seq[Identifier] = Seq[Identifier]()): Formula = phi match {
+  def substitutePredicatesInFormula(phi: Formula, m: Map[AtomicSymbol, (Formula, Seq[VariableSymbol])], takenIds: Seq[Identifier] = Seq[Identifier]()): Formula = phi match {
     case AtomicFormula(label, args) => 
       if m.contains(label) then
         val (newFormula, vars) = m(label)

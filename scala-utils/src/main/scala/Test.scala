@@ -188,7 +188,9 @@ object Test {
     // val problem = reconstructProof(new File("../proofs/clausification/clause_parse.p"))
     // val parsedProblem = problem.getSequent(0).right(0)
 
-    val parsedProblem = ConnectorFormula(Or, Seq(ConnectorFormula(Or, Seq(a, b)), c))
+    // val parsedProblem = ConnectorFormula(And, Seq(a, b))
+    // val parsedProblem = ConnectorFormula(Or, Seq(a, b))
+    val parsedProblem = ConnectorFormula(Or, Seq(ConnectorFormula(And, Seq(a, b)), c))
 
     println("Formula : " + parsedProblem)
 
@@ -196,8 +198,9 @@ object Test {
     val myTseitin = new Tseitin()
 
     // Take the negation (for tests)
-    val parsedProblem1 = ConnectorFormula(Neg , Seq(parsedProblem))
-    println("Formula : " + parsedProblem1)
+    // val parsedProblem1 = ConnectorFormula(Neg , Seq(parsedProblem))
+    val parsedProblem1 = parsedProblem
+    println("Negated Formula : " + parsedProblem1)
 
     // NNF
     val parsedProblem2 = myTseitin.toNNF(parsedProblem1)

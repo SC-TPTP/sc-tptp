@@ -15,7 +15,9 @@ import scala.annotation.switch
 class Tseitin {
 
   val varName = "V"
+  val tseitinName = "X"
   var varCpt = 0
+  val NoneFormula = AtomicFormula(AtomicSymbol("None", 0), Seq())
 
   // Var = Tseitin Var, Term = Original formula Term
   var tseitinVarTerm: Map[sctptp.FOL.Formula, sctptp.FOL.Formula] = Map[sctptp.FOL.Formula, sctptp.FOL.Formula]()
@@ -185,7 +187,6 @@ class Tseitin {
     UnRenameVariablesAux(f)
   }
 
-
   // Go through the formula and associate each subformula to a variable
   def createTseitinVariables(
       f: sctptp.FOL.Formula,
@@ -202,7 +203,7 @@ class Tseitin {
         if (acc.contains(f)) {
           (acc, next_index)
         } else {
-          (acc + (f -> AtomicFormula(AtomicSymbol(Identifier("ts" + next_index, next_index), f.freeVariables.size), f.getFreeVariables())), next_index + 1)
+          (acc + (f -> AtomicFormula(AtomicSymbol(Identifier(tseitinName + next_index, next_index), f.freeVariables.size), f.getFreeVariables())), next_index + 1)
         }
       }
       case ConnectorFormula(label, args) => {
@@ -210,7 +211,7 @@ class Tseitin {
           args.foldLeft((acc, next_index))((acc2, c) => (createTseitinVariables(c, acc2._1, next_index)._1, acc2._2))
         } else {
           args.foldLeft((acc, next_index))((acc2, c) => {
-            val (newAcc, newCpt) = createTseitinVariables(c, acc2._1 + (f -> AtomicFormula(AtomicSymbol(Identifier("ts" + acc2._2, acc2._2), f.freeVariables.size), f.getFreeVariables())), acc2._2 + 1)
+            val (newAcc, newCpt) = createTseitinVariables(c, acc2._1 + (f -> AtomicFormula(AtomicSymbol(Identifier(tseitinName + acc2._2, acc2._2), f.freeVariables.size), f.getFreeVariables())), acc2._2 + 1)
             (newAcc, newCpt)
           })
         }
@@ -220,7 +221,7 @@ class Tseitin {
         if (acc.contains(f)) {
           createTseitinVariables(inner, acc, next_index)
         } else {
-          createTseitinVariables(inner, acc + (f -> AtomicFormula(AtomicSymbol(Identifier("ts" + next_index, next_index), f.freeVariables.size), f.getFreeVariables())), next_index + 1)
+          createTseitinVariables(inner, acc + (f -> AtomicFormula(AtomicSymbol(Identifier(tseitinName + next_index, next_index), f.freeVariables.size), f.getFreeVariables())), next_index + 1)
         }
       }
   }
@@ -239,21 +240,75 @@ class Tseitin {
 
   // Transform a formula in Prenex Negatted Normal form into Tseitin Normal Form with variable stored in tseitinVarTerm
   def toTseitin(f: sctptp.FOL.Formula): sctptp.FOL.Formula =  {
+
+    def toTseitinAux(f: sctptp.FOL.Formula): (sctptp.FOL.Formula, sctptp.FOL.Formula) = {
+    val varT = getTseitinTermVar()(f)
+    val varTneg = ConnectorFormula(Neg, Seq(varT))
     f match
-      case AtomicFormula(label, args) => f // getTseitinTermVar()(f) //ConnectorFormula(Iff, Seq(getTseitinTermVar()(f), f))
+      case AtomicFormula(label, args) => (f, NoneFormula) // getTseitinTermVar()(f) //ConnectorFormula(Iff, Seq(getTseitinTermVar()(f), f))
       case ConnectorFormula(label, args) => {
-        val varT = getTseitinTermVar()(f)
-        val varTneg = ConnectorFormula(And, Seq(ConnectorFormula(Neg, Seq(getTseitinTermVar()(f))), toTseitin(args(0))))
+        println(s"La variable introduite pour ${f.toString()} est ${varT.toString()}")
         label match {
-          case Neg =>  ConnectorFormula(Neg, Seq(toTseitin(args(0))))
-          case And => ConnectorFormula(And, ConnectorFormula(Or, varT +: args.map(x => ConnectorFormula(Neg, Seq(toTseitin(x))))) +: args.map(x => ConnectorFormula(Or, Seq(varTneg, toTseitin(x)))))
-          case Or =>  ConnectorFormula(And, ConnectorFormula(Or, varTneg +: args.map(x => toTseitin(x))) +: args.map(x => ConnectorFormula(Or, Seq(varTneg, ConnectorFormula(Neg, Seq(toTseitin(x)))))))
+          case Neg => {
+            val (p, c) = toTseitinAux(args(0))
+            (ConnectorFormula(Neg, Seq(p)), c)
+          }
+          case And => {
+            val (p1, c1) = toTseitinAux(args(0))
+            val (p2, c2) = toTseitinAux(args(1))
+            val formTokeep = 
+              (c1, c2) match
+                case (NoneFormula, NoneFormula) => Seq()
+                case (_, NoneFormula) => Seq(c1)
+                case (NoneFormula, _) => Seq(c2)
+                case (_, _) => Seq(c1, c2)
+            val new_c = ConnectorFormula(And, formTokeep ++ Seq(ConnectorFormula(Or, Seq(varT, ConnectorFormula(Neg, Seq(p1)), ConnectorFormula(Neg, Seq(p2))))) :+ ConnectorFormula(Or, Seq(varTneg, p1)) :+ ConnectorFormula(Or, Seq(varTneg, p2)))
+            (varT, new_c)
+          } 
+
+          case Or => {
+            val (p1, c1) = toTseitinAux(args(0))
+            val (p2, c2) = toTseitinAux(args(1))
+            val formTokeep = 
+              (c1, c2) match
+                case (NoneFormula, NoneFormula) => Seq()
+                case (_, NoneFormula) => Seq(c1)
+                case (NoneFormula, _) => Seq(c2)
+                case (_, _) => Seq(c1, c2)
+            val new_c = ConnectorFormula(And, formTokeep ++ Seq(ConnectorFormula(Or, Seq(varTneg, p1, p2))) :+ ConnectorFormula(Or, Seq(varT, ConnectorFormula(Neg, Seq(p1)))) :+ ConnectorFormula(Or, Seq(varT, ConnectorFormula(Neg, Seq(p2)))))
+            (varT, new_c)
+          } 
           case _ => throw new Exception("toTseitin failed")
         }
       }
-      case BinderFormula(label, bound, inner) => BinderFormula(label, bound, toTseitin(inner))
+      case BinderFormula(label, bound, inner) => (varT, BinderFormula(label, bound, toTseitin(inner)))
+    }
+
+    val (l: sctptp.FOL.Formula, c: sctptp.FOL.Formula) = toTseitinAux(f) 
+    println(s"c = ${c.toString()}")
+    println(s"l = ${l.toString()}")
+    if (c != NoneFormula) then ConnectorFormula(And, Seq(l, c))
+    else l
   }
 
+          // case Neg =>  (varT, ConnectorFormula(And, Seq(ConnectorFormula(Or, Seq(varTneg, f)), ConnectorFormula(Or, Seq(varT, args(0))))))
+          // case And => (varT, ConnectorFormula(And, ConnectorFormula(Or, varT +: args.map(x => ConnectorFormula(Neg, Seq(x)))) +: args.map(x => ConnectorFormula(Or, Seq(varTneg, x)))))
+          // case Or =>  (varT, ConnectorFormula(And, ConnectorFormula(Or, varTneg +: args.map(x => x)) +: args.map(x => ConnectorFormula(Or, Seq(varT, ConnectorFormula(Neg, Seq(x)))))))
+
+
+
+  // // Flattern  a formula in CNF
+  // def toFlattern(f: sctptp.FOL.Formula): sctptp.FOL.Formula = {
+  //   def toFlatternAux(f: sctptp.FOL.Formula): Seq[sctptp.FOL.Formula] = {
+  //     f match
+  //       case ConnectorFormula(And, args) => {
+  //           args
+  //       }
+  //       case _ => args
+  //   }
+
+  //   ConnectorFormula(And, toFlatternAux(f))
+  // }
 
 
   // add equivalences into the formula

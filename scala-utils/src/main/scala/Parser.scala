@@ -73,9 +73,6 @@ object Parser {
     Sequent(sequent.lhs.map(convertFormulaToFol), sequent.rhs.map(convertFormulaToFol))
   }
 
-
-
-
   def reconstructProof(file: File): SCProof[?] = {
     val problem = TPTPParser.problem(io.Source.fromFile(file)) 
     val nameMap = scala.collection.mutable.Map[String, Sequent]()
@@ -626,7 +623,7 @@ object Parser {
     object Res {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("res", Seq(StrOrNum(i), StrOrNum(j)), Seq(t1, t2)), _) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("res", Seq(_, StrOrNum(i), StrOrNum(j)), Seq(t1, t2)), _) =>
             Some(LVL2.Res(name, convertSequentToFol(sequent), i.toInt, j.toInt, t1, t2))
           case _ => None
         }
@@ -644,7 +641,7 @@ object Parser {
     object Instantiate_L {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instantiate_l", Seq(StrOrNum(i), GenTerm(x), GenTerm(t)), Seq(t1)), _) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instantiate", Seq(_, StrOrNum(i), GenTerm(x), GenTerm(t)), Seq(t1)), _) =>
             val x2 = x match 
               case Term(xs: VariableSymbol, Seq()) => xs
               case _ => throw new Exception(s"Expected a variable, but got $x")

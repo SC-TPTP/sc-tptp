@@ -118,7 +118,7 @@ object LVL2 {
             isSameSet(bot.right, premises(t1).right) &&
             isSameSet(A +: bot.left, premises(t2).left) &&
             isSameSet(bot.right, premises(t2).right)) || 
-            bot.left(0) == AtomicFormula(AtomicSymbol("$false", 0), Nil)
+            bot.left(0) == FOL.bot
         case (ConnectorFormula(Neg, Seq(x)), AtomicFormula(_, _)) =>
           x == B &&
           (isSameSet(A +: bot.left, premises(t1).left) &&
@@ -129,7 +129,7 @@ object LVL2 {
             isSameSet(bot.right, premises(t1).right) &&
             isSameSet(A +: bot.left, premises(t2).left) &&
             isSameSet(bot.right, premises(t2).right)) ||
-            bot.left(0) == AtomicFormula(AtomicSymbol("$false", 0), Nil)
+            bot.left(0) == AtomicFormula(FOL.bot, Seq())
         case _ => false
   }
 

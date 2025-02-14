@@ -12,7 +12,6 @@ src/main/scala/.scala-build/
 .bloop
 target
 *.scala.semanticdb
-
 *.iml
 
 # silex and scallion
@@ -25,3 +24,8 @@ cache
 
 # emacs backup files
 *~
+
+# Other
+project/
+scala-utils/project/metals.sbt
+scala-utils/project/project/

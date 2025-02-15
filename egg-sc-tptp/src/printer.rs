@@ -165,7 +165,7 @@ pub enum SCTPTPRule {
   RightTrue {name: String, bot: fol::Sequent},
   RightRefl {name: String, bot: fol::Sequent, i: i32},
   RightReflIff {name: String, bot: fol::Sequent, i: i32},
-  //format!("fof(f{i}, plain, [{newleft}] --> [{base} = {res}], inference(rightSubstEq, param(0, $fof({base} = {with_hole}), $fot(HOLE)), [f{}])).\n", *i-1) 
+  //format!("fof(f{i}, plain, [{newleft}] --> [{base} = {res}], inference(rightSubstEq, [status(thm), 0, $fof({base} = {with_hole}), $fot(HOLE)), [f{}])).\n", *i-1) 
   RightSubstEq {name: String, bot: fol::Sequent, premise: String, i: i32, phi: fol::Formula, v: String},
   RightSubstIff {name: String, bot: fol::Sequent, premise: String, i: i32, phi: fol::Formula, v: String},
   LeftForall {name: String, bot: fol::Sequent, premise: String, i: i32, t: fol::Term},
@@ -180,27 +180,27 @@ impl std::fmt::Display for SCTPTPRule {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     match self {
       SCTPTPRule::RightTrue {name, bot} => 
-        write!(f, "fof({}, plain, {}, inference(rightTrue, param(), [])).", name, bot),
+        write!(f, "fof({}, plain, {}, inference(rightTrue, [status(thm)], [])).", name, bot),
       SCTPTPRule::RightRefl {name, bot, i} => 
-        write!(f, "fof({}, plain, {}, inference(rightRefl, param({}), [])).", name, bot, i),
+        write!(f, "fof({}, plain, {}, inference(rightRefl, [status(thm), {}], [])).", name, bot, i),
       SCTPTPRule::RightReflIff {name, bot, i} => 
-        write!(f, "fof({}, plain, {}, inference(rightRefl, param({}), [])).", name, bot, i),
+        write!(f, "fof({}, plain, {}, inference(rightRefl, [status(thm), {}], [])).", name, bot, i),
       SCTPTPRule::RightSubstEq {name, bot, premise, i, phi, v} => 
-        write!(f, "fof({}, plain, {}, inference(rightSubstEq, param({}, $fof({}), $fot({})), [{}])).", name, bot, i, phi, v, premise),
+        write!(f, "fof({}, plain, {}, inference(rightSubstEq, [status(thm), {}, $fof({}), $fot({})], [{}])).", name, bot, i, phi, v, premise),
       SCTPTPRule::RightSubstIff {name, bot, premise, i, phi, v} => 
-        write!(f, "fof({}, plain, {}, inference(rightSubstIff, param({}, $fof({}), $fof({})), [{}])).", name, bot, i, phi, v, premise),
+        write!(f, "fof({}, plain, {}, inference(rightSubstIff, [status(thm), {}, $fof({}), $fof({})], [{}])).", name, bot, i, phi, v, premise),
       SCTPTPRule::LeftForall {name, bot, premise, i, t} => 
-        write!(f, "fof({}, plain, {}, inference(leftForall, param({}, $fot({})), [{}])).", name, bot, i, t, premise),
+        write!(f, "fof({}, plain, {}, inference(leftForall, [status(thm), {}, $fot({})], [{}])).", name, bot, i, t, premise),
       SCTPTPRule::Cut {name, bot, premise1, premise2, i1, i2} => 
-        write!(f, "fof({}, plain, {}, inference(cut, param({}, {}), [{}, {}])).", name, bot, i1, i2, premise1, premise2),
+        write!(f, "fof({}, plain, {}, inference(cut, [status(thm), {}, {}], [{}, {}])).", name, bot, i1, i2, premise1, premise2),
       SCTPTPRule::RightSubstEqForallLocal {name, bot, premise, i, phi, v} =>
-        write!(f, "fof({}, plain, {}, inference(rightSubstEqForallLocal, param({}, $fof({}), $fot({})), [{}])).", name, bot, i, phi, v, premise),
+        write!(f, "fof({}, plain, {}, inference(rightSubstEqForallLocal, [status(thm), {}, $fof({}), $fot({})], [{}])).", name, bot, i, phi, v, premise),
       SCTPTPRule::RightSubstEqForall {name, bot, premise1, premise2, phi, v} =>
-        write!(f, "fof({}, plain, {}, inference(rightSubstEqForall, param($fof({}), $fot({})), [{}, {}])).", name, bot, phi, v, premise1, premise2),
+        write!(f, "fof({}, plain, {}, inference(rightSubstEqForall, [status(thm), $fof({}), $fot({})], [{}, {}])).", name, bot, phi, v, premise1, premise2),
       SCTPTPRule::RightSubstIffForallLocal {name, bot, premise, i, phi, v} =>
-        write!(f, "fof({}, plain, {}, inference(rightSubstIffForallLocal, param({}, $fof({}), $fof({})), [{}])).", name, bot, i, phi, v, premise),
+        write!(f, "fof({}, plain, {}, inference(rightSubstIffForallLocal, [status(thm), {}, $fof({}), $fof({})], [{}])).", name, bot, i, phi, v, premise),
       SCTPTPRule::RightSubstIffForall {name, bot, premise1, premise2, phi, v} =>
-        write!(f, "fof({}, plain, {}, inference(rightSubstIffForall, param($fof({}), $fof({})), [{}, {}])).", name, bot, phi, v, premise1, premise2)
+        write!(f, "fof({}, plain, {}, inference(rightSubstIffForall, [status(thm), $fof({}), $fof({})], [{}, {}])).", name, bot, phi, v, premise1, premise2)
     }
   }
 }

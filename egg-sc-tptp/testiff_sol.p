@@ -21,12 +21,13 @@
 %--------------------------------------------------------------------------
 fof(a1, axiom, (! [Xx]: ((p(Xx) <=> p(sf(sf(sf(sf(sf(sf(sf(sf(Xx))))))))))))).
 fof(a2, axiom, (! [Xx]: ((p(Xx) <=> p(sf(sf(sf(sf(sf(Xx)))))))))).
-fof(c3, simplify, (p(sf(cemptySet)))).
+fof(c3, conjecture, (p(sf(cemptySet)) <=> p(cemptySet))).
+%fof(c3, simplify, (p(sf(cemptySet)))).
 
 
-fof(f0, plain, [] --> [(p(sf(cemptySet)) <=> p(sf(cemptySet)))], inference(rightRefl, param(0), [])).
-fof(f1, plain, [] --> [(p(sf(cemptySet)) <=> p(sf(sf(sf(sf(sf(sf(cemptySet))))))))], inference(rightSubstIffForall, param($fof((p(sf(cemptySet)) <=> HOLE)), $fof(HOLE)), [a2, f0])).
-fof(f2, plain, [] --> [(p(sf(cemptySet)) <=> p(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(cemptySet)))))))))))))], inference(rightSubstIffForall, param($fof((p(sf(cemptySet)) <=> HOLE)), $fof(HOLE)), [a2, f1])).
-fof(f3, plain, [] --> [(p(sf(cemptySet)) <=> p(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(cemptySet))))))))))))))))))], inference(rightSubstIffForall, param($fof((p(sf(cemptySet)) <=> HOLE)), $fof(HOLE)), [a2, f2])).
-fof(f4, plain, [] --> [(p(sf(cemptySet)) <=> p(sf(sf(sf(sf(sf(sf(sf(sf(cemptySet))))))))))], inference(rightSubstIffForall, param($fof((p(sf(cemptySet)) <=> HOLE)), $fof(HOLE)), [a1, f3])).
-fof(f5, plain, [] --> [(p(sf(cemptySet)) <=> p(cemptySet))], inference(rightSubstIffForall, param($fof((p(sf(cemptySet)) <=> HOLE)), $fof(HOLE)), [a1, f4])).
+fof(f0, plain, [] --> [(p(sf(cemptySet)) <=> p(sf(cemptySet)))], inference(rightRefl, [status(thm), 0], [])).
+fof(f1, plain, [] --> [(p(sf(cemptySet)) <=> p(sf(sf(sf(sf(sf(sf(cemptySet))))))))], inference(rightSubstIffForall, [status(thm), $fof((p(sf(cemptySet)) <=> HOLE)), $fof(HOLE)], [a2, f0])).
+fof(f2, plain, [] --> [(p(sf(cemptySet)) <=> p(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(cemptySet)))))))))))))], inference(rightSubstIffForall, [status(thm), $fof((p(sf(cemptySet)) <=> HOLE)), $fof(HOLE)], [a2, f1])).
+fof(f3, plain, [] --> [(p(sf(cemptySet)) <=> p(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(sf(cemptySet))))))))))))))))))], inference(rightSubstIffForall, [status(thm), $fof((p(sf(cemptySet)) <=> HOLE)), $fof(HOLE)], [a2, f2])).
+fof(f4, plain, [] --> [(p(sf(cemptySet)) <=> p(sf(sf(sf(sf(sf(sf(sf(sf(cemptySet))))))))))], inference(rightSubstIffForall, [status(thm), $fof((p(sf(cemptySet)) <=> HOLE)), $fof(HOLE)], [a1, f3])).
+fof(f5, plain, [] --> [(p(sf(cemptySet)) <=> p(cemptySet))], inference(rightSubstIffForall, [status(thm), $fof((p(sf(cemptySet)) <=> HOLE)), $fof(HOLE)], [a1, f4])).

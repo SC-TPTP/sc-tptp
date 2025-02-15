@@ -89,7 +89,7 @@ object Parser {
        
       case fa: FOFAnnotated =>
         if fa.role == "conjecture" then ()
-        if fa.role == "let" then
+        else if fa.role == "let" then
           val formula = fa.formula match {
             case FOF.Logical(formula) => formula
             case s: FOF.Sequent => throw new Exception("Sequent in let statement is incorrect")
@@ -246,13 +246,10 @@ object Parser {
     object Hyp {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("hyp", Seq(_, StrOrNum(n), StrOrNum(m)), Seq()), _) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("hyp", Seq(_, StrOrNum(n)), Seq()), _) =>
             val left = sequent.lhs.map(convertFormulaToFol)
             val right = sequent.rhs.map(convertFormulaToFol)
-            if (isSame(left(n.toInt), right(m.toInt))) then
-              Some(SC.Hyp(name, Sequent(left, right), n.toInt, m.toInt))
-            else 
-              None
+              Some(SC.Hyp(name, Sequent(left, right), n.toInt))
           case _ => None
         }
     }

@@ -3,10 +3,9 @@
 # Level 1 Proof Steps
 | Rule Name | Premises | Rule       | Parameters   | Comments | 
 | :--       | :--      | :--        | :--          |  :--     |
-| `rightTrue` | 0      | $$\frac{}{\Gamma \vdash \top, \Delta}$$ | `i:Int`: Index of $\top$ on the right | |
 | `leftFalse` | 0      | $$\frac{}{\Gamma, \bot \vdash \Delta}$$ | `i:Int`: Index of $\bot$ on the left | |
+| `rightTrue` | 0      | $$\frac{}{\Gamma \vdash \top, \Delta}$$ | `i:Int`: Index of $\top$ on the right | |
 | `hyp`    | 0         | $$\frac{}{\Gamma, A \vdash A, \Delta}$$ | `i:Int`: Index of $A$ on the left   <br> `j:Int`: Index of $A$ on the right | |
-| `leftHyp` | 0        | $$\frac{}{\Gamma, A, \neg A \vdash \Delta}$$ | `i:Int`: Index of $A$ on the left   <br> `j:Int`: Index of $\neg A$ on the left. | |
 | `leftWeaken` | 1     | $$\frac{\Gamma \vdash \Delta}{\Gamma, A \vdash \Delta}$$ | `i:Int`: Index of $A$ on the left | |
 | `rightWeaken` | 1    | $$\frac{\Gamma \vdash \Delta}{\Gamma \vdash A, \Delta}$$ | `i:Int`: Index of $A$ on the right | |
 | `cut` | 2            | $$\frac{\Gamma \vdash A, \Delta \quad \Sigma, A \vdash \Pi}{\Gamma, \Sigma \vdash \Delta, \Pi}$$ |`i:Int`: Index of the cut formula on the right of the first premise | |
@@ -48,6 +47,7 @@ Proof steps for which there is an available elimination algorithm implemented in
 | `rightSubstIffForall` | 2 | $$\frac{\Gamma \vdash R(\phi(t)), \Delta \quad \Sigma \vdash \forall x. \phi(x) \Leftrightarrow \psi(x), \Pi}{\Gamma, \Sigma \vdash  R(\psi(t)), \Delta, \Pi}$$ | `i:Int`: Index of $\forall x. \phi(x) \Leftrightarrow \psi(x)$ on the right of the second premisce <br> `R(Z):Var`: Shape of the predicate on the right <br> `Z:Var`: unifiable sub-term in the predicate | |
 | `NNF` | 1           | $$\frac{\Gamma \vdash \Delta}{\Gamma' \vdash \Delta'}$$ | No parameters <br> The premise and conclusion are equal up to negation normal form | |
 | `congruence` | 0    | $$\frac{}{\Gamma, P \vdash Q, \Delta}$$ $$\frac{}{\Gamma, P, \neg Q \vdash \Delta}$$ | No parameter <br> $\Gamma$ contains a set of ground equalities such that P and Q are congruents | |
+| `leftHyp` | 0        | $$\frac{}{\Gamma, A, \neg A \vdash \Delta}$$ | `i:Int`: Index of $A$ on the left   <br> `j:Int`: Index of $\neg A$ on the left. | |
 | `leftNotAnd` | 2    | $$\frac{\Gamma, \neg A \vdash \Delta \quad \Sigma, \neg B \vdash \Pi}{\Gamma, \Sigma, \neg(A \land B) \vdash \Delta, \Pi}$$ | `i:Int`: Index of $\neg(A \land B)$ on the left | |
 | `leftNotOr` | 1     | $$\frac{\Gamma, \neg A, \neg B \vdash \Delta}{\Gamma, \neg(A \lor B) \vdash \Delta}$$ | `i:Int`: Index of $\neg(A \lor B)$ on the left | |
 | `leftNotImplies` | 1 | $$\frac{\Gamma, A, \neg B \vdash \Delta}{\Gamma, \neg(A \Rightarrow B) \vdash \Delta}$$ | `i:Int`: Index of $\neg(A \Rightarrow B)$ on the left | |

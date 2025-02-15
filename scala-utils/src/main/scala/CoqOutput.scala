@@ -86,7 +86,7 @@ object CoqOutput {
 
   def computeNextStep(step: SCProofStep, indexNextIntro: Int): (String, Int) = step match {
     case Axiom(name, bot) => ("", 0)
-    case Hyp(name, bot, i, j) => (s"(* [${name}] *) " + "auto.", 0)
+    case Hyp(name, bot, i) => (s"(* [${name}] *) " + "auto.", 0)
     case LeftHyp(name, bot, i, j) => (s"(* [${name}] *) " + "auto.", 0)
     case LeftWeaken(name, bot, i, t1) => (s"(* [${name}] *) " + s"clear H${i}.", 0)
     case RightWeaken(name, bot, i, t1) => (s"(* [${name}] *) " + s"clear ${bot.right(i).toString()}.", 0)

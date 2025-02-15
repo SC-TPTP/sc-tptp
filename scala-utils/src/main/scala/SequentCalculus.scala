@@ -174,15 +174,13 @@ object SequentCalculus {
    *
    * @param bot Resulting formula
    * @param i Index of A on the left
-   * @param j Index of A on the right
    */
-  case class Hyp(name: String, bot: Sequent, i: Int, j: Int) extends LVL1ProofStep {
+  case class Hyp(name: String, bot: Sequent, i: Int) extends LVL1ProofStep {
     val premises = Seq()
-    override def toString: String = SCProofStep.outputDoubleIndexes(name, HypRuleName, "assumption", bot, i, j, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, HypRuleName, "assumption", bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val fi = bot.left(i)
-      val fj = bot.right(j)
-      if isSame(fi, fj) then None else Some(s"${fi} and ${fj} are not the same")
+      if bot.right.exists(isSame(_, fi)) then None else Some(s"${fi} is not in the right-hand side of the conclusion.")
   }
 
  
@@ -647,7 +645,7 @@ object SequentCalculus {
         case _ => return Some(s"${bot.right(i)} is not an equality")
       val P_t = substituteVariablesInFormula(P, Map(x -> t))
       val P_u = substituteVariablesInFormula(P, Map(x -> u))
-      if isSameSet(P_t +: bot.left, P_u +: bot.left(i) +: premises(t1).left) then
+      if isSameSet(P_t +: bot.left, P_u +: bot.left(i) +: premises(t1).left) || isSameSet(P_u +: bot.left, P_t +: bot.left(i) +: premises(t1).left) then
         if isSameSet(bot.right, premises(t1).right) then
           None
         else Some("Right-hand side is not correct.")
@@ -675,7 +673,7 @@ object SequentCalculus {
       val P_t = substituteVariablesInFormula(P, Map(x -> t))
       val P_u = substituteVariablesInFormula(P, Map(x -> u))
       if isSameSet(bot.left, bot.left(i) +: premises(t1).left) then
-        if isSameSet(P_t +: bot.right, P_u +: premises(t1).right) then
+        if isSameSet(P_t +: bot.right, P_u +: premises(t1).right) || isSameSet(P_u +: bot.right, P_t +: premises(t1).right) then
           None
         else Some("Right-hand side is not correct.")
       else Some("Left-hand side is not correct.")
@@ -702,7 +700,7 @@ object SequentCalculus {
         case _ => return Some(s"${bot.right(i)} is not a biconditional")
       val R_phi = substituteAtomicsInFormula(R, Map(A -> phi))
       val R_psi = substituteAtomicsInFormula(R, Map(A -> psi))
-      if isSameSet(R_phi +: bot.left, R_psi +: bot.left(i) +: premises(t1).left) then
+      if isSameSet(R_phi +: bot.left, R_psi +: bot.left(i) +: premises(t1).left) || isSameSet(R_psi +: bot.left, R_phi +: bot.left(i) +: premises(t1).left) then
         if isSameSet(bot.right, premises(t1).right) then
           None
         else Some("Right-hand side is not correct.")
@@ -730,7 +728,7 @@ object SequentCalculus {
       val R_phi = substituteAtomicsInFormula(R, Map(A -> phi))
       val R_psi = substituteAtomicsInFormula(R, Map(A -> psi))
       if isSameSet(bot.left, bot.left(i) +: premises(t1).left) then
-        if isSameSet(R_phi +: bot.right, R_psi +: premises(t1).right) then
+        if isSameSet(R_phi +: bot.right, R_psi +: premises(t1).right) || isSameSet(R_psi +: bot.right, R_phi +: premises(t1).right) then
           None
         else Some("Right-hand side is not correct.")
       else Some("Left-hand side is not correct.")

@@ -1,6 +1,7 @@
 use crate::fol::instantiate_formula;
 use crate::translator::*;
 use egg::{*, rewrite as rw};
+use tptp::fof::Formula;
 use std::io::Read;
 use std::iter::Map;
 use std::ops::Index;
@@ -174,6 +175,10 @@ pub enum SCTPTPRule {
   RightSubstEqForall {name: String, bot: fol::Sequent, premise1: String, premise2: String, phi: fol::Formula, v: String},
   RightSubstIffForallLocal {name: String, bot: fol::Sequent, premise: String, i: i32, phi: fol::Formula, v: String},
   RightSubstIffForall {name: String, bot: fol::Sequent, premise1: String, premise2: String, phi: fol::Formula, v: String},
+  Hypothesis {name: String, bot: fol::Sequent, i: i32},
+  RightImplies {name: String, bot: fol::Sequent, premise: String, i: i32},
+  RightIff {name: String, bot: fol::Sequent, premise1: String, premise2: String, i: i32}
+
 }
 
 impl std::fmt::Display for SCTPTPRule {
@@ -181,26 +186,33 @@ impl std::fmt::Display for SCTPTPRule {
     match self {
       SCTPTPRule::RightTrue {name, bot} => 
         write!(f, "fof({}, plain, {}, inference(rightTrue, [status(thm)], [])).", name, bot),
+      
       SCTPTPRule::RightRefl {name, bot, i} => 
         write!(f, "fof({}, plain, {}, inference(rightRefl, [status(thm), {}], [])).", name, bot, i),
       SCTPTPRule::RightReflIff {name, bot, i} => 
-        write!(f, "fof({}, plain, {}, inference(rightRefl, [status(thm), {}], [])).", name, bot, i),
+        write!(f, "fof({}, plain, {}, inference(rightReflIff, [status(thm), {}], [])).", name, bot, i),
       SCTPTPRule::RightSubstEq {name, bot, premise, i, phi, v} => 
-        write!(f, "fof({}, plain, {}, inference(rightSubstEq, [status(thm), {}, $fof({}), $fot({})], [{}])).", name, bot, i, phi, v, premise),
+        write!(f, "fof({}, plain, {}, inference(rightSubstEq, [status(thm), {}, $fof({}), '{}'], [{}])).", name, bot, i, phi, v, premise),
       SCTPTPRule::RightSubstIff {name, bot, premise, i, phi, v} => 
-        write!(f, "fof({}, plain, {}, inference(rightSubstIff, [status(thm), {}, $fof({}), $fof({})], [{}])).", name, bot, i, phi, v, premise),
+        write!(f, "fof({}, plain, {}, inference(rightSubstIff, [status(thm), {}, $fof({}), '{}'], [{}])).", name, bot, i, phi, v, premise),
       SCTPTPRule::LeftForall {name, bot, premise, i, t} => 
         write!(f, "fof({}, plain, {}, inference(leftForall, [status(thm), {}, $fot({})], [{}])).", name, bot, i, t, premise),
       SCTPTPRule::Cut {name, bot, premise1, premise2, i1, i2} => 
         write!(f, "fof({}, plain, {}, inference(cut, [status(thm), {}, {}], [{}, {}])).", name, bot, i1, i2, premise1, premise2),
       SCTPTPRule::RightSubstEqForallLocal {name, bot, premise, i, phi, v} =>
-        write!(f, "fof({}, plain, {}, inference(rightSubstEqForallLocal, [status(thm), {}, $fof({}), $fot({})], [{}])).", name, bot, i, phi, v, premise),
+        write!(f, "fof({}, plain, {}, inference(rightSubstEqForallLocal, [status(thm), {}, $fof({}), '{}'], [{}])).", name, bot, i, phi, v, premise),
       SCTPTPRule::RightSubstEqForall {name, bot, premise1, premise2, phi, v} =>
-        write!(f, "fof({}, plain, {}, inference(rightSubstEqForall, [status(thm), $fof({}), $fot({})], [{}, {}])).", name, bot, phi, v, premise1, premise2),
+        write!(f, "fof({}, plain, {}, inference(rightSubstEqForall, [status(thm), $fof({}), '{}'], [{}, {}])).", name, bot, phi, v, premise1, premise2),
       SCTPTPRule::RightSubstIffForallLocal {name, bot, premise, i, phi, v} =>
-        write!(f, "fof({}, plain, {}, inference(rightSubstIffForallLocal, [status(thm), {}, $fof({}), $fof({})], [{}])).", name, bot, i, phi, v, premise),
+        write!(f, "fof({}, plain, {}, inference(rightSubstIffForallLocal, [status(thm), {}, $fof({}), '{}'], [{}])).", name, bot, i, phi, v, premise),
       SCTPTPRule::RightSubstIffForall {name, bot, premise1, premise2, phi, v} =>
-        write!(f, "fof({}, plain, {}, inference(rightSubstIffForall, [status(thm), $fof({}), $fof({})], [{}, {}])).", name, bot, phi, v, premise1, premise2)
+        write!(f, "fof({}, plain, {}, inference(rightSubstIffForall, [status(thm), $fof({}), '{}'], [{}, {}])).", name, bot, phi, v, premise1, premise2),
+      SCTPTPRule::Hypothesis {name, bot, i} =>
+        write!(f, "fof({}, plain, {}, inference(hyp, [status(thm), {}], [])).", name, bot, i),
+      SCTPTPRule::RightImplies {name, bot, premise, i} =>
+        write!(f, "fof({}, plain, {}, inference(rightImplies, [status(thm), {}], [{}])).", name, bot, i, premise),
+      SCTPTPRule::RightIff {name, bot, premise1, premise2, i} =>
+        write!(f, "fof({}, plain, {}, inference(rightIff, [status(thm), {}], [{}, {}])).", name, bot, i, premise1, premise2)
     }
   }
 }
@@ -421,13 +433,22 @@ pub fn proof_to_tptp(header: &String, proof: &Vec<FlatTerm<FOLLang>>, problem: &
 
   let init_formula = flat_term_to_formula(&proof[0]);
   let first_seq = fol::Sequent {left: problem.left.clone(), right: vec![init_formula.clone()]};
-  let first_step: SCTPTPRule = match init_formula {
-    fol::Formula::True => SCTPTPRule::RightTrue {name: "f0".to_owned(), bot: first_seq},
-    fol::Formula::Predicate(op, _) if op == "=" => SCTPTPRule::RightRefl {name: "f0".to_owned(), bot: first_seq, i: 0},
-    fol::Formula::Iff(_, _) => SCTPTPRule::RightReflIff {name: "f0".to_owned(), bot: first_seq, i: 0},
+  let first_steps: Vec<SCTPTPRule> = match init_formula {
+    fol::Formula::True => vec![SCTPTPRule::RightTrue {name: "f0".to_owned(), bot: first_seq}],
+    fol::Formula::Predicate(op, _) if op == "=" => vec![SCTPTPRule::RightRefl {name: "f0".to_owned(), bot: first_seq, i: 0}],
+    fol::Formula::Iff(a, _) => {
+      if level1 {vec![
+        SCTPTPRule::Hypothesis { name: "e0".to_owned(), bot: fol::Sequent {left: vec![*a.clone()], right: vec![*a.clone()]}, i: 0},
+        SCTPTPRule::RightImplies { name: "e1".to_owned(), bot: fol::Sequent {left:vec![], right: vec![fol::Formula::Implies(a.clone(), a.clone())]}, premise: "e0".to_owned(), i: 0 },
+        SCTPTPRule::RightIff { name: "f0".to_owned(), bot: fol::Sequent {left:vec![], right: vec![fol::Formula::Iff(a.clone(), a)]}, premise1: "e1".to_owned(), premise2: "e1".to_owned(), i: 0 },
+      ]
+      } else {
+        vec![SCTPTPRule::RightReflIff {name: "f0".to_owned(), bot: first_seq, i: 0}]
+      }
+    },
     _ if problem.simplify => {
       let first_seq = fol::Sequent {left: problem.left.clone(), right: vec![fol::Formula::Iff(Box::new(init_formula.clone()), Box::new(init_formula.clone()))]};
-      SCTPTPRule::RightReflIff {name: "f0".to_owned(), bot: first_seq, i: 0}
+      vec![SCTPTPRule::RightReflIff {name: "f0".to_owned(), bot: first_seq, i: 0}]
     }
     _ => panic!("unexpected starting expression")
   };
@@ -442,7 +463,9 @@ pub fn proof_to_tptp(header: &String, proof: &Vec<FlatTerm<FOLLang>>, problem: &
     };
     res
   });
-  format!("{}\n{}\n{}", header, first_step, proof_vec.iter().map(|step| step.to_string()).collect::<Vec<String>>().join("\n"))
+  format!("{}\n{}\n{}", header, 
+    first_steps.iter().map(|step| step.to_string()).collect::<Vec<String>>().join("\n"),
+    proof_vec.iter().map(|step| step.to_string()).collect::<Vec<String>>().join("\n"))
 
 }
 

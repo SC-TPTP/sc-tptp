@@ -378,5 +378,5 @@ object FOL {
   def isSameSet(s1: Iterable[Formula], s2: Iterable[Formula]): Boolean = 
     val s1Local = s1.map(toLocallyNameless).toSet
     val s2Local = s2.map(toLocallyNameless).toSet
-    (s1.size == s2.size) && s1Local.forall(s2Local.contains)
+    s1Local.forall(s2Local.contains) && s2Local.forall(s1Local.contains)
 }

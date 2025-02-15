@@ -4,6 +4,7 @@ import org.scalatest.compatible.Assertion
 import org.scalatest.funsuite.AnyFunSuite
 import scala.io.Source
 import java.io.File
+import SequentCalculus.checkProof
 
 import leo.modules.input.TPTPParser
 
@@ -41,6 +42,7 @@ class LVL1Test extends AnyFunSuite {
     "rightSubst.p" -> "rightSubst rule tests",
     "rightSubstIff.p" -> "rightSubstIff rule tests",
     "RightWeaken.p" -> "RightWeaken rule tests",
+    /**/
   )
 
 
@@ -50,6 +52,14 @@ class LVL1Test extends AnyFunSuite {
       print(s"Parsing ${p._1} ...")
       try {
         val res = Parser.reconstructProof(File(s"$sources/${p._1}"))
+        checkProof(res) match
+          case Some((msg, step)) =>
+            println(s"Error: $msg")
+            println(s"Step: $step")
+            fail()
+          case None =>
+            println("Proof is correct")
+        
         println(s"Parsed ${p._1}")
       } catch {
         case e: TPTPParser.TPTPParseException =>

@@ -15,8 +15,8 @@ fof(f4, plain, [r(X, Y)] --> [p(X), ![X] : (q(X) | q(Y))], inference(rightForall
 fof(a6, axiom, [(t(X) & u(X)), v(X)] --> [![X]: (p(X) & q(Z)), (r(X) | s(Y))]).
 fof(f6, plain, [(t(X) & u(X)), v(X)] --> [![Y, X]: (p(X) & q(Y)), (r(X) | s(Y))], inference(rightForall, [0, 'Z'], [a6])).
 
-fof(a7, axiom, [] --> [q, ![X]: (p(X) & q(f(c))), s(Y)]).
-fof(f7, plain, [] --> [q, ![X, Y]: (p(Y) & q(X)), s(Y)], inference(rightForall, [1, 'Y'], [a7])).
+fof(a7, axiom, [] --> [q, ![X]: (p(X) & q(Z)), s(Y)]).
+fof(f7, plain, [] --> [q, ![X, Y]: (p(Y) & q(X)), s(Y)], inference(rightForall, [1, 'Z'], [a7])).
 
-fof(a7, axiom, [] --> [q, ![X]: (p(X) & r(f(c), f(c))), s(Y)]).
-fof(f7, plain, [] --> [q, ![X, Y]: (p(Y) & r(X, X)), s(Y)], inference(rightForall, [1, 'Y'], [a7])).
+fof(a8, axiom, [] --> [q, ![X]: (p(X) & r(Z, Z)), s(Y)]).
+fof(f8, plain, [] --> [q, ![X, Y]: (p(Y) & r(X, X)), s(Y)], inference(rightForall, [1, 'Z'], [a8])).

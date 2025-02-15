@@ -4,6 +4,7 @@ import SequentCalculus.*
 import SequentCalculus.RulesName.*
 import sctptp.FOL.*
 import sctptp.LVL2.LVL2ProofStep
+import sctptp.LVL2.*
 import scala.annotation.switch
 
 object CoqOutput {
@@ -87,9 +88,9 @@ object CoqOutput {
     case Axiom(name, bot) => ("", 0)
     case Hyp(name, bot, i, j) => (s"(* [${name}] *) " + "auto.", 0)
     case LeftHyp(name, bot, i, j) => (s"(* [${name}] *) " + "auto.", 0)
-    //case LeftWeaken(name, bot, i, t1) => (s"(* [${name}] *) " + s"clear H${i}.", 0)
-    //case RightWeaken(name, bot, i, t1) => (s"(* [${name}] *) " + s"clear ${bot.right(i).toString()}.", 0)
-    case LeftWeaken(name, bot, t1) => ???
+    case LeftWeaken(name, bot, i, t1) => (s"(* [${name}] *) " + s"clear H${i}.", 0)
+    case RightWeaken(name, bot, i, t1) => (s"(* [${name}] *) " + s"clear ${bot.right(i).toString()}.", 0)
+    //case LeftWeaken(name, bot, t1) => ???
     case Cut(name, bot, i, j, t1, t2) => ("", 1)
     case LVL2.Congruence(name, bot) => (s"(* [${name}] *) congruence.", 0)
 

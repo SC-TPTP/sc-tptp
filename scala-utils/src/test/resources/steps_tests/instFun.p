@@ -2,7 +2,7 @@ fof(a1, axiom, [q(X)] --> []).
 fof(f1, plain, [q(b)] --> [], inference(instFun, ['X', $fot(b), []], [a1])).
 
 fof(a2, axiom, [q(g(X, f(X)))] --> []).
-fof(f2, plain, [q(g(f(c), f(f(c))))] --> [], inference(instFun, ['A', $fot(f(c)), []], [a2])).
+fof(f2, plain, [q(g(f(c), f(f(c))))] --> [], inference(instFun, ['X', $fot(f(c)), []], [a2])).
 
 fof(a3, axiom, [q(X), q(g(X, f(X)))] --> [q(g(f(X, Y)))]).
 fof(f3, plain, [q(f(b)), q(g(f(b), f(f(b))))] --> [q(g(f(f(b), Y)))], inference(instFun, ['X', $fot(f(b)), []], [a3])).

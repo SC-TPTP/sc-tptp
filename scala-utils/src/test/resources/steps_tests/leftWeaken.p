@@ -1,5 +1,5 @@
 
-fof(a1, axiom, [p] --> []).
+fof(a1, axiom, [] --> [p]).
 fof(f1, plain, [q] --> [p], inference(leftWeaken, [0], [a1])).
 fof(f2, plain, [q, P(X)] --> [p], inference(leftWeaken, [1], [f1])).
 fof(f3, plain, [q, P(X), Q(X, c)] --> [p], inference(leftWeaken, [2], [f2])).

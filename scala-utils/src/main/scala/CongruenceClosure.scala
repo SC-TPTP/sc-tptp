@@ -45,7 +45,7 @@ object CongruenceClosure {
             else 
               val hypSequent = SC.Sequent(bot.left.updated(i, matching.get._1), bot.right)
               val hypName = s"${sname}_${unfoldCounter}_h"
-              val hypStep = SC.LeftHyp(hypName, hypSequent, i, matching.get._2)
+              val hypStep = LeftHyp(hypName, hypSequent, i, matching.get._2)
               subProof = hypStep :: subProof
               Some((la, i, matching.get._1, matching.get._2))
           case _ => None
@@ -126,7 +126,7 @@ object CongruenceClosure {
               case Some((a, b, i)) =>
                 val chpr = egraph.proveInner(a, b, 0, bot.left, bot.right, s"${sname}_${unfoldCounter}_").get
                 subProof = chpr.toList ++ subProof
-                val weakStep = SC.LeftWeaken(s"${sname}_${unfoldCounter}_w", bot, chpr.head.name)
+                //val weakStep = SC.LeftWeaken(s"${sname}_${unfoldCounter}_w", bot, chpr.head.name)
                 subProof.reverse
                 
 

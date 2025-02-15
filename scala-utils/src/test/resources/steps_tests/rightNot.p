@@ -13,8 +13,8 @@ fof(f4, plain, [] --> [p(X), ~q(X)], inference(rightNot, [1], [a4])).
 fof(a5, axiom, [![Y] : q(Y)] --> [p(X, Y)]).
 fof(f5, plain, [] --> [~![Y] : q(Y), p(X, Y)], inference(rightNot, [0], [a5])).
 
-fof(a6, axiom, [r(Z), ![X] : p(X) & q(Y)] --> [p(X) & q(Y)]).
-fof(f6, plain, [r(Z)] --> [p(X) & q(Y), ~![X] : p(X) & q(Y)], inference(rightNot, [1], [a6])).
+fof(a6, axiom, [r(Z), ![X] : (p(X) & q(Y))] --> [p(X) & q(Y)]).
+fof(f6, plain, [r(Z)] --> [p(X) & q(Y), ~![X] :( p(X) & q(Y))], inference(rightNot, [1], [a6])).
 
 fof(a7, axiom, [r(c), ![X] : p(X)] --> []).
 fof(f7, plain, [r(c)] --> [~![Y] : p(Y)], inference(rightNot, [0], [a7])).

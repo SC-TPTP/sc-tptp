@@ -8,7 +8,7 @@ fof(f2, plain, [p, q, t] --> [r, u, v], inference(cut, [1, 0], [a2_1, a2_2])).
 
 fof(a3_1, axiom, [p(X) & Q(X, Y), r(Y)] --> [s(X, c)]).
 fof(a3_2, axiom, [s(X, c)] --> [r(t)]).
-fof(f3, plain, [p(tX) & Q(X, Y), r(Y)] --> [r(t)], inference(cut, [0, 0], [a3_1, a3_2])).
+fof(f3, plain, [p(X) & Q(X, Y), r(Y)] --> [r(t)], inference(cut, [0, 0], [a3_1, a3_2])).
 
 fof(a4_1, axiom, [![X, Y] : (p(X) & Q(X, Y)), r(Y)] --> [![X] : s(X, c)]).
 fof(a4_2, axiom, [![X] : s(X, c)] --> [![Y] : r(f(t))]).

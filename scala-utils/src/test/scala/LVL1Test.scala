@@ -41,7 +41,7 @@ class LVL1Test extends AnyFunSuite {
     "rightRefl.p" -> "rightRefl rule tests",
     "rightSubst.p" -> "rightSubst rule tests",
     "rightSubstIff.p" -> "rightSubstIff rule tests",
-    "RightWeaken.p" -> "RightWeaken rule tests",
+    "rightWeaken.p" -> "RightWeaken rule tests",
     /**/
   )
 

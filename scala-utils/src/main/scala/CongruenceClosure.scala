@@ -64,7 +64,7 @@ object CongruenceClosure {
               else 
                 val hypSequent = SC.Sequent(bot.left.updated(i, matching.get._1), bot.right)
                 val hypName = s"${sname}_${unfoldCounter}_h"
-                val hypStep = SC.Hyp(hypName, hypSequent, i, matching.get._2)
+                val hypStep = SC.Hyp(hypName, hypSequent, i)
                 subProof = hypStep :: subProof
                 Some((la, i, matching.get._1, matching.get._2))
             case _ => None

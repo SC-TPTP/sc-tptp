@@ -149,7 +149,7 @@ class EGraphTerms() {
           case External((left, right)) => 
             if first then
               val leftIndex = ctx1.indexWhere(f => f == (left === right) || f == (right === left))
-              val newstep = SC.Hyp(s"$stepString$no", SC.Sequent(ctx1, (id1 === right) +: ctx2), leftIndex, 0)
+              val newstep = SC.Hyp(s"$stepString$no", SC.Sequent(ctx1, (id1 === right) +: ctx2), leftIndex)
               proof = newstep :: proof
               first = false
               no += 1

@@ -2,10 +2,18 @@ package sctptp
 
 import FOL.*
 import SequentCalculus.*
+import java.text.Normalizer.Form
 
 object LVL2 {
   sealed trait StrictLVL2ProofStep extends SCProofStep
   type LVL2ProofStep = StrictLVL2ProofStep | LVL1ProofStep
+
+  // Flattern a formula with Or connector
+  def toFlatternOr(f: sctptp.FOL.Formula): Seq[sctptp.FOL.Formula] = {
+      f match
+        case ConnectorFormula(Or, args) => args.foldLeft(Seq())((acc, x) => acc ++ toFlatternOr(x))
+        case _ => Seq(f)
+  }
 
   case class LVL2Proof(steps: IndexedSeq[LVL2ProofStep], thmName: String) extends SCProof[LVL2ProofStep]
 
@@ -343,34 +351,64 @@ object LVL2 {
     val premises = Seq(t1, t2)
     override def toString: String = SCProofStep.outputDoubleIndexes(name, "plain", "res", bot, i1, i2, premises)
     def checkCorrectness(premises: String => Sequent): Option[String] =
-      val A = premises(t1).left(i1)
-      val B = premises(t2).left(i2)
+
+      def computeLit(f : Formula, index: Int): (Formula, Seq[Formula]) = {
+        f match
+          case AtomicFormula(_, _) => (f, Seq())
+          case ConnectorFormula(label, args) => {
+            label match
+              case Neg =>  (f,  Seq())
+              case Or => {
+                val args_flat = toFlatternOr(f)
+                (args_flat(index), args_flat.filterNot(x => x == args_flat(index)))
+              } 
+              case _ => throw Exception(s"Resolution literal is not correct") 
+          }
+          case _ => throw Exception(s"Resolution literal is not correct") 
+      }    
+
+
+      val A_Pair = computeLit(premises(t1).left(0), i1)
+      
+      val B_Pair = computeLit(premises(t2).left(0), i2)
+
+      val Res = {
+        bot.left(0) match
+          case AtomicFormula(_, _) =>  bot.left
+          case ConnectorFormula(label, args) => {
+            label match
+              case Neg =>  bot.left
+              case Or =>  toFlatternOr(bot.left(0))
+              case _ => throw Exception(s"Resolution literal is not correct") 
+          }
+          case _ => throw Exception(s"Resolution literal is not correct") 
+      }
+
+      val A = A_Pair._1
+      val A_Rest = A_Pair._2
+      val B = B_Pair._1
+      val B_Rest = B_Pair._2
+
+      // println(s"A = ${A}")
+      // println(s"A_rest = ${A_Rest}")
+      // println("----------------------")
+      // println(s"B = ${B}")
+      // println(s"B_rest = ${B_Rest}")
+      // println("----------------------")
+      // println(s"Res = ${bot.left(0)}")
+      // println(s"Res == $$False : ${bot.left(0) == AtomicFormula(AtomicSymbol("$false",0), Seq())}")
 
       val res = (A, B) match 
         case (AtomicFormula(_, _), ConnectorFormula(Neg,Seq(x))) =>
-          (x == A) &&
-          (isSameSet(A +: bot.left, premises(t1).left) &&
-            isSameSet(bot.right, premises(t1).right) &&
-            isSameSet(B +: bot.left, premises(t2).left) &&
-            isSameSet(bot.right, premises(t2).right)) ||
-          (isSameSet(B +: bot.left, premises(t1).left) &&
-            isSameSet(bot.right, premises(t1).right) &&
-            isSameSet(A +: bot.left, premises(t2).left) &&
-            isSameSet(bot.right, premises(t2).right)) || 
-            bot.left(0) == FOL.bot
+          (x == A) &&         
+          (isSameSet(A_Rest ++ B_Rest, Res) || bot.left(0) == AtomicFormula(AtomicSymbol("$false",0), Seq()))
+
         case (ConnectorFormula(Neg, Seq(x)), AtomicFormula(_, _)) =>
           x == B &&
-          (isSameSet(A +: bot.left, premises(t1).left) &&
-            isSameSet(bot.right, premises(t1).right) &&
-            isSameSet(B +: bot.left, premises(t2).left) &&
-            isSameSet(bot.right, premises(t2).right)) ||
-          (isSameSet(B +: bot.left, premises(t1).left) &&
-            isSameSet(bot.right, premises(t1).right) &&
-            isSameSet(A +: bot.left, premises(t2).left) &&
-            isSameSet(bot.right, premises(t2).right)) ||
-            bot.left(0) == AtomicFormula(FOL.bot, Seq())
+          (isSameSet(A_Rest ++ B_Rest, Res) || bot.left(0) == AtomicFormula(AtomicSymbol("$false",0), Seq()))
         case _ => false
-        if res then None else Some("Resolution failed")
+
+      if res then None else Some("Resolution failed")
   }
 
   /**
@@ -382,7 +420,7 @@ object LVL2 {
    */
   case class NegatedConjecture(name: String, bot: Sequent, t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
-    override def toString: String = s"fof(${name}, assumption, ${bot}, inference(clausify, [status(thm)], [])).";
+    override def toString: String = s"fof(${name}, assumption, ${bot}, inference(clausify, [status(thm)], [${t1}])).";
     def checkCorrectness(premises: String => Sequent): Option[String] = None
       // isSubset(bot.left, premises(t1).left) &&
       //   isSubset(bot.right, premises(t1).right)
@@ -402,8 +440,65 @@ object LVL2 {
     val premises = Seq(parent)
     override def toString: String = s"fof(${name}, plain, ${bot}, inference(instantiate, [status(thm), ${i}, $$fot(${x.toString()}), $$fot(${t.toString()})], [${parent}])).";
     def checkCorrectness(premises: String => Sequent): Option[String] = 
-      val new_p = substituteVariablesInFormula(bot.left(i), Map(x -> t))
-      if isSameSet(bot.left(i) +: bot.left, new_p +: premises(parent).left) then
+      val new_p = substituteVariablesInFormula(premises(parent).left(i), Map(x -> t))
+
+      // println("##################################")
+      // println(premises(parent).left(i))
+      // println(bot.left)
+      // println("----------------------------")
+      // println(new_p)
+      // println(premises(parent).left)
+      // println("----------------------------")
+      // println(premises(parent).left(i) +: bot.left)
+      // println(new_p +: premises(parent).left)
+      // println(isSameSet(premises(parent).left(i) +: bot.left, new_p +: premises(parent).left))
+      // println("##################################")
+
+      if isSameSet(premises(parent).left(i) +: bot.left, new_p +: premises(parent).left) then
+        if isSameSet(bot.right, premises(parent).right) then
+          None
+        else
+          Some("right sides is not the same")
+      else
+        Some("left sides is not correct")
+  }
+
+
+  // EVO TODO
+  /**
+   *   Γ, P[x:=t] |- Δ
+   * ----------------
+   *   Γ, P[x:=u] |- Δ
+   *
+   * @param bot Resulting formula
+   * @param i Index of P(t) on the left
+   * @param x Variable indicating where in P the substitution occurs
+   * @param t term in place of x
+   */
+  case class InstantiateMult(name: String, bot: Sequent, i: Int, terms: Seq[(VariableSymbol, Term)], parent: String) extends StrictLVL2ProofStep {
+    val premises = Seq(parent)
+
+    override def toString: String = s"fof(${name}, plain, ${bot}, inference(instantiateMult, [status(thm), ${i}, [${terms.foldLeft(("", 0))((acc, x) => {(acc._1 ++ s"[$$fot(${x(0).toString()}), $$fot(${x(1).toString()})]" ++ (if (acc._2 != terms.length - 1) then ", " else ""), acc._2 + 1)})._1}]], [${parent}])).";
+
+    def checkCorrectness(premises: String => Sequent): Option[String] = 
+      val map = terms.foldLeft(Map[sctptp.FOL.VariableSymbol, sctptp.FOL.Term]())((acc, x) => acc + (x._1 -> x._2))
+      val new_p =  substituteVariablesInFormula(premises(parent).left(i), map)
+
+      println("############## INST MULT ####################")
+      println(s"Terms : ${terms}")
+      println("----------------------------")
+      println(premises(parent).left(i))
+      println(bot.left)
+      println("----------------------------")
+      println(new_p)
+      println(premises(parent).left)
+      println("----------------------------")
+      println(premises(parent).left(i) +: bot.left)
+      println(new_p +: premises(parent).left)
+      println(isSameSet(premises(parent).left(i) +: bot.left, new_p +: premises(parent).left))
+      println("##################################")
+
+      if isSameSet(premises(parent).left(i) +: bot.left, new_p +: premises(parent).left) then
         if isSameSet(bot.right, premises(parent).right) then
           None
         else

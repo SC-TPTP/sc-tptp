@@ -16,6 +16,7 @@ object SequentCalculus {
     val LeftFalseRuleName = "leftFalse"
     val HypRuleName = "hyp"
     val LeftWeakenRuleName = "leftWeaken"
+    val LeftWeakenResRuleName = "leftWeakenRes"
     val RightWeakenRuleName = "rightWeaken"
     val CutRuleName = "cut"
     val LeftAndRuleName = "leftAnd"
@@ -207,6 +208,54 @@ object SequentCalculus {
       else Some(s"Left-hand side of premise is not the same as the left-hand side of the conclusion.")
       
   }
+
+    /**
+   *    Γ |- Δ
+   * -------------
+   *   Γ, A |- Δ1
+   *
+   * @param bot Resulting formula
+   * @param i Index of A on the left
+   */
+  case class LeftWeakenRes(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", LeftWeakenResRuleName, bot, i, Seq(t1))
+    def checkCorrectness(premises: String => Sequent): Option[String] = 
+
+      def computeLit(f : Formula, index: Int): (Formula, Seq[Formula]) = {
+        f match
+          case AtomicFormula(_, _) => (f, Seq())
+          case ConnectorFormula(label, args) => {
+            label match
+              case Neg =>  (f,  Seq())
+              case Or => {
+                val args_flat = LVL2.toFlatternOr(f)
+                (args_flat(index), args_flat.zipWithIndex.filter(_._2 != index).map(_._1))
+              } 
+              case _ => throw Exception(s"Resolution literal is not correct") 
+          }
+          case _ => throw Exception(s"Resolution literal is not correct") 
+      }
+
+      val A_Pair = computeLit(bot.left(0), i)  
+      val A = A_Pair._1
+      val new_bot = ConnectorFormula(Or, A +: bot.left)
+
+      // println(s"A = ${A}")
+      // println(s"new_bot = ${new_bot}")
+      // println("----------------------")
+      // println(s"premises(t1).left = ${premises(t1).left}")
+      // println(s"bot.left = ${bot.left}")
+      println("----------------------")
+
+      if isSameSet(Seq(new_bot), premises(t1).left) then
+        if isSameSet(premises(t1).right, bot.right) then
+          None
+        else Some(s"Right-hand side of premise is not the same as the right-hand side of the conclusion.")
+      else Some(s"Left-hand side of premise is not the same as the left-hand side of the conclusion.")
+      
+  }
+
 
 
    /**

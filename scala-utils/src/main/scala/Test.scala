@@ -17,7 +17,7 @@ object Test {
     // println("\n Second proof:")
     // println(reconstructProof(new File("proofs/Test.gothm1.p")).toString())
 
-    // val problem = reconstructProof(new File("proofs/Test.gothm0.p"))
+    // val problem = reconstructProof(new File("../proofs/Test.gothm0.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm1.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm2.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm3.p"))
@@ -27,7 +27,7 @@ object Test {
     // val problem = reconstructProof(new File("proofs/Test.gothm7.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm8.p"))
     // val problem = reconstructProof(new File("proofs/Test.gothm9.p"))
-    // val problem = reconstructProof(new File("proofs/Test.gothm10.p"))
+    // val problem = reconstructProof(new File("../proofs/Test.gothm10.p"))
     // val problem = reconstructProof(new File("proofs/example.out"))
     // val problem = reconstructProof(new File("proofs/clausified.p"))
     // val problem = reconstructProof(new File("proofs/big.p"))
@@ -184,60 +184,60 @@ object Test {
 
 
 
-  // Pre processing
+  // // Pre processing
 
-    // val problem = reconstructProof(new File("../proofs/clausification/clausified5.p"))
-    // val parsedProblem = problem.getSequent(0).right(0)
+  //   val problem = reconstructProof(new File("../proofs/clausification/clausified5.p"))
+  //   val parsedProblem = problem.getSequent(0).right(0)
 
-    // // val parsedProblem = ConnectorFormula(And, Seq(a, b))
-    // // val parsedProblem = ConnectorFormula(Or, Seq(a, b))
-    // // val parsedProblem = ConnectorFormula(Or, Seq(ConnectorFormula(And, Seq(a, b)), c))
+  //   // val parsedProblem = ConnectorFormula(And, Seq(a, b))
+  //   // val parsedProblem = ConnectorFormula(Or, Seq(a, b))
+  //   // val parsedProblem = ConnectorFormula(Or, Seq(ConnectorFormula(And, Seq(a, b)), c))
 
-    // println("\n** Formula ** :\n" + parsedProblem)
+  //   println("\n** Formula ** :\n" + parsedProblem)
 
     
-    // val myTseitin = new Tseitin()
+  //   val myTseitin = new Tseitin()
 
-    // // Take the negation (for tests)
-    // val parsedProblem1 = ConnectorFormula(Neg , Seq(parsedProblem))
-    // // val parsedProblem1 = parsedProblem
-    // println("\n** Negated Formula ** :\n" + parsedProblem1)
+  //   // Take the negation (for tests)
+  //   val parsedProblem1 = ConnectorFormula(Neg , Seq(parsedProblem))
+  //   // val parsedProblem1 = parsedProblem
+  //   println("\n** Negated Formula ** :\n" + parsedProblem1)
 
-    // // NNF
-    // val parsedProblem2 = myTseitin.toNNF(parsedProblem1)
-    // println("\n** Formula in NNF Form ** :\n" + parsedProblem2)
+  //   // NNF
+  //   val parsedProblem2 = myTseitin.toNNF(parsedProblem1)
+  //   println("\n** Formula in NNF Form ** :\n" + parsedProblem2)
 
-    // // Prenex
-    // val parsedProblem3 = myTseitin.toPrenex(parsedProblem2)
-    // println("\n** Formula in Prenex Form ** :\n" + parsedProblem3)
+  //   // Prenex
+  //   val parsedProblem3 = myTseitin.toPrenex(parsedProblem2)
+  //   println("\n** Formula in Prenex Form ** :\n" + parsedProblem3)
 
-    // // Instantiated and renamed
-    // val (parsedProblem4, mapVar) = myTseitin.toInstantiated(parsedProblem3)
-    // println("\n** Formula instantiated ** \n: " + parsedProblem4)
+  //   // Instantiated and renamed
+  //   val (parsedProblem4, mapVar) = myTseitin.toInstantiated(parsedProblem3)
+  //   println("\n** Formula instantiated ** \n: " + parsedProblem4)
 
-    // // Unrenamed formula 
-    // val parsedProblem5 = myTseitin.UnRenameVariables(parsedProblem4, mapVar)
-    // println("\n** Formula with original names ** :\n" + parsedProblem5)
+  //   // Unrenamed formula 
+  //   val parsedProblem5 = myTseitin.UnRenameVariables(parsedProblem4, mapVar)
+  //   println("\n** Formula with original names ** :\n" + parsedProblem5)
 
-    // // Creation of tseitin terms beforme renaming
-    // val premap = myTseitin.createTseitinVariables(parsedProblem4)
-    // myTseitin.makeTseitinMaps(premap._1)
-    // println("\n** TS variables ** :\n")
-    // myTseitin.printTseitinVarTerm()
-    // myTseitin.makeTseitinMapsUp(myTseitin.updateTseitinVariables(myTseitin.getTseitinTermVar()))
-    // println("\n** Updated Variables ** :\n")
-    // myTseitin.printTseitinVarTermUp()
+  //   // Creation of tseitin terms beforme renaming
+  //   val premap = myTseitin.createTseitinVariables(parsedProblem4)
+  //   myTseitin.makeTseitinMaps(premap._1)
+  //   println("\n** TS variables ** :\n")
+  //   myTseitin.printTseitinVarTerm()
+  //   myTseitin.makeTseitinMapsUp(myTseitin.updateTseitinVariables(myTseitin.getTseitinTermVar()))
+  //   println("\n** Updated Variables ** :\n")
+  //   myTseitin.printTseitinVarTermUp()
 
-    // // Tseitin Normal Form
-    // val parsedProblem6 = myTseitin.toTseitin(parsedProblem4)
-    // println("\n** TseitinForm ** :\n" + parsedProblem6)
+  //   // Tseitin Normal Form
+  //   val parsedProblem6 = myTseitin.toTseitin(parsedProblem4)
+  //   println("\n** TseitinForm ** :\n" + parsedProblem6)
 
-    // // Tseitin Normal Form
-    // val parsedProblem7 = myTseitin.toFlattern(parsedProblem6)
-    // println("\n ** Flattern ** :\n" + parsedProblem7)
+  //   // Tseitin Normal Form
+  //   val parsedProblem7 = myTseitin.toFlatternAnd(parsedProblem6)
+  //   println("\n ** Flattern ** :\n" + parsedProblem7)
 
-    // Post Processing
-    val problem = reconstructProof(new File("../proofs/clausification/clausified4.p"))
+    // // Post Processing
+    val problem = reconstructProof(new File("../proofs/clausification/clausified9.p"))
     
     println("\nProblem TPTP:")
     println(problem.toString())

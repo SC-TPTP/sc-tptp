@@ -109,7 +109,6 @@ class Tseitin {
   }
 
   // Transform a formula in Prenex Normal form (move quantifier to the top)
-
   def retrieveQT(f2 : sctptp.FOL.Formula): (List[(BinderSymbol, VariableSymbol)], sctptp.FOL.Formula) = {
     f2 match 
       case AtomicFormula(label, args) => (List(), f2) 
@@ -134,7 +133,6 @@ class Tseitin {
     })
   }
 
-  
   def toPrenex(f: sctptp.FOL.Formula): sctptp.FOL.Formula = {
     val (accQT, accF) = retrieveQT(f)
     reInsertQT(accQT, accF)
@@ -171,11 +169,7 @@ class Tseitin {
   }
 
   // Go through the formula and associate each subformula to a variable
-  def createTseitinVariables(
-      f: sctptp.FOL.Formula,
-      acc: Map[sctptp.FOL.Formula, sctptp.FOL.Formula] = Map[sctptp.FOL.Formula, sctptp.FOL.Formula](),
-      next_index: Int = 0
-  ): (Map[sctptp.FOL.Formula, sctptp.FOL.Formula], Int) = {
+  def createTseitinVariables(f: sctptp.FOL.Formula, acc: Map[sctptp.FOL.Formula, sctptp.FOL.Formula] = Map[sctptp.FOL.Formula, sctptp.FOL.Formula](), next_index: Int = 0): (Map[sctptp.FOL.Formula, sctptp.FOL.Formula], Int) = {
     // println("Next id = " + next_index)
     // println("acc = " + acc.toString())
     // println("f = " + f.toString())
@@ -275,18 +269,21 @@ class Tseitin {
   }
 
   // Flattern  a formula in CNF
-  def toFlattern(f: sctptp.FOL.Formula): sctptp.FOL.Formula = {
-    def toFlatternAux(f2: sctptp.FOL.Formula): Seq[sctptp.FOL.Formula] = {
+  def toFlatternAnd(f: sctptp.FOL.Formula): sctptp.FOL.Formula = {
+    def toFlatternAndAux(f2: sctptp.FOL.Formula): Seq[sctptp.FOL.Formula] = {
       f2 match
-        case ConnectorFormula(And, args) => args.foldLeft(Seq())((acc, x) => acc ++ toFlatternAux(x))
+        case ConnectorFormula(And, args) => args.foldLeft(Seq())((acc, x) => acc ++ toFlatternAndAux(x))
         case _ => Seq(f2)
     }
 
     f match 
-      case ConnectorFormula(And, args) =>  ConnectorFormula(And, args.foldLeft(Seq())((acc, x) => acc ++ toFlatternAux(x)))
-      case BinderFormula(label, bound, inner) => BinderFormula(label, bound, toFlattern(inner))
-      case _ => throw new Exception("toFlattern failed")
+      case ConnectorFormula(And, args) =>  ConnectorFormula(And, args.foldLeft(Seq())((acc, x) => acc ++ toFlatternAndAux(x)))
+      case BinderFormula(label, bound, inner) => BinderFormula(label, bound, toFlatternAnd(inner))
+      case _ => throw new Exception("toFlatternAnd failed")
   }
+
+
+  
 
 
   // -----------------------------------------------------

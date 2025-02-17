@@ -1,6 +1,6 @@
 fof('2', plain, [~(X8(V0, V1)) | X3(V0, V1)] --> [], inference(clausify, [status(thm)] , ['0'])).
 fof('3', plain, [X8(V0, V1)] --> [], inference(clausify, [status(thm)] , ['0'])).
-fof('4', plain, [~(X8(V0, V1)) | ladr0] --> [], inference(clausify, [status(thm)] , ['0'])).
+fof('4', plain, [~(X8(V0, V1)) | ladr8] --> [], inference(clausify, [status(thm)] , ['0'])).
 fof('5', plain, [~(X6(V0)) | p(f(V0))] --> [], inference(clausify, [status(thm)] , ['0'])).
 fof('7', plain, [~(X6(V0)) | p(c)] --> [], inference(clausify, [status(thm)] , ['0'])).
 fof('8', plain, [~(X3(V0, V1)) | p(V0) | X6(V1)] --> [], inference(clausify, [status(thm)] , ['0'])).
@@ -16,10 +16,10 @@ fof('31', plain, [~(X3(V0, V100)) | p(V0) | X6(V100)] --> [], inference(instanti
 fof('32', plain, [~(X6(V100)) | p(c)] --> [], inference(instantiateMult, [status(thm), 0, [[$fot(V0), $fot(V100)]]], ['7'])).
 fof('33', plain, [~(X3(V0, V100)) | p(V0) | p(c)] --> [], inference(res, [status(thm), 2, 0], ['31', '32'])).
 fof('13', plain, [~(X3(V0, V1)) | p(V0) | p(c)] --> [], inference(instantiateMult, [status(thm), 0, [[$fot(V100), $fot(V1)]]], ['33'])).
-fof('14', plain, [~(ladr0) | ~(p(f(f(a)))) | ~(p(c))] --> [], inference(clausify, [status(thm)] , ['0'])).
-fof('34', plain, [~(X8(V100, V101)) | ladr0] --> [], inference(instantiateMult, [status(thm), 0, [[$fot(V0), $fot(V100)], [$fot(V1), $fot(V101)]]], ['4'])).
+fof('14', plain, [~(ladr8) | ~(p(f(f(a)))) | ~(p(c))] --> [], inference(clausify, [status(thm)] , ['0'])).
+fof('34', plain, [~(X8(V100, V101)) | ladr8] --> [], inference(instantiateMult, [status(thm), 0, [[$fot(V0), $fot(V100)], [$fot(V1), $fot(V101)]]], ['4'])).
 fof('35', plain, [X8(V100, V101)] --> [], inference(instantiateMult, [status(thm), 0, [[$fot(V0), $fot(V100)], [$fot(V1), $fot(V101)]]], ['3'])).
-fof('17', plain, [ladr0] --> [], inference(res, [status(thm), 0, 0], ['34', '35'])).
+fof('17', plain, [ladr8] --> [], inference(res, [status(thm), 0, 0], ['34', '35'])).
 fof('36', plain, [~(X3(V100, V101)) | p(V100) | p(f(V101))] --> [], inference(instantiateMult, [status(thm), 0, [[$fot(V0), $fot(V100)], [$fot(V1), $fot(V101)]]], ['10'])).
 fof('37', plain, [X3(V100, V101)] --> [], inference(instantiateMult, [status(thm), 0, [[$fot(V0), $fot(V100)], [$fot(V1), $fot(V101)]]], ['12'])).
 fof('38', plain, [p(V100) | p(f(V101))] --> [], inference(res, [status(thm), 0, 0], ['36', '37'])).

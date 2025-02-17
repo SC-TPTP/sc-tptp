@@ -3,6 +3,7 @@ package sctptp
 import FOL.*
 import scala.compiletime.ops.int
 import SequentCalculus.RulesName.*
+import sctptp.LVL2.*
 
 object SequentCalculus {
 
@@ -128,8 +129,12 @@ object SequentCalculus {
       else this.getSequent(length - 1)
     }
 
+    def addStepLVL1(scps: LVL1ProofStep): SCProof[?] = this
+    def addStepLVL2(scps: LVL2ProofStep): SCProof[?] = this
+
     override def toString(): String = steps.foldLeft("")((acc, e) => acc + "\n" + e.toString())
   }
+
   def checkProof[Steps<:SCProofStep](p: SCProof[Steps]): Option[(String, Steps)] = {
     val steps = p.steps
     val premises: scala.collection.mutable.Map[String, Sequent] = scala.collection.mutable.Map()
@@ -150,7 +155,15 @@ object SequentCalculus {
 
   sealed trait LVL1ProofStep extends SCProofStep
 
-  case class LVL1Proof(steps: IndexedSeq[LVL1ProofStep], thmName: String) extends SCProof[LVL1ProofStep] 
+  case class LVL1Proof(steps: IndexedSeq[LVL1ProofStep], thmName: String) extends SCProof[LVL1ProofStep] {
+    override def addStepLVL1(scps: LVL1ProofStep): SCProof[LVL1ProofStep] = {
+      LVL1Proof(scps +: steps, thmName)
+    }
+
+    override def addStepLVL2(scps: LVL2ProofStep): SCProof[LVL2ProofStep] = {
+      LVL2Proof(scps +: steps, thmName)
+    }
+  }
 
 
   private def contains(seq: Seq[Formula], f: Formula): Boolean = seq.contains(f)
@@ -244,7 +257,7 @@ object SequentCalculus {
       // println("----------------------")
       // println(s"premises(t1).left = ${premises(t1).left}")
       // println(s"bot.left = ${bot.left}")
-      println("----------------------")
+      // println("----------------------")
 
       if isSameSet(Seq(new_bot), premises(t1).left) then
         if isSameSet(premises(t1).right, bot.right) then

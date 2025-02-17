@@ -15,7 +15,15 @@ object LVL2 {
         case _ => Seq(f)
   }
 
-  case class LVL2Proof(steps: IndexedSeq[LVL2ProofStep], thmName: String) extends SCProof[LVL2ProofStep]
+  case class LVL2Proof(steps: IndexedSeq[LVL2ProofStep], thmName: String) extends SCProof[LVL2ProofStep] {
+    override def addStepLVL1(scps: LVL1ProofStep): SCProof[LVL2ProofStep] = {
+      LVL2Proof(scps +: steps, thmName)
+    }
+
+    override def addStepLVL2(scps: LVL2ProofStep): SCProof[LVL2ProofStep] = {
+      LVL2Proof(scps +: steps, thmName)
+    }
+  }
 
   val LeftImp2RuleName = "leftImp2"
   val LeftHypRuleName = "leftHyp"
@@ -340,13 +348,17 @@ object LVL2 {
         }
   }
 
-    /**
-   * -----------------
-   *   Γ, A |- A, Δ
+    /** A \/ C     A \/ ~C
+   * -----------------------
+   *   Γ |- A \/ B, Δ
    *
+   * @param name name of the formula
    * @param bot Resulting formula
+   * @param i1 index of C in t1
+   * @param t1 Parent clause 1
+   * @param i2 index of ~C in t2
+   * @param t2 Parent clause 2
    **/
-  // Resolution rule --- between t1:i1 and t2:i2
   case class Res(name: String, bot: Sequent, i1: Int, i2: Int, t1: String, t2: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1, t2)
     override def toString: String = SCProofStep.outputDoubleIndexes(name, "plain", "res", bot, i1, i2, premises)
@@ -415,12 +427,42 @@ object LVL2 {
    *    Γ |-
    * -------------
    *    Δ |-
-   *  And Δ is a subset of Γ
+   *  And Δ is the negation of Γ
    * @param bot Resulting formula
    */
   case class NegatedConjecture(name: String, bot: Sequent, t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
+    override def toString: String = s"fof(${name}, assumption, ${bot}, inference(negated_conjecture, [status(thm)], [${t1}])).";
+    def checkCorrectness(premises: String => Sequent): Option[String] = None
+      // isSubset(bot.left, premises(t1).left) &&
+      //   isSubset(bot.right, premises(t1).right)
+  }
+
+    /**
+   *    Γ |-
+   * -------------
+   *    Δ |-
+   *  And Δ is the negation of Γ
+   * @param bot Resulting formula
+   */
+  case class Clausify(name: String, bot: Sequent, t1: String) extends StrictLVL2ProofStep {
+    val premises = Seq(t1)
     override def toString: String = s"fof(${name}, assumption, ${bot}, inference(clausify, [status(thm)], [${t1}])).";
+    def checkCorrectness(premises: String => Sequent): Option[String] = None
+      // isSubset(bot.left, premises(t1).left) &&
+      //   isSubset(bot.right, premises(t1).right)
+  }
+
+      /**
+   *    Γ |-
+   * -------------
+   *    Δ |-
+   *  And Δ is the negation of Γ
+   * @param bot Resulting formula
+   */
+  case class Prenex(name: String, bot: Sequent, t1: String) extends StrictLVL2ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = s"fof(${name}, assumption, ${bot}, inference(prenex_step, [status(thm)], [${t1}])).";
     def checkCorrectness(premises: String => Sequent): Option[String] = None
       // isSubset(bot.left, premises(t1).left) &&
       //   isSubset(bot.right, premises(t1).right)
@@ -464,15 +506,13 @@ object LVL2 {
   }
 
 
-  // EVO TODO
   /**
    *   Γ, P[x:=t] |- Δ
    * ----------------
    *   Γ, P[x:=u] |- Δ
    *
    * @param bot Resulting formula
-   * @param i Index of P(t) on the left
-   * @param x Variable indicating where in P the substitution occurs
+   * @param (i, x) List of pair (index, term)
    * @param t term in place of x
    */
   case class InstantiateMult(name: String, bot: Sequent, i: Int, terms: Seq[(VariableSymbol, Term)], parent: String) extends StrictLVL2ProofStep {
@@ -484,19 +524,19 @@ object LVL2 {
       val map = terms.foldLeft(Map[sctptp.FOL.VariableSymbol, sctptp.FOL.Term]())((acc, x) => acc + (x._1 -> x._2))
       val new_p =  substituteVariablesInFormula(premises(parent).left(i), map)
 
-      println("############## INST MULT ####################")
-      println(s"Terms : ${terms}")
-      println("----------------------------")
-      println(premises(parent).left(i))
-      println(bot.left)
-      println("----------------------------")
-      println(new_p)
-      println(premises(parent).left)
-      println("----------------------------")
-      println(premises(parent).left(i) +: bot.left)
-      println(new_p +: premises(parent).left)
-      println(isSameSet(premises(parent).left(i) +: bot.left, new_p +: premises(parent).left))
-      println("##################################")
+      // println("############## INST MULT ####################")
+      // println(s"Terms : ${terms}")
+      // println("----------------------------")
+      // println(premises(parent).left(i))
+      // println(bot.left)
+      // println("----------------------------")
+      // println(new_p)
+      // println(premises(parent).left)
+      // println("----------------------------")
+      // println(premises(parent).left(i) +: bot.left)
+      // println(new_p +: premises(parent).left)
+      // println(isSameSet(premises(parent).left(i) +: bot.left, new_p +: premises(parent).left))
+      // println("##################################")
 
       if isSameSet(premises(parent).left(i) +: bot.left, new_p +: premises(parent).left) then
         if isSameSet(bot.right, premises(parent).right) then
@@ -505,5 +545,19 @@ object LVL2 {
           Some("right sides is not the same")
       else
         Some("left sides is not correct")
+  }
+
+
+     /**
+   *    Γ |-
+   * -------------
+   *    Δ |-
+   *  And Δ is the nnf of Γ
+   * @param bot Resulting formula
+   */
+  case class NNF(name: String, bot: Sequent, t1: String) extends StrictLVL2ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = s"fof(${name}, assumption, ${bot}, inference(nnf, [status(thm)], [${t1}])).";
+    def checkCorrectness(premises: String => Sequent): Option[String] = None
   }
 }

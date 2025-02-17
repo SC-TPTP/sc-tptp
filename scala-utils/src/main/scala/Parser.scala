@@ -155,6 +155,8 @@ object Parser {
       case Inference.Congruence(step) => Some(step)
       case Inference.Res(step) => Some(step)
       case Inference.NegatedConjecture(step) => Some(step)
+      case Inference.Clausify(step) => Some(step)
+      case Inference.NNF(step) => Some(step)
       case Inference.Instantiate_L(step) => Some(step)
       case Inference.InstantiateMult(step) => Some(step)
 
@@ -641,8 +643,35 @@ object Parser {
     object NegatedConjecture {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("clausify", Seq(_), Seq(t1)), _) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("negated_conjecture", Seq(_), Seq(t1)), _) =>
             Some(LVL2.NegatedConjecture(name, convertSequentToFol(sequent), t1))
+          case _ => None
+        }
+    }
+
+    object Clausify {
+      def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
+        ann_seq match {
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("clausify", Seq(_), Seq(t1)), _) =>
+            Some(LVL2.Clausify(name, convertSequentToFol(sequent), t1))
+          case _ => None
+        }
+    }
+
+    object Prenex {
+      def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
+        ann_seq match {
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("prenex_form", Seq(_), Seq(t1)), _) =>
+            Some(LVL2.Prenex(name, convertSequentToFol(sequent), t1))
+          case _ => None
+        }
+    }
+
+    object NNF {
+      def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
+        ann_seq match {
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("nnf", Seq(_), Seq(t1)), _) =>
+            Some(LVL2.NNF(name, convertSequentToFol(sequent), t1))
           case _ => None
         }
     }
@@ -659,7 +688,6 @@ object Parser {
         }
     }
 
-    // EVO TODO
     object InstantiateMult {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
         ann_seq match {

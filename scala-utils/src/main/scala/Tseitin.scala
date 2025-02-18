@@ -300,8 +300,8 @@ class Tseitin {
 
     def unRenameVariablesInTerm(t: sctptp.FOL.Term) : sctptp.FOL.Term = {
       t match
-        case Term(label: VariableSymbol, _) if (reverseMap contains label) =>  Term(reverseMap(label), Seq())
-        case Term(label, args) => Term(label, args.map(unRenameVariablesInTerm(_)))
+        case FunctionTerm(label: VariableSymbol, _) if (reverseMap contains label) =>  FunctionTerm(reverseMap(label), Seq())
+        case FunctionTerm(label, args) => FunctionTerm(label, args.map(unRenameVariablesInTerm(_)))
     }
 
     def UnRenameVariablesAux(f2: sctptp.FOL.Formula): sctptp.FOL.Formula = {

@@ -64,7 +64,7 @@ object FOL {
 
   /** Function symbols. If the arity is 0, a constant symbol*/
   case class FunctionSymbol(id: Identifier, arity: Int) extends TermSymbol {
-    def apply(args: Seq[Term]): Term = Term(this, args)
+    def apply(args: Seq[Term]): Term = FunctionTerm(this, args)
     override def toString(): String = id.toString()
   }
 
@@ -77,7 +77,15 @@ object FOL {
   }
 
   /** Terms of first order logic, made of a Function of Variable symbol, and a possibly empty list of arguments */
-  sealed case class Term(label: TermSymbol, args: Seq[Term]) {
+  sealed trait Term {
+    def freeVariables: Set[VariableSymbol]
+  }
+
+  sealed case class EpsilonTerm(bound: VariableSymbol, inner: Formula) extends Term {
+    override def freeVariables: Set[VariableSymbol] = inner.freeVariables - bound
+  }
+
+  sealed case class FunctionTerm(label: TermSymbol, args: Seq[Term]) extends Term{
     require(label.arity == args.size)
 
     def freeVariables: Set[VariableSymbol] = label match {
@@ -96,10 +104,10 @@ object FOL {
   /** Helper functions to create Variables**/
   object Variable {
 
-    def apply(label: VariableSymbol): Term = Term(label, Seq())
-    def apply(name: String): Term = Term(VariableSymbol(Identifier(name)), Seq())
-    def apply(id: Identifier): Term = Term(VariableSymbol(id), Seq())
-    def unapply(t: Term): Option[VariableSymbol] = t.label match {
+    def apply(label: VariableSymbol): Term = FunctionTerm(label, Seq())
+    def apply(name: String): Term = FunctionTerm(VariableSymbol(Identifier(name)), Seq())
+    def apply(id: Identifier): Term = FunctionTerm(VariableSymbol(id), Seq())
+    def unapply(t: FunctionTerm): Option[VariableSymbol] = t.label match {
       case l: VariableSymbol => Some(l)
       case _ => None
     }
@@ -208,25 +216,43 @@ object FOL {
   }
 
   /** Computes the (simultaneous) substitution of some variables by some terms, in a term */
-  def substituteVariablesInTerm(t: Term, m: Map[VariableSymbol, Term]): Term = t match {
-    case Term(label: VariableSymbol, _) => m.getOrElse(label, t)
-    case Term(label, args) => Term(label, args.map(substituteVariablesInTerm(_, m)))
+  def substituteVariablesInTerm(t: Term, m: Map[VariableSymbol, Term], takenIds: Seq[Identifier] = Seq[Identifier]()): Term = t match {
+    case FunctionTerm(label: VariableSymbol, _) => m.getOrElse(label, t)
+    case FunctionTerm(label, args) => FunctionTerm(label, args.map(substituteVariablesInTerm(_, m, takenIds)))
+    case EpsilonTerm(bound, inner) =>
+      val newSubst = m - bound
+      val newTaken = takenIds :+ bound.id
+      val fv = m.values.flatMap(_.freeVariables).toSet
+      if (fv.contains(bound)) {
+        val newBoundVariable = VariableSymbol(freshId(fv.map(_.name) ++ m.keys.map(_.id) ++ newTaken, bound.name))
+        val newInner = substituteVariablesInFormula(inner, Map(bound -> Variable(newBoundVariable)), newTaken)
+        EpsilonTerm(newBoundVariable, substituteVariablesInFormula(newInner, newSubst, newTaken))
+      } else EpsilonTerm(bound, substituteVariablesInFormula(inner, newSubst, newTaken))
   }
 
-  def substituteFunctionsInTerm(t: Term, m: Map[FunctionSymbol, (Term, Seq[VariableSymbol])]): Term = t match {
-    case Term(label: FunctionSymbol, args) => 
+  def substituteFunctionsInTerm(t: Term, m: Map[FunctionSymbol, (Term, Seq[VariableSymbol])], takenIds: Seq[Identifier] = Seq[Identifier]()): Term = t match {
+    case FunctionTerm(label: FunctionSymbol, args) => 
       if m.contains(label) then 
         val (newTerm, vars) = m(label)
         val newSubst = vars.zip(args).toMap
-        substituteVariablesInTerm(newTerm, newSubst)
-      else Term(label, args.map(substituteFunctionsInTerm(_, m)))
-    case Term(label, args) => Term(label, args.map(substituteFunctionsInTerm(_, m)))
+        substituteVariablesInTerm(newTerm, newSubst, takenIds)
+      else FunctionTerm(label, args.map(substituteFunctionsInTerm(_, m, takenIds)))
+    case FunctionTerm(label, args) => FunctionTerm(label, args.map(substituteFunctionsInTerm(_, m)))
+    case EpsilonTerm(bound, inner) => 
+      val newTaken = takenIds :+ bound.id
+      val fv = m.values.flatMap((t, lv) => t.freeVariables -- lv.toSet).toSet
+      if (fv.contains(bound)) {
+        val newBoundVariable = VariableSymbol(freshId(fv.map(_.name) ++ m.keys.map(_.id) ++ newTaken, bound.name))
+        val newInner = substituteVariablesInFormula(inner, Map(bound -> Variable(newBoundVariable)), newTaken)
+        EpsilonTerm(newBoundVariable, substituteFunctionsInFormula(newInner, m, newTaken))
+      } else EpsilonTerm(bound, substituteFunctionsInFormula(inner, m, newTaken))
+
   }
 
   /** Computes the (simultaneous) substitution of some variables by some terms, in a formula */
   def substituteVariablesInFormula(phi: Formula, m: Map[VariableSymbol, Term], takenIds: Seq[Identifier] = Seq[Identifier]()): Formula = phi match {
-    case AtomicFormula(label, args) => AtomicFormula(label, args.map(substituteVariablesInTerm(_, m)))
-    case ConnectorFormula(label, args) => ConnectorFormula(label, args.map(substituteVariablesInFormula(_, m)))
+    case AtomicFormula(label, args) => AtomicFormula(label, args.map(substituteVariablesInTerm(_, m, takenIds)))
+    case ConnectorFormula(label, args) => ConnectorFormula(label, args.map(substituteVariablesInFormula(_, m, takenIds)))
     case BinderFormula(label, bound, inner) =>
       val newSubst = m - bound
       val newTaken = takenIds :+ bound.id
@@ -240,9 +266,8 @@ object FOL {
 
   /** Computes the simultaneous substitution of some schematics function symbols by some terms (with holes), in a formula */
   def substituteFunctionsInFormula(phi: Formula, m: Map[FunctionSymbol, (Term, Seq[VariableSymbol])], takenIds: Seq[Identifier] = Seq[Identifier]()): Formula = phi match {
-    case AtomicFormula(label, args) => AtomicFormula(label, args.map(substituteFunctionsInTerm(_, m)))
-    case ConnectorFormula(label, args) => ConnectorFormula(label, args.map(substituteFunctionsInFormula(_, m))
-    )
+    case AtomicFormula(label, args) => AtomicFormula(label, args.map(substituteFunctionsInTerm(_, m, takenIds)))
+    case ConnectorFormula(label, args) => ConnectorFormula(label, args.map(substituteFunctionsInFormula(_, m, takenIds)))
     case BinderFormula(label, bound, inner) => 
       val newTaken = takenIds :+ bound.id
       val fv = m.values.flatMap((t, lv) => t.freeVariables -- lv.toSet).toSet
@@ -290,7 +315,7 @@ object FOL {
 
 
   extension (tl: TermSymbol) {
-    def apply(args: Term*): Term = Term(tl, args)
+    def apply(args: Term*): Term = FunctionTerm(tl, args)
   }
 
   extension (al: AtomicSymbol) {
@@ -351,11 +376,12 @@ object FOL {
     val default_bound = VariableSymbol("%")
     def toLocallyNamelessTerm(t: Term, subst: Map[Identifier, Int], i: Int): Term = {
       t match {
-        case Term(label: VariableSymbol, _) =>
+        case FunctionTerm(label: VariableSymbol, _) =>
           if (subst.contains(label.id)) Variable(Identifier("%", i - subst(label.id)))
           else if label.id.name(0) == '%' then Variable(Identifier("%" + label.id.name, i - subst(label.id)))
           else t
-        case Term(label, args) => Term(label, args.map(c => toLocallyNamelessTerm(c, subst, i)))
+        case FunctionTerm(label, args) => FunctionTerm(label, args.map(c => toLocallyNamelessTerm(c, subst, i)))
+        case EpsilonTerm(bound, inner) => EpsilonTerm(default_bound, toLocallyNamelessInner(inner, subst + (bound.id -> i), i + 1))
       }
     }
     def toLocallyNamelessInner(phi: Formula, subst: Map[Identifier, Int], i: Int): Formula = {

@@ -187,9 +187,10 @@ object CoqOutput {
 
     def makeMapTermListToArity(tl: Seq[Term]): Map[String, Int] = {
       tl.foldLeft(Map.empty[String, Int])((acc, e) => 
-        e.label match
-          case FunctionSymbol(id, arity) => acc + (id.name -> arity)
-          case VariableSymbol(id) => acc
+        e match 
+          case FunctionTerm(FunctionSymbol(id, arity), args) => acc + (id.name -> arity)
+          case FunctionTerm(VariableSymbol(id), args) => acc
+          case _ => throw new Exception("Error: Coq printing does not support epsilon terms")
       )
     }
 

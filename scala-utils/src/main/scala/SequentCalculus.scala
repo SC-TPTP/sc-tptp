@@ -897,14 +897,14 @@ object SequentCalculus {
    * @param i Index of ∃x. A on the right
    * @param t Term in place of x in the premise
    */
-  case class RightEpsilon(name: String, bot: Sequent, phi: Formula, x: Variable, t: Term, t1: String) extends LVL1ProofStep {
+  case class RightEpsilon(name: String, bot: Sequent, i: Int, phi: Formula, x: VariableSymbol, t: Term, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputWithTerm(name, RightExistsRuleName, bot, i, t.toString(), premises)
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val At = substituteVariablesInFormula(phi, Map(x -> t))
       val Aepsi = substituteVariablesInFormula(phi, Map(x -> EpsilonTerm(x, phi)))
       if (isSameSet(bot.left, premises(t1).left))
-        if (isSameSet(bot.right :+ inst, premises(t1).right :+ eA))
+        if (isSameSet(bot.right :+ At, premises(t1).right :+ Aepsi))
           None
         else Some("Right-hand side of conclusion :+ A must be the same as right-hand side of premise")
       else Some("Left-hand side of conclusion must be the same as left-hand side of premise :+ A")

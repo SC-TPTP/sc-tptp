@@ -193,3 +193,12 @@ fof(s7, plain
 ).
 
 % CQFD
+
+
+
+fof(i1, plain, [] --> [((p(V0) | (p(f(V1)) & p(c))) & (~p(f(f(a))) | ~p(c)))], inference(....))
+fof(tsStep3, let, (ladr7 <=> (~p(f(f(a))) | ~p(c)))).
+
+fof(tsStep3Exp, plain, [ladr7] --> [((p(V0) | (p(f(V1)) & p(c))) & ladr7)], inference( rightSubstIff, [status(thm), 0, ((p(V0) | (p(f(V1)) & p(c))) & HOLE), 'HOLE'], i1))
+
+fof(tsStep3Exp, plain, [ladr7] --> [((p(V0) | (p(f(V1)) & p(c))) & ladr7)], inference( ???, [status(thm), 0, ???, ???], i1))

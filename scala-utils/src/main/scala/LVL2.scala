@@ -16,19 +16,35 @@ object LVL2 {
   }
 
   case class LVL2Proof(steps: IndexedSeq[LVL2ProofStep], thmName: String) extends SCProof[LVL2ProofStep] {
-    override def addStepLVL1(scps: LVL1ProofStep): SCProof[LVL2ProofStep] = {
+    override def addStepLVL1After(scps: LVL1ProofStep): SCProof[LVL2ProofStep] = {
+      LVL2Proof(steps :+ scps, thmName)
+    }
+
+    override def addStepsLVL1After(scps: Seq[LVL1ProofStep]): SCProof[LVL2ProofStep] = {
+      LVL2Proof(scps.foldLeft(steps)((acc, x) => acc :+ x), thmName)
+    }
+
+    override def addStepLVL2After(scps: LVL2ProofStep): SCProof[LVL2ProofStep] = {
+      LVL2Proof(steps :+ scps, thmName)
+    }
+
+    override def addStepsLVL2After(scps: Seq[LVL2ProofStep]): SCProof[LVL2ProofStep] = {
+      LVL2Proof(scps.foldLeft(steps)((acc, x) => acc :+ x), thmName)
+    }
+
+    override def addStepLVL1Before(scps: LVL1ProofStep): SCProof[LVL2ProofStep] = {
       LVL2Proof(scps +: steps, thmName)
     }
 
-    override def addStepsLVL1(scps: Seq[LVL1ProofStep]): SCProof[LVL2ProofStep] = {
+    override def addStepsLVL1Before(scps: Seq[LVL1ProofStep]): SCProof[LVL2ProofStep] = {
       LVL2Proof(scps.foldLeft(steps)((acc, x) => x +: acc), thmName)
     }
 
-    override def addStepLVL2(scps: LVL2ProofStep): SCProof[LVL2ProofStep] = {
+    override def addStepLVL2Before(scps: LVL2ProofStep): SCProof[LVL2ProofStep] = {
       LVL2Proof(scps +: steps, thmName)
     }
 
-    override def addStepsLVL2(scps: Seq[LVL2ProofStep]): SCProof[LVL2ProofStep] = {
+    override def addStepsLVL2Before(scps: Seq[LVL2ProofStep]): SCProof[LVL2ProofStep] = {
       LVL2Proof(scps.foldLeft(steps)((acc, x) => x +: acc), thmName)
     }
   }
@@ -455,7 +471,7 @@ object LVL2 {
    */
   case class Clausify(name: String, bot: Sequent, t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
-    override def toString: String = s"fof(${name}, assumption, ${bot}, inference(clausify, [status(thm)], [${t1}])).";
+    override def toString: String = s"fof(${name}, plain, ${bot}, inference(clausify, [status(thm)], [${t1}])).";
     def checkCorrectness(premises: String => Sequent): Option[String] = None
       // isSubset(bot.left, premises(t1).left) &&
       //   isSubset(bot.right, premises(t1).right)
@@ -565,7 +581,13 @@ object LVL2 {
    */
   case class NNF(name: String, bot: Sequent, t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
-    override def toString: String = s"fof(${name}, assumption, ${bot}, inference(nnf, [status(thm)], [${t1}])).";
+    override def toString: String = s"fof(${name}, plain, ${bot}, inference(nnf, [status(thm)], [${t1}])).";
+    def checkCorrectness(premises: String => Sequent): Option[String] = None
+  }
+
+  case class Let(name: String, bot: Sequent) extends StrictLVL2ProofStep {
+    val premises = Seq()
+    override def toString: String = s"fof(${name}, let, ${bot.right(0)}).";
     def checkCorrectness(premises: String => Sequent): Option[String] = None
   }
 }

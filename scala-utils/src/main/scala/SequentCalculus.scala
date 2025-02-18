@@ -129,10 +129,14 @@ object SequentCalculus {
       else this.getSequent(length - 1)
     }
 
-    def addStepLVL1(scps: LVL1ProofStep): SCProof[?] = this
-    def addStepsLVL1(scps: Seq[LVL1ProofStep]): SCProof[?] = this
-    def addStepLVL2(scps: LVL2ProofStep): SCProof[?] = this
-    def addStepsLVL2(scps: Seq[LVL2ProofStep]): SCProof[?] = this
+    def addStepLVL1After(scps: LVL1ProofStep): SCProof[?] = this
+    def addStepsLVL1After(scps: Seq[LVL1ProofStep]): SCProof[?] = this
+    def addStepLVL2After(scps: LVL2ProofStep): SCProof[?] = this
+    def addStepsLVL2After(scps: Seq[LVL2ProofStep]): SCProof[?] = this
+    def addStepLVL1Before(scps: LVL1ProofStep): SCProof[?] = this
+    def addStepsLVL1Before(scps: Seq[LVL1ProofStep]): SCProof[?] = this
+    def addStepLVL2Before(scps: LVL2ProofStep): SCProof[?] = this
+    def addStepsLVL2Before(scps: Seq[LVL2ProofStep]): SCProof[?] = this
 
 
     override def toString(): String = steps.foldLeft("")((acc, e) => acc + "\n" + e.toString())
@@ -159,17 +163,29 @@ object SequentCalculus {
   sealed trait LVL1ProofStep extends SCProofStep
 
   case class LVL1Proof(steps: IndexedSeq[LVL1ProofStep], thmName: String) extends SCProof[LVL1ProofStep] {
-    override def addStepLVL1(scps: LVL1ProofStep): SCProof[LVL1ProofStep] = {
+    override def addStepLVL1After(scps: LVL1ProofStep): SCProof[LVL1ProofStep] = {
+      LVL1Proof(steps :+ scps, thmName)
+    }
+
+    override def addStepsLVL1After(scps: Seq[LVL1ProofStep]): SCProof[LVL1ProofStep] = {
+      LVL1Proof(scps.foldLeft(steps)((acc, x) => acc :+ x), thmName)
+    }
+
+    override def addStepLVL2After(scps: LVL2ProofStep): SCProof[LVL2ProofStep] = throw Exception("Cannot convert a LVL1 proof into a LVL2 proof")
+
+    override def addStepsLVL2After(scps: Seq[LVL2ProofStep]): SCProof[LVL2ProofStep] = throw Exception("Cannot convert a LVL1 proof into a LVL2 proof")
+
+    override def addStepLVL1Before(scps: LVL1ProofStep): SCProof[LVL1ProofStep] = {
       LVL1Proof(scps +: steps, thmName)
     }
 
-    override def addStepsLVL1(scps: Seq[LVL1ProofStep]): SCProof[LVL1ProofStep] = {
+    override def addStepsLVL1Before(scps: Seq[LVL1ProofStep]): SCProof[LVL1ProofStep] = {
       LVL1Proof(scps.foldLeft(steps)((acc, x) => x +: acc), thmName)
     }
 
-    override def addStepLVL2(scps: LVL2ProofStep): SCProof[LVL2ProofStep] = throw Exception("Cannot convert a LVL1 proof into a LVL2 proof")
+    override def addStepLVL2Before(scps: LVL2ProofStep): SCProof[LVL2ProofStep] = throw Exception("Cannot convert a LVL1 proof into a LVL2 proof")
 
-    override def addStepsLVL2(scps: Seq[LVL2ProofStep]): SCProof[LVL2ProofStep] = throw Exception("Cannot convert a LVL1 proof into a LVL2 proof")
+    override def addStepsLVL2Before(scps: Seq[LVL2ProofStep]): SCProof[LVL2ProofStep] = throw Exception("Cannot convert a LVL1 proof into a LVL2 proof")
   }
 
 

@@ -1,0 +1,9 @@
+%fof(1, conjecture, [~(p(a)) | p(b) | ~(! [V0]: (p(V0) <=> ! [V1]: p(V1)))] --> []).
+fof(2, negated_conjecture, [p(a)] --> [], inference(negated_conjecture, [status(thm)], [1])).
+fof(3, negated_conjecture, [~(p(b))] --> [], inference(negated_conjecture, [status(thm)], [1])).
+fof(4, negated_conjecture, [~(p(V0)) | p(V1)] --> [], inference(negated_conjecture, [status(thm)], [1])).
+fof(7, plain, [~(p(a)) | p(V1)] --> [], inference(instantiate, [status(thm), 0, $fot(V0), $fot(a)], [4])).
+fof(8, plain, [p(V1)] --> [], inference(res, [status(thm), 0, 0], [7, 2])).
+fof(5, plain, [p(V0)] --> [], inference(instantiate, [status(thm), 0, $fot(V1), $fot(V0)], [8])).
+fof(9, plain, [p(b)] --> [], inference(instantiate, [status(thm), 0, $fot(V0), $fot(b)], [5])).
+fof(6, plain, [$false] --> [], inference(res, [status(thm), 0, 0], [9, 3])).

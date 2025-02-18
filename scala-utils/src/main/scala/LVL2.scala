@@ -20,8 +20,16 @@ object LVL2 {
       LVL2Proof(scps +: steps, thmName)
     }
 
+    override def addStepsLVL1(scps: Seq[LVL1ProofStep]): SCProof[LVL2ProofStep] = {
+      LVL2Proof(scps.foldLeft(steps)((acc, x) => x +: acc), thmName)
+    }
+
     override def addStepLVL2(scps: LVL2ProofStep): SCProof[LVL2ProofStep] = {
       LVL2Proof(scps +: steps, thmName)
+    }
+
+    override def addStepsLVL2(scps: Seq[LVL2ProofStep]): SCProof[LVL2ProofStep] = {
+      LVL2Proof(scps.foldLeft(steps)((acc, x) => x +: acc), thmName)
     }
   }
 

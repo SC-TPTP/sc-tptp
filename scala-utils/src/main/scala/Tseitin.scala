@@ -20,8 +20,11 @@ class Tseitin {
   val varName = "V"
   val tseitinName = "X"
   var varCpt = 0
+  val skoName = "sko"
+  var skoCpt = 0 
   val ladrName = "ladr"
   var ladrCpt = -1
+  val instantiateName = "i"
   val NoneFormula = AtomicFormula(AtomicSymbol("None", 0), Seq())
 
   // Var = Tseitin Var, Term = Original formula Term
@@ -157,35 +160,40 @@ class Tseitin {
   }
 
   // Instantiate universal quantifiers and returns a map [oldName, newName], the new formula, and has renamed them according to P9 standard
-  def toInstantiated(f: sctptp.FOL.Formula): (sctptp.FOL.Formula, Map[VariableSymbol, VariableSymbol]) = {
-      def toInstantiatedAux(f2: sctptp.FOL.Formula, accVS: Map[VariableSymbol, VariableSymbol], accT: Map[VariableSymbol, Term]): (sctptp.FOL.Formula, Map[VariableSymbol, VariableSymbol]) = {
+  // 0 = forall, 1 = exists
+  def toInstantiated(f: sctptp.FOL.Formula): (sctptp.FOL.Formula, Map[VariableSymbol, (Int, TermSymbol)], Seq[LVL1ProofStep]) = {
+      def toInstantiatedAux(f2: sctptp.FOL.Formula, accVS: Map[VariableSymbol, (Int, TermSymbol)], accT: Map[VariableSymbol, Term], accProof: Seq[LVL1ProofStep], cpt: Int): (sctptp.FOL.Formula, Map[VariableSymbol, (Int, TermSymbol)], Seq[LVL1ProofStep]) = {
         f2 match 
           case BinderFormula(label, bound, inner) => {
             label match
               case Forall => {
-                val new_symbol =VariableSymbol(varName+varCpt)
-                val new_accVS = accVS + (bound -> new_symbol)
-                val new_accT = accT + (bound -> Variable(new_symbol))
+                val new_symbol = VariableSymbol(varName+varCpt)
+                val new_accVS = accVS + (bound -> (0, new_symbol))
+                val new_term = Variable(new_symbol)
+                val new_accT = accT + (bound -> new_term)
                 varCpt = varCpt+1
-                val (new_f, new_acc_next_steps) = toInstantiatedAux(substituteVariablesInFormula(inner, new_accT), new_accVS, new_accT)
-                (new_f, new_acc_next_steps)
+                val new_form = substituteVariablesInFormula(inner, new_accT)
+                val ps = LeftForall(instantiateName+cpt, Sequent(Seq(new_form), Seq()), 0, Variable(bound), if (cpt == 0) then "prenex_step" else s"${instantiateName}${cpt-1}")
+                val (new_f, new_acc_next_steps, new_accProof) = toInstantiatedAux(new_form, new_accVS, new_accT, ps +: accProof , cpt+1)
+                (new_f, new_acc_next_steps, new_accProof)
               }
               case Exists => {
-                
-                val new_symbol = VariableSymbol(varName+varCpt)
-                val new_accVS = accVS + (bound -> new_symbol)
-                val new_accT = accT + (bound -> Variable(new_symbol))
-                varCpt = varCpt+1
-                val (new_f, new_acc_next_steps) = toInstantiatedAux(substituteVariablesInFormula(inner, new_accT), new_accVS, new_accT)
-                (BinderFormula(Exists, new_symbol, new_f), new_acc_next_steps)
+                val previousVarForall = accVS.foldLeft(Seq[VariableSymbol]())((acc, x) => if x._2._1 == 0 then acc :+ x._1 else acc)
+                val new_symbol = FunctionSymbol(skoName+varCpt, previousVarForall.size)
+                val new_accVS = accVS + (bound -> (1, new_symbol))
+                val new_term = Term(new_symbol, previousVarForall.map(x => accT(x)))
+                val new_accT = accT + (bound -> new_term)
+                skoCpt = skoCpt+1
+                val new_form = substituteVariablesInFormula(inner, new_accT)
+                val ps = LeftExists(instantiateName+cpt, Sequent(Seq(new_form), Seq()), 0, bound, if (cpt == 0) then "prenex_step" else s"${instantiateName}${cpt-1}")
+                val (new_f, new_acc_next_steps, new_accProof) = toInstantiatedAux(new_form, new_accVS, new_accT, ps +: accProof , cpt+1)
+                (new_f, new_acc_next_steps, new_accProof)
               }
           }
-          case _ => (f2, accVS)
+          case _ => (f2, accVS, accProof)
       }
 
-      toInstantiatedAux(f,  Map[VariableSymbol, VariableSymbol](), Map[VariableSymbol, Term]())
-
-      // sequence of forall left
+      toInstantiatedAux(f,  Map[VariableSymbol, (Int, TermSymbol)](), Map[VariableSymbol, Term](), Seq[LVL1ProofStep](), 0)
   }
 
   // Go through the formula and associate each subformula to a variable
@@ -452,11 +460,12 @@ class Tseitin {
   * Tseitin
   * unfold resolution --- leftnot et congruence
   * unfold inst multi
-  * neg à droite, pos à gauche + tracking des listes
+  * neg à droite, pos à gauche + tracking des listes -> relou ?
   * unfold nnf
   * Epsilon
   * Pipeline + executable
   * 
+  * TODO : reprendre unraname variable
   * Later : 
   * Update gog sans param + status thm
   **/

@@ -213,8 +213,8 @@ object Test {
     println("\n** Formula in Prenex Form ** :\n" + parsedProblem3)
 
     // Instantiated and renamed
-    val (parsedProblem4, mapVar) = myTseitin.toInstantiated(parsedProblem3)
-    val reverseMap = for ((k, v) <- mapVar) yield (v, k) 
+    val (parsedProblem4, mapVar, stepInst) = myTseitin.toInstantiated(parsedProblem3)
+    val reverseMap = for ((k, v) <- mapVar) yield (v._2, k) 
     println("\n** Formula instantiated ** \n: " + parsedProblem4)
     println("\n** Map var ** \n: " + mapVar)
     println("\n** Reverse map var ** \n: " + reverseMap)
@@ -252,7 +252,8 @@ object Test {
     val problem9 = myTseitin.unrenameProof(problem8, reverseMap)
     println(problem9.toString())
 
-    val newProof3 = problem9.addStepLVL2(stepPrenex)
+    val newProof4 = problem9.addStepsLVL2(stepInst)
+    val newProof3 = newProof4.addStepLVL2(stepPrenex)
     val newProof2 = newProof3.addStepLVL2(stepNNF)
     val newProof = newProof2.addStepLVL2(stepNC)
     println("\nAdd previous steps :")

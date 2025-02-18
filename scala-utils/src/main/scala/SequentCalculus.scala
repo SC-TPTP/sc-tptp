@@ -130,7 +130,10 @@ object SequentCalculus {
     }
 
     def addStepLVL1(scps: LVL1ProofStep): SCProof[?] = this
+    def addStepsLVL1(scps: Seq[LVL1ProofStep]): SCProof[?] = this
     def addStepLVL2(scps: LVL2ProofStep): SCProof[?] = this
+    def addStepsLVL2(scps: Seq[LVL2ProofStep]): SCProof[?] = this
+
 
     override def toString(): String = steps.foldLeft("")((acc, e) => acc + "\n" + e.toString())
   }
@@ -160,9 +163,13 @@ object SequentCalculus {
       LVL1Proof(scps +: steps, thmName)
     }
 
-    override def addStepLVL2(scps: LVL2ProofStep): SCProof[LVL2ProofStep] = {
-      LVL2Proof(scps +: steps, thmName)
+    override def addStepsLVL1(scps: Seq[LVL1ProofStep]): SCProof[LVL1ProofStep] = {
+      LVL1Proof(scps.foldLeft(steps)((acc, x) => x +: acc), thmName)
     }
+
+    override def addStepLVL2(scps: LVL2ProofStep): SCProof[LVL2ProofStep] = throw Exception("Cannot convert a LVL1 proof into a LVL2 proof")
+
+    override def addStepsLVL2(scps: Seq[LVL2ProofStep]): SCProof[LVL2ProofStep] = throw Exception("Cannot convert a LVL1 proof into a LVL2 proof")
   }
 
 

@@ -14,7 +14,7 @@
 | `leftImplies` | 2    | $$\frac{\Gamma \vdash A, \Delta \quad \Sigma, B \vdash \Pi}{\Gamma, \Sigma, A \Rightarrow B \vdash \Delta, \Pi}$$ | `i:Int`: Index of $A \Rightarrow B$ on the left | |
 | `leftIff` | 1        | $$\frac{\Gamma, A \Rightarrow B, B \Rightarrow A \vdash \Delta}{\Gamma, A \Leftrightarrow B \vdash \Delta}$$ | `i:Int`: Index of $A \Leftrightarrow B$ on the left | |
 | `leftNot` | 1        | $$\frac{\Gamma \vdash A, \Delta}{\Gamma, \neg A \vdash \Delta}$$ | `i:Int`: Index of $\neg A$ on the left | |
-| `leftExists` | 1     | $$\frac{\Gamma, A \vdash \Delta}{\Gamma, \exists x. A \vdash \Delta}$$ | `i:Int`: Index of $\exists x. A$ on the left <br> `y:Var`: Variable in place of $x$ in the premise | $y$ should not be free in the resulting sequent. |
+| `leftExists` | 1     | $$\frac{\Gamma, A[x := y] \vdash \Delta}{\Gamma, \exists x. A \vdash \Delta}$$ | `i:Int`: Index of $\exists x. A$ on the left <br> `y:Var`: Variable in place of $x$ in the premise | $y$ should not be free in the resulting sequent. |
 | `leftForall` | 1     | $$\frac{\Gamma, A[x := t] \vdash \Delta}{\Gamma, \forall x. A  \vdash \Delta}$$ | `i:Int`: Index of $\forall x. A$ on the left <br> `t:Term`: Term in place of $x$ in the premise | |
 | `rightAnd` | 2       | $$\frac{\Gamma \vdash A, \Delta \quad \Sigma \vdash B, \Pi}{\Gamma, \Sigma \vdash A \land B, \Delta, \Pi}$$ | `i:Int`: Index of $A \land B$ on the right | |
 | `rightOr` | 1        | $$\frac{\Gamma \vdash A, \Delta}{\Gamma \vdash A \lor B, \Delta}$$ | `i:Int`: Index of $A \lor B$ on the right | |
@@ -30,11 +30,28 @@
 | `leftSubstIff` | 1   | $$\frac{\Gamma, R(\phi),  \vdash \Delta}{\Gamma, \phi \Leftrightarrow \psi, R(\psi) \vdash \Delta}$$ | `i:Int`: Index of $\phi \Leftrightarrow \psi$ on the left <br> `R(Z):Var`: Shape of the predicate on the right <br> `Z:FormVar`: unifiable sub-term in the predicate | Requires `Schematic` enabled.|
 | `instFun` | 1        | $$\frac{\Gamma[F_X] \vdash \Delta[F_X]}{\Gamma[F_X := t_X] \vdash \Delta[F_X := t_X]}$$ | `F(X1, ..., Xn):Term`: Schematic function to substitute. `n`can be $0$. `t:Term`: Term, possibly containing $X_1, ..., X_n$, to instantiate $F$ with. | Requires `Schematic` enabled. If $n$ is 0, $F$ is a variable. Otherwise it is a function of arity $n$, starting with a capital letter.|
 | `instPred` | 1       | $$\frac{\Gamma[P_X] \vdash \Delta[P_X]}{\Gamma[P_X := \phi_X] \vdash \Delta[P_X := \phi_X]}$$ | `P(X1, ..., Xn):Formula`: Schematic predicate to substitute. `n`can be $0$. `\phi:Formula`: Formula, possibly containing $X_1, ..., X_n$, to instantiate $F$ with. | Requires `Schematic` enabled. If $n$ is 0, $F$ is a formula variable. Otherwise it is a predicate of arity $n$, starting with a capital letter.|
-
+| `rightEpsilon` | 1   | $$\frac{\Gamma \vdash A[x := t], \Delta}{\Gamma \vdash A[x := \epsilon x. A], \Delta}$$ | `i:Int`: Index of $A[x := \epsilon x. A]$ on the right <br> `t:Term`: Term in place of $x$ in the premise  | |
+| `leftEpsilon` | 1     | $$\frac{\Gamma, A[x := y] \vdash \Delta}{\Gamma, A[x := \epsilon x. A] \vdash \Delta}$$ | `i:Int`: Index of $A[x := \epsilon x. A]$ on the left <br> `y:Var`: Variable in place of $x$ in the premise | $y$ should not be free in the resulting sequent. |
 
 # Level 2 Proof Steps
 Proof steps for which there is an available elimination algorithm implemented in the library.
 
+
+| Rule Name | Premises | Rule       | Parameters   | Comments  |
+| :--       | :--      | :--        | :--          | :--       |
+| `congruence` | 0    | $$\frac{}{\Gamma, P \vdash Q, \Delta}$$ $$\frac{}{\Gamma, P, \neg Q \vdash \Delta}$$ | No parameter <br> $\Gamma$ contains a set of ground equalities such that P and Q are congruents | |
+| `leftHyp` | 0        | $$\frac{}{\Gamma, A, \neg A \vdash \Delta}$$ | `i:Int`: Index of $A$ on the left   <br> `j:Int`: Index of $\neg A$ on the left. | |
+| `leftNotAnd` | 2    | $$\frac{\Gamma, \neg A \vdash \Delta \quad \Sigma, \neg B \vdash \Pi}{\Gamma, \Sigma, \neg(A \land B) \vdash \Delta, \Pi}$$ | `i:Int`: Index of $\neg(A \land B)$ on the left | |
+| `leftNotOr` | 1     | $$\frac{\Gamma, \neg A, \neg B \vdash \Delta}{\Gamma, \neg(A \lor B) \vdash \Delta}$$ | `i:Int`: Index of $\neg(A \lor B)$ on the left | |
+| `leftNotImplies` | 1 | $$\frac{\Gamma, A, \neg B \vdash \Delta}{\Gamma, \neg(A \Rightarrow B) \vdash \Delta}$$ | `i:Int`: Index of $\neg(A \Rightarrow B)$ on the left | |
+| `leftNotIff` | 2    | $$\frac{\Gamma, \neg (A \Rightarrow B) \vdash \Delta \quad \Sigma, \neg (B \Rightarrow A) \vdash \Pi}{\Gamma, \Sigma, \neg(A \Leftrightarrow B) \vdash \Delta, \Pi}$$ | `i:Int`: Index of $\neg(A \Leftrightarrow B)$ on the left | |
+| `leftNotNot` | 1    | $$\frac{\Gamma, A \vdash \Delta}{\Gamma, \neg \neg A \vdash \Delta}$$ | `i:Int`: Index of $\neg \neg A$ on the left | |
+| `leftNotEx` | 1     | $$\frac{\Gamma, \neg A[x := t] \vdash \Delta}{\Gamma, \neg\exists x. A  \vdash \Delta}$$ | `i:Int`: Index of $\neg \exists x. A$ on the right <br> `t:Term`: Term in place of $x$ in the premise | |
+| `leftNotAll` | 1    | $$\frac{\Gamma, \neg A \vdash \Delta}{\Gamma, \neg \forall x. A \vdash \Delta}$$ | `i:Int`: Index of $\neg \forall x. A$ on the right <br> `y:Var`: Variable in place of $x$ in the premise | |
+
+
+# Level 3 Proof Steps
+Proof steps for which there is no elimination procedure, but which are precisely defined and checkable, and usually implemented in some way or another in proof systems.
 
 | Rule Name | Premises | Rule       | Parameters   | Comments  |
 | :--       | :--      | :--        | :--          | :--       |
@@ -46,13 +63,3 @@ Proof steps for which there is an available elimination algorithm implemented in
 | `rightSubstIffForallLocal` | 1 | $$\frac{\Gamma, \forall x_1,...,x_n. \phi(x_1,...,x_n) \Leftrightarrow \psi(x_1,...,x_n) \vdash R(\phi(t_1,...,t_n)), \Delta}{\Gamma, \forall x_1,...,x_n. \phi(x_1,...,x_n) \Leftrightarrow \psi(x_1,...,x_n) \vdash R(\psi(t_1,...,t_n)), \Delta}$$ | `i:Int`: Index of $\forall x_1,...,x_n. \phi(x_1,...,x_n) \Leftrightarrow \psi(x_1,...,x_n)$ on the left <br> `R(Z):Var`: Shape of the predicate on the right <br> `Z:FormVar`: unifiable sub-term in the predicate | |
 | `rightSubstIffForall` | 2 | $$\frac{\Gamma \vdash R(\phi(t)), \Delta \quad \Sigma \vdash \forall x. \phi(x) \Leftrightarrow \psi(x), \Pi}{\Gamma, \Sigma \vdash  R(\psi(t)), \Delta, \Pi}$$ | `i:Int`: Index of $\forall x. \phi(x) \Leftrightarrow \psi(x)$ on the right of the second premisce <br> `R(Z):Var`: Shape of the predicate on the right <br> `Z:Var`: unifiable sub-term in the predicate | |
 | `NNF` | 1           | $$\frac{\Gamma \vdash \Delta}{\Gamma' \vdash \Delta'}$$ | No parameters <br> The premise and conclusion are equal up to negation normal form | |
-| `congruence` | 0    | $$\frac{}{\Gamma, P \vdash Q, \Delta}$$ $$\frac{}{\Gamma, P, \neg Q \vdash \Delta}$$ | No parameter <br> $\Gamma$ contains a set of ground equalities such that P and Q are congruents | |
-| `leftHyp` | 0        | $$\frac{}{\Gamma, A, \neg A \vdash \Delta}$$ | `i:Int`: Index of $A$ on the left   <br> `j:Int`: Index of $\neg A$ on the left. | |
-| `leftNotAnd` | 2    | $$\frac{\Gamma, \neg A \vdash \Delta \quad \Sigma, \neg B \vdash \Pi}{\Gamma, \Sigma, \neg(A \land B) \vdash \Delta, \Pi}$$ | `i:Int`: Index of $\neg(A \land B)$ on the left | |
-| `leftNotOr` | 1     | $$\frac{\Gamma, \neg A, \neg B \vdash \Delta}{\Gamma, \neg(A \lor B) \vdash \Delta}$$ | `i:Int`: Index of $\neg(A \lor B)$ on the left | |
-| `leftNotImplies` | 1 | $$\frac{\Gamma, A, \neg B \vdash \Delta}{\Gamma, \neg(A \Rightarrow B) \vdash \Delta}$$ | `i:Int`: Index of $\neg(A \Rightarrow B)$ on the left | |
-| `leftNotIff` | 2    | $$\frac{\Gamma, \neg (A \Rightarrow B) \vdash \Delta \quad \Sigma, \neg (B \Rightarrow A) \vdash \Pi}{\Gamma, \Sigma, \neg(A \Leftrightarrow B) \vdash \Delta, \Pi}$$ | `i:Int`: Index of $\neg(A \Leftrightarrow B)$ on the left | |
-| `leftNotNot` | 1    | $$\frac{\Gamma, A \vdash \Delta}{\Gamma, \neg \neg A \vdash \Delta}$$ | `i:Int`: Index of $\neg \neg A$ on the left | |
-| `leftNotEx` | 1     | $$\frac{\Gamma, \neg A[x := t] \vdash \Delta}{\Gamma, \neg\exists x. A  \vdash \Delta}$$ | `i:Int`: Index of $\neg \exists x. A$ on the right <br> `t:Term`: Term in place of $x$ in the premise | |
-| `leftNotAll` | 1    | $$\frac{\Gamma, \neg A \vdash \Delta}{\Gamma, \neg \forall x. A \vdash \Delta}$$ | `i:Int`: Index of $\neg \forall x. A$ on the right <br> `y:Var`: Variable in place of $x$ in the premise | |
-

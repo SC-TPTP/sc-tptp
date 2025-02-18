@@ -23,12 +23,18 @@ object Parser {
     case FOF.AtomicTerm(f, args) =>
       context._2(f) match 
         case Some(t) => t
-        case None => Term(FunctionSymbol(f, args.size), args map convertTermToFOL)
-    case FOF.Variable(name) => {
+        case None => FunctionTerm(FunctionSymbol(f, args.size), args map convertTermToFOL)
+    case FOF.Variable(name) => 
       if (name(0).isUpper) 
         then Variable(name)
-        else Term(FunctionSymbol(name, 0), Seq())
-    }
+        else FunctionTerm(FunctionSymbol(name, 0), Seq())
+    case FOF.QuantifiedTerm(quantifier, variableList, body) =>
+      quantifier match 
+        case FOF.Epsilon => variableList match
+          case Seq(s) => EpsilonTerm(VariableSymbol(s), convertFormulaToFol(body))
+          case _ => throw new Exception("Epsilon terms can only bind a single variable")
+        case _ => throw new Exception("Only epsilon quantifier is supported in terms")
+      
     case FOF.DistinctObject(name) => throw new Exception("Distinct objects are not supported in pure FOL")
     case FOF.NumberTerm(value) => throw new Exception("Numbers are not supported in pure FOL")
 
@@ -530,7 +536,7 @@ object Parser {
         ann_seq match {
           case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotForall", Seq(_, StrOrNum(n), GenTerm(xl)), Seq(t1)), _) => // x has to be a GeneralTerm representinf a variable, i.e. $fot(x)
             val x = xl match
-              case Term(x: VariableSymbol, Seq()) => x
+              case FunctionTerm(x: VariableSymbol, Seq()) => x
               case _ => throw new Exception(s"Expected a variable, but got $xl")
             Some(LVL2.LeftNotAll(name, convertSequentToFol(sequent), n.toInt, x, t1))
           case _ => None
@@ -681,7 +687,7 @@ object Parser {
         ann_seq match {
           case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instantiate", Seq(_, StrOrNum(i), GenTerm(x), GenTerm(t)), Seq(t1)), _) =>
             val x2 = x match 
-              case Term(xs: VariableSymbol, Seq()) => xs
+              case FunctionTerm(xs: VariableSymbol, Seq()) => xs
               case _ => throw new Exception(s"Expected a variable, but got $x")
             Some(LVL2.Instantiate_L(name, convertSequentToFol(sequent), i.toInt, x2, t, t1))
           case _ => None

@@ -23,3 +23,8 @@ fof(f7, plain, [![X] :( q(X) | ![Y] : p(Y, c))] --> [],
 fof(a8, axiom, [![X] : P(X, f(c))] --> [?[Y] : P(b, f(Y))]).
 fof(f8, plain, [![X] : (q(X) | ![Y] : ~q(Y, f(f(c))))] --> [?[Z] : (q(b) | ![X] : ~(q(X, f(f(Z)))))], 
       inference(instPred, [status(thm), 'P', $fof(q(X) | ![X] : ~(q(X, f(Y)))), ['X', 'Y']], [a8])).
+
+
+fof(a8, axiom, [![X] : P(X, #[Y] : (Q(X) & P(X, Y)))] --> []).
+fof(f8, plain, [![X] :( q(X) | ![Z] : p(Z, #[Y] : (Q(X) & P(X, Y))))] --> [], 
+      inference(instPred, [status(thm), 'P', $fof(q(X) | ![X] : p(X, Y)), ['X', 'Y']], [a8])).

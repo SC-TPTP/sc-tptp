@@ -322,18 +322,25 @@ class Tseitin {
 
   // Retrieve the original name of variables
 
+
   def UnRenameVariablesInTerm(t: sctptp.FOL.Term, reverseMap: Map[VariableSymbol, VariableSymbol] ) : sctptp.FOL.Term = {
     // println(reverseMap)
     // println(t)
     t match
-      case Term(label: VariableSymbol, _) if (reverseMap contains label) => Term(reverseMap(label), Seq())
-      case Term(label, args) => Term(label, args.map(UnRenameVariablesInTerm(_, reverseMap)))
+      case FunctionTerm(label: VariableSymbol, _) if (reverseMap contains label) => FunctionTerm(reverseMap(label), Seq())
+      case FunctionTerm(label, args) => FunctionTerm(label, args.map(UnRenameVariablesInTerm(_, reverseMap)))
+      case EpsilonTerm(bound, inner) => {
+            if (reverseMap contains bound)
+                then ??? //EpsilonTerm(reverseMap(bound), UnRenameVariablesAux(substituteVariablesInFormula(inner, /*accT + */Map.empty +(bound -> Variable(reverseMap(bound))))))
+                else ??? //EpsilonTerm(bound, UnRenameVariablesAux(inner))
+            }
   }
 
 
   def UnRenameVariables(f: sctptp.FOL.Formula,  reverseMap: Map[VariableSymbol, VariableSymbol]): sctptp.FOL.Formula = {
     val accT = Map[VariableSymbol, Term]()
-    
+
+
     def UnRenameVariablesAux(f2: sctptp.FOL.Formula): sctptp.FOL.Formula = {
       f2 match 
         case AtomicFormula(label, args) => AtomicFormula(label, args.map(UnRenameVariablesInTerm(_, reverseMap)))

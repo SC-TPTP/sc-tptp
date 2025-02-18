@@ -52,25 +52,25 @@ object Test {
 
     val a_id = Identifier("a")
     val a_term_label = FunctionSymbol(a_id, 0)
-    val a_term = Term(a_term_label, Seq())
+    val a_term = FunctionTerm(a_term_label, Seq())
     val a_atomic_label = AtomicSymbol(a_id, 0)
     val a = AtomicFormula(a_atomic_label, Seq())
 
     val b_id = Identifier("b")
     val b_term_label = FunctionSymbol(b_id, 0)
-    val b_term = Term(b_term_label, Seq())
+    val b_term = FunctionTerm(b_term_label, Seq())
     val b_atomic_label = AtomicSymbol(b_id, 0)
     val b = AtomicFormula(b_atomic_label, Seq())
 
     val c_id = Identifier("c")
     val c_term_label = FunctionSymbol(c_id, 0)
-    val c_term = Term(c_term_label, Seq())
+    val c_term = FunctionTerm(c_term_label, Seq())
     val c_atomic_label = AtomicSymbol(c_id, 0)
     val c = AtomicFormula(c_atomic_label, Seq())
 
     // val f_id = Identifier("f")
     // val f_label = FunctionSymbol(f_id, 3)
-    // val fx = Term(f_label, Seq(x, a_term, x))
+    // val fx = FunctionTerm(f_label, Seq(x, a_term, x))
 
     // println("x.toString: " + x.toString())
     // println("a_term.toString: " + a_term.toString())

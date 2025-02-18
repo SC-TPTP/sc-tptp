@@ -63,7 +63,7 @@ class EGraphTerms() {
 
   def canonicalize(node: ENode): ENode = {
     node match
-      case Term(label, children) => Term(label, children.map(find.asInstanceOf))
+      case FunctionTerm(label, children) => FunctionTerm(label, children.map(find.asInstanceOf))
   }
 
   def lookup(node: ENode): ENode = canonicalize(node)
@@ -72,10 +72,11 @@ class EGraphTerms() {
   def add(node: Term): Term =
     if map.contains(node) then return node
     makeSingletonEClass(node)
-    node.args.foreach(child => 
-      parents(child).add(node)
-      add(child)
-    )
+    node match 
+      case FunctionTerm(_, args) => args.foreach(child => 
+        parents(child).add(node)
+        add(child)
+      )
     node
 
 
@@ -163,7 +164,8 @@ class EGraphTerms() {
               proof = newstep :: proof
               no += 1
 
-          case Congruence((left, right)) => 
+          case Congruence((left, right)) => (left, right) match
+            case (FunctionTerm(llabel, largs), FunctionTerm(rlabel, rargs)) =>
 
             // sno is a step proving id1 === left
             // need to output a proof of id1 === right
@@ -176,79 +178,79 @@ class EGraphTerms() {
             // ** 3. apply cut to obtain a proof of id1 === right
 
 
-            val name1 = s"$stepString$no"
-            if !first then {
-              val x = VariableSymbol(freshId(id1.freeVariables.map(_.name), "X"))
-              val leftIndex = ctx1.find(_ == (left === right))
-              val cond_id1_eq_r = SC.RightSubst(name1, SC.Sequent((left === right) +: ctx1, (id1 === right) +: ctx2), 0, id1 === x(), x, s"$stepString${no-1}") // ** 1.
-              proof = cond_id1_eq_r :: proof
-              no += 1
-              assert(left.label == right.label, s"Congruence: left and right should have the same label but obtained\n left: $left\n right: $right")
-              assert(left.args.size == right.args.size, s"Congruence: left and right should have the same number of children but obtained\n left: $left\n right: $right")
-            }
-
-            val eqs = left.args.zip(right.args).toList
-            val childrenProofs = eqs.map { (l, r) => 
-              val chpr = proveInner(l, r, no, ctx1, ctx2, stepString).get
-              no += chpr.size
-              proof = chpr ++ proof
-              (chpr, no-1, l, r)
-            } // ** ** a)
-
-            val name2 = s"$stepString$no" // ** ** b)
-            val step_refl = SC.RightRefl(name2, SC.Sequent(ctx1, (left === left) +: ctx2), 0) 
-            proof = step_refl :: proof
-            no += 1
-            
-            
-            val name3 = s"$stepString$no" // ** ** c)
-            var freeCount: Int = eqs.flatMap(pair => (pair._1.freeVariables ++ pair._2.freeVariables).map(_.name)).foldLeft(0)((acc, x) => if x.name.no > acc then x.name.no else acc)
-            val freeVars = eqs.map(i => 
-              freeCount += 1
-              VariableSymbol(Identifier("XX", freeCount))
-            )
-            val P = left === right.label(freeVars.map(_())*)
-            val left_eq_right = sctptp.LVL2.RightSubstMulti(
-              name3, 
-              SC.Sequent(eqs.map(_ === _) ++ ctx1, (left === right) +: ctx2),
-              (0 until eqs.size).toList,
-              P, 
-              freeVars.toList, 
-              name2
-            ) // ** ** c)
-            proof = left_eq_right :: proof
-            no += 1
-            val cuts = childrenProofs.foldLeft(left_eq_right.bot) {
-              case (acc, (_, n, l, r)) => 
-                val namen = s"$stepString$no"
-                val newbot = SC.Sequent(acc.left.tail, acc.right)
-                val cut = SC.Cut(
-                  namen,
-                  newbot,
-                  0,
-                  0,
-                  s"$stepString$n",
-                  s"$stepString${no-1}"
-                )
+              val name1 = s"$stepString$no"
+              if !first then {
+                val x = VariableSymbol(freshId(id1.freeVariables.map(_.name), "X"))
+                val leftIndex = ctx1.find(_ == (left === right))
+                val cond_id1_eq_r = SC.RightSubst(name1, SC.Sequent((left === right) +: ctx1, (id1 === right) +: ctx2), 0, id1 === x(), x, s"$stepString${no-1}") // ** 1.
+                proof = cond_id1_eq_r :: proof
                 no += 1
-                proof = cut :: proof
-                newbot
-            } // ** ** d)
+              }
 
-            if !first then {
-              val name4 = s"$stepString${no-1}"
-              val name5 = s"$stepString$no"
+              val eqs = largs.zip(rargs).toList
+              val childrenProofs = eqs.map { (l, r) => 
+                val chpr = proveInner(l, r, no, ctx1, ctx2, stepString).get
+                no += chpr.size
+                proof = chpr ++ proof
+                (chpr, no-1, l, r)
+              } // ** ** a)
 
-              val lastStep = SC.Cut(
-                name5,
-                SC.Sequent(ctx1, (id1 === right) +: ctx2),
-                0,
-                0,
-                name4,
-                name1
-              ) // ** 3.
-              proof = lastStep :: proof
-            }
+              val name2 = s"$stepString$no" // ** ** b)
+              val step_refl = SC.RightRefl(name2, SC.Sequent(ctx1, (left === left) +: ctx2), 0) 
+              proof = step_refl :: proof
+              no += 1
+              
+              
+              val name3 = s"$stepString$no" // ** ** c)
+              var freeCount: Int = eqs.flatMap(pair => (pair._1.freeVariables ++ pair._2.freeVariables).map(_.name)).foldLeft(0)((acc, x) => if x.name.no > acc then x.name.no else acc)
+              val freeVars = eqs.map(i => 
+                freeCount += 1
+                VariableSymbol(Identifier("XX", freeCount))
+              )
+              val P = left === rlabel(freeVars.map(_())*)
+              val left_eq_right = sctptp.LVL2.RightSubstMulti(
+                name3, 
+                SC.Sequent(eqs.map(_ === _) ++ ctx1, (left === right) +: ctx2),
+                (0 until eqs.size).toList,
+                P, 
+                freeVars.toList, 
+                name2
+              ) // ** ** c)
+              proof = left_eq_right :: proof
+              no += 1
+              val cuts = childrenProofs.foldLeft(left_eq_right.bot) {
+                case (acc, (_, n, l, r)) => 
+                  val namen = s"$stepString$no"
+                  val newbot = SC.Sequent(acc.left.tail, acc.right)
+                  val cut = SC.Cut(
+                    namen,
+                    newbot,
+                    0,
+                    0,
+                    s"$stepString$n",
+                    s"$stepString${no-1}"
+                  )
+                  no += 1
+                  proof = cut :: proof
+                  newbot
+              } // ** ** d)
+
+              if !first then {
+                val name4 = s"$stepString${no-1}"
+                val name5 = s"$stepString$no"
+
+                val lastStep = SC.Cut(
+                  name5,
+                  SC.Sequent(ctx1, (id1 === right) +: ctx2),
+                  0,
+                  0,
+                  name4,
+                  name1
+                ) // ** 3.
+                proof = lastStep :: proof
+              }
+
+            case _ => throw new Exception("Invalid congruence proof, should be unreachable.")
         }
 
         Some(proof)

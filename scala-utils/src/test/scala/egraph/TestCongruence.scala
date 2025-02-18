@@ -14,21 +14,21 @@ class TestCongruence extends AnyFunSuite {
   
 
   test("15 elements no congruence egraph test with redundant merges") {
-    val id1 = Term(a, List())
-    val id2 = Term(b, List())
-    val id3 = Term(c, List())
-    val id4 = Term(d, List())
-    val id5 = Term(e, List())
-    val id6 = Term(f, List())
-    val id7 = Term(g, List())
-    val id8 = Term(h, List())
-    val id9 = Term(i, List())
-    val id10 = Term(j, List())
-    val id11 = Term(k, List())
-    val id12 = Term(l, List())
-    val id13 = Term(m, List())
-    val id14 = Term(n, List())
-    val id15 = Term(o, List())
+    val id1 = FunctionTerm(a, List())
+    val id2 = FunctionTerm(b, List())
+    val id3 = FunctionTerm(c, List())
+    val id4 = FunctionTerm(d, List())
+    val id5 = FunctionTerm(e, List())
+    val id6 = FunctionTerm(f, List())
+    val id7 = FunctionTerm(g, List())
+    val id8 = FunctionTerm(h, List())
+    val id9 = FunctionTerm(i, List())
+    val id10 = FunctionTerm(j, List())
+    val id11 = FunctionTerm(k, List())
+    val id12 = FunctionTerm(l, List())
+    val id13 = FunctionTerm(m, List())
+    val id14 = FunctionTerm(n, List())
+    val id15 = FunctionTerm(o, List())
     val base = Seq((id1, id3), (id5, id6), (id9, id11), (id13, id14), (id1, id2), (id15, id13), (id9, id13), (id7, id8), (id12, id11), (id2, id3), (id6, id5), (id15, id9), (id7, id5), (id9, id10))
 
 
@@ -41,10 +41,10 @@ class TestCongruence extends AnyFunSuite {
   }
 
   test("4 elements with congruence egraph test with explain") {
-    val id1 = Term(a, List())
-    val id2 = Term(b, List())
-    val id3 = Term(F, List(id1))
-    val id4 = Term(F, List(id2))
+    val id1 = FunctionTerm(a, List())
+    val id2 = FunctionTerm(b, List())
+    val id3 = FunctionTerm(F, List(id1))
+    val id4 = FunctionTerm(F, List(id2))
 
     val proof = Seq(Congruence("congruence", Sequent(List(id1 === id2, P(List(id3)), !P(List(id4))), List()) ))
     val tran = eliminateCongruence(proof)
@@ -54,16 +54,16 @@ class TestCongruence extends AnyFunSuite {
   test("divide-mult-shift by 2 egraph test with explain") {
 
     val egraph = new EGraphTerms()
-    val one = Term("one", List()))
-    val two = Term("two", List()))
-    val a = Term("a", List()))
-    val ax2 = Term("*", List(a, two)))
-    val ax2_d2 = Term("/", List(ax2, two)))
-    val `2d2` = Term("/", List(two, two)))
-    val ax_2d2 = Term("*", List(a, `2d2`)))
-    val ax1 = Term("*", List(a, one)))
+    val one = FunctionTerm("one", List()))
+    val two = FunctionTerm("two", List()))
+    val a = FunctionTerm("a", List()))
+    val ax2 = FunctionTerm("*", List(a, two)))
+    val ax2_d2 = FunctionTerm("/", List(ax2, two)))
+    val `2d2` = FunctionTerm("/", List(two, two)))
+    val ax_2d2 = FunctionTerm("*", List(a, `2d2`)))
+    val ax1 = FunctionTerm("*", List(a, one)))
 
-    val as1 = Term("<<", List(a, one)))
+    val as1 = FunctionTerm("<<", List(a, one)))
     val * : TermSymbol = FunctionSymbol("*", 2)
 
     egraph.merge(ax2, as1)
@@ -100,15 +100,15 @@ class TestCongruence extends AnyFunSuite {
 
   test("long chain congruence eGraph with explain") {
     val egraph = new EGraphTerms()
-    val x = Term("x", List()))
-    val fx = Term(F, List(x)))
-    val ffx = Term(F, List(fx)))
-    val fffx = Term(F, List(ffx)))
-    val ffffx = Term(F, List(fffx)))
-    val fffffx = Term(F, List(ffffx)))
-    val ffffffx = Term(F, List(fffffx)))
-    val fffffffx = Term(F, List(ffffffx)))
-    val ffffffffx = Term(F, List(fffffffx)))
+    val x = FunctionTerm("x", List()))
+    val fx = FunctionTerm(F, List(x)))
+    val ffx = FunctionTerm(F, List(fx)))
+    val fffx = FunctionTerm(F, List(ffx)))
+    val ffffx = FunctionTerm(F, List(fffx)))
+    val fffffx = FunctionTerm(F, List(ffffx)))
+    val ffffffx = FunctionTerm(F, List(fffffx)))
+    val fffffffx = FunctionTerm(F, List(ffffffx)))
+    val ffffffffx = FunctionTerm(F, List(fffffffx)))
 
   
     egraph.merge(ffffffffx, x)

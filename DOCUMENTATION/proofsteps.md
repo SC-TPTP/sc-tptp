@@ -5,7 +5,7 @@
 | :--       | :--      | :--        | :--          |  :--     |
 | `leftFalse` | 0      | $$\frac{}{\Gamma, \bot \vdash \Delta}$$ | `i:Int`: Index of $\bot$ on the left | |
 | `rightTrue` | 0      | $$\frac{}{\Gamma \vdash \top, \Delta}$$ | `i:Int`: Index of $\top$ on the right | |
-| `hyp`    | 0         | $$\frac{}{\Gamma, A \vdash A, \Delta}$$ | `i:Int`: Index of $A$ on the left   <br> `j:Int`: Index of $A$ on the right | |
+| `hyp`    | 0         | $$\frac{}{\Gamma, A \vdash A, \Delta}$$ | `i:Int`: Index of $A$ on the left | |
 | `leftWeaken` | 1     | $$\frac{\Gamma \vdash \Delta}{\Gamma, A \vdash \Delta}$$ | `i:Int`: Index of $A$ on the left | |
 | `rightWeaken` | 1    | $$\frac{\Gamma \vdash \Delta}{\Gamma \vdash A, \Delta}$$ | `i:Int`: Index of $A$ on the right | |
 | `cut` | 2            | $$\frac{\Gamma \vdash A, \Delta \quad \Sigma, A \vdash \Pi}{\Gamma, \Sigma \vdash \Delta, \Pi}$$ |`i:Int`: Index of the cut formula on the right of the first premise | |

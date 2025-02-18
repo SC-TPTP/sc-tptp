@@ -841,6 +841,50 @@ object SequentCalculus {
 
 
 
+  /**
+   *    Γ, A[x := y] |- Δ
+   * ------------------------- Where y is not free in Γ and Δ
+   *   Γ, A[x := ϵx. A ] |- Δ
+   *
+   * @param bot Resulting formula
+   * @param i Index of A[x := y] on the left of the premise
+   */
+  case class LeftEpsilon(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) extends LVL1ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = SCProofStep.outputWithTerm(name, LeftExistsRuleName, bot, i, y.toString(), premises)
+    def checkCorrectness(premises: String => Sequent): Option[String] = 
+      val Ay = premises(t1).left(i)
+      val Aepsi = substituteVariablesInFormula(Ay, Map(y -> EpsilonTerm(y, Ay)))
+      if (isSameSet(bot.right, premises(t1).right)) then
+        if (isSameSet(bot.left :+ Ay, premises(t1).left :+ Aepsi)) then
+          if ((bot.left `concat` bot.right).forall(f => !f.freeVariables.contains(y))) then
+            None
+          else Some(s"The variable $y must not be free in the resulting sequent.")
+        else Some("Left-hand side of conclusion :+ A must be the same as left-hand side of premise :+ ∃x. A")
+      else Some("Right-hand side of conclusion must be the same as right-hand side of premise")
+  }
 
+
+   /**
+   *    Γ |- A[x := t], Δ
+   * -------------------
+   *     Γ |- A[x := ϵx. A], Δ
+   *
+   * @param bot Resulting formula
+   * @param i Index of ∃x. A on the right
+   * @param t Term in place of x in the premise
+   */
+  case class RightEpsilon(name: String, bot: Sequent, phi: Formula, x: Variable, t: Term, t1: String) extends LVL1ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = SCProofStep.outputWithTerm(name, RightExistsRuleName, bot, i, t.toString(), premises)
+    def checkCorrectness(premises: String => Sequent): Option[String] = 
+      val At = substituteVariablesInFormula(phi, Map(x -> t))
+      val Aepsi = substituteVariablesInFormula(phi, Map(x -> EpsilonTerm(x, phi)))
+      if (isSameSet(bot.left, premises(t1).left))
+        if (isSameSet(bot.right :+ inst, premises(t1).right :+ eA))
+          None
+        else Some("Right-hand side of conclusion :+ A must be the same as right-hand side of premise")
+      else Some("Left-hand side of conclusion must be the same as left-hand side of premise :+ A")
+  }
 }
 

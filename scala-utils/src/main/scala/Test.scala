@@ -9,6 +9,8 @@ import sctptp.SequentCalculus.SCProofStep
 import sctptp.Tseitin
 import sctptp.FOL.iff
 
+
+
 object Test {
 
   def main(args: Array[String]): Unit = {
@@ -186,7 +188,7 @@ object Test {
 
   // // Pre processing
 
-    val problem = reconstructProof(new File("../proofs/clausification/clausified5.p"))
+    val problem = reconstructProof(new File("../proofs/clausification/simple.p"))
     val parsedProblem = problem.getSequent(0).right(0)
     val parsedProblemName = problem.thmName
 
@@ -200,37 +202,37 @@ object Test {
     val myTseitin = new Tseitin()
 
     // Take the negation (for tests)
-    val (parsedProblem1, stepNC) = myTseitin.toNegatedFormula(parsedProblem)
+    val (parsedProblem1, originalFormula, stepNC) = myTseitin.toNegatedFormula(parsedProblem)
     // val parsedProblem1 = parsedProblem
-    println("\n** Negated Formula ** :\n" + parsedProblem1)
+    // println("\n** Negated Formula ** :\n" + parsedProblem1)
 
     // NNF
     val (parsedProblem2, stepNNF) = myTseitin.toNNF(parsedProblem1)
-    println("\n** Formula in NNF Form ** :\n" + parsedProblem2)
+    // println("\n** Formula in NNF Form ** :\n" + parsedProblem2)
 
     // Prenex
     val (parsedProblem3, stepPrenex) = myTseitin.toPrenex(parsedProblem2)
-    println("\n** Formula in Prenex Form ** :\n" + parsedProblem3)
+    // println("\n** Formula in Prenex Form ** :\n" + parsedProblem3)
 
     // Instantiated and renamed
     val (parsedProblem4, mapVar, stepInst) = myTseitin.toInstantiated(parsedProblem3)
     val reverseMap = for ((k, v) <- mapVar) yield (v, k) 
-    println("\n** Formula instantiated ** \n: " + parsedProblem4)
-    println("\n** Map var ** \n: " + mapVar)
-    println("\n** Reverse map var ** \n: " + reverseMap)
+    // println("\n** Formula instantiated ** \n: " + parsedProblem4)
+    // println("\n** Map var ** \n: " + mapVar)
+    // println("\n** Reverse map var ** \n: " + reverseMap)
 
     // Unrenamed formula 
     val parsedProblem5 = myTseitin.UnRenameVariables(parsedProblem4, reverseMap)
-    println("\n** Formula with original names ** :\n" + parsedProblem5)
+    // println("\n** Formula with original names ** :\n" + parsedProblem5)
 
     // Creation of tseitin terms beforme renaming
     val premap = myTseitin.createTseitinVariables(parsedProblem4)
     myTseitin.makeTseitinMaps(premap._1)
-    println("\n** TS variables ** :\n")
-    myTseitin.printTseitinVarTerm()
+    // println("\n** TS variables ** :\n")
+    // myTseitin.printTseitinVarTerm()
     myTseitin.makeTseitinMapsUp(myTseitin.updateTseitinVariables(myTseitin.getTseitinTermVar()))
-    println("\n** Updated Variables ** :\n")
-    myTseitin.printTseitinVarTermUp()
+    // println("\n** Updated Variables ** :\n")
+    // myTseitin.printTseitinVarTermUp()
 
     // Tseitin Normal Form
     val parsedProblem6 = myTseitin.toTseitin(parsedProblem4)
@@ -238,14 +240,7 @@ object Test {
 
     // Tseitin Normal Form
     val parsedProblem7 = myTseitin.toFlatternAnd(parsedProblem6)
-    println("\n ** Flattern ** :\n" +  myTseitin.UnRenameVariables(parsedProblem7, reverseMap))
-
-    // Post Processing
-    val problem8 = reconstructProof(new File("../proofs/clausification/clausified10.p"))
-    
-    // println("\nProof :")
-    // println(problem8.toString())
-    // println(s"CheckProof : ${checkProof(problem8)}")
+    // println("\n ** Flattern ** :\n" +  myTseitin.UnRenameVariables(parsedProblem7, reverseMap))
 
     // Rename variables 
     // println("\nUnrennamed version :")
@@ -254,29 +249,42 @@ object Test {
 
     // Create let steps
     val (tseitinForms, tseitinStepMap, tseitinStepNames) = myTseitin.generateTseitin()
-    println("\nTseitin Steps :")
-    tseitinForms.map(x => println(x))
-    println("\nTseitin Steps Names :")
-    tseitinStepNames.map(x => println(x))
-    println("\nTseitin Steps Map :")
-    tseitinStepMap.map(x => println(s"${x._1} -> ${x._2}"))
+    // println("\nTseitin Steps :")
+    // tseitinForms.map(x => println(x))
+    // println("\nTseitin Steps Names :")
+    // tseitinStepNames.map(x => println(x))
+    // println("\nTseitin Steps Map :")
+    // tseitinStepMap.map(x => println(s"${x._1} -> ${x._2}"))
 
     // Generate tseistin replacement
     val lastInstForm = stepInst.last
-    val tseitinReplacementStep = myTseitin.computeTseitinReplacementSteps(lastInstForm, tseitinStepNames, tseitinStepMap, tseitinForms)
+    val tseitinReplacementStep = myTseitin.computeTseitinReplacementSteps(lastInstForm, tseitinStepNames.reverse, tseitinStepMap, tseitinForms, "i"+(stepInst.size-1))
 
 
-
+    // Problem file
+    val problem8 = myTseitin.toP9(parsedProblem7)
     
-    val newProof = myTseitin.addContextProof(problem8, tseitinStepNames)
-    val newProof2 = newProof.addStepsLVL2Before(tseitinReplacementStep)
-    val newProof3 = newProof2.addStepsLVL2Before(tseitinForms)
-    val newProof4 = newProof3.addStepsLVL2Before(stepInst)
-    val newProof6 = newProof4.addStepLVL2Before(stepPrenex)
-    val newProof7 = newProof6.addStepLVL2Before(stepNC)
-    val newProof8 = newProof7.addStepLVL2Before(stepNNF)
+
+    // Create tseitin step 
+    val problem9 = myTseitin.generateTseitinStep(parsedProblem7, tseitinStepNames.reverse, tseitinReplacementStep.size, problem8)
+
+
+
+    // println("\nProof :")
+    // println(problem8.toString())
+    // println(s"CheckProof : ${checkProof(problem8)}")
+    
+    val newProof = myTseitin.addContextProof(problem9, originalFormula +: tseitinStepNames.reverse)
+    val newProof3 = newProof.addStepsLVL2Before(tseitinReplacementStep)
+    val newProof4 = newProof3.addStepsLVL2Before(tseitinForms)
+    val newProof5 = newProof4.addStepsLVL2Before(stepInst)
+    val newProof6 = newProof5.addStepLVL2Before(stepPrenex)
+    val newProof7 = newProof6.addStepLVL2Before(stepNNF)
+    val newProof8 = newProof7.addStepsLVL2Before(stepNC)
     println("\nAdd previous steps :")
-    println(newProof6.toString())
+    println(newProof8.toString())
+
+
 
   }
 }

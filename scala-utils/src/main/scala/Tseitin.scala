@@ -15,21 +15,31 @@ import scala.util.boundary
 import scala.annotation.switch
 import javax.swing.text.StyledEditorKit.ForegroundAction
 import java.util.concurrent.atomic.AtomicLongFieldUpdater
+import java.nio.file.{Files, Paths}
+import java.nio.charset.StandardCharsets
+import sys.process._
+import scala.util.matching.Regex
+import scala.io.Source
+import scala.util.matching.Regex
+import Parser.*
+import java.io.File
+
 
 
 class Tseitin {
 
   val varName = "V"
-  val tseitinName = "X"
+  val tseitinName = "Ts"
   var varCpt = 0
   val skoName = "sko"
   var skoCpt = 0 
-  val ladrName = "ladr"
+  val ladrName = "ts"
   var ladrCpt = -1
   val instantiateName = "i"
   val tseitinStepName = "tsStep"
-  val tseitinStepNameExpl = "Expl"
+  val tseitinStepNameExpl = "tsStepExpl"
   val NoneFormula = AtomicFormula(AtomicSymbol("None", 0), Seq())
+  var originalFormula = NoneFormula
 
   // Var = Tseitin Var, Term = Original formula Term
   var tseitinVarTerm: Map[sctptp.FOL.Formula, sctptp.FOL.Formula] = Map[sctptp.FOL.Formula, sctptp.FOL.Formula]()
@@ -72,9 +82,18 @@ class Tseitin {
   //-----------------------------------------------------
 
     // Transform a formula into nnf
-  def toNegatedFormula(f: sctptp.FOL.Formula): (sctptp.FOL.Formula, LVL2ProofStep) = {
+  def toNegatedFormula(f: sctptp.FOL.Formula): (sctptp.FOL.Formula, AtomicFormula, Seq[LVL2ProofStep]) = {
+    val phi = "phi"
+    originalFormula = AtomicFormula(AtomicSymbol(Identifier("phi"), 0), Seq())
     val new_f = ConnectorFormula(Neg , Seq(f)) 
-    (new_f, NegatedConjecture("nc_step", Sequent(Seq(new_f), Seq()), "nnf_step"))
+    val initial_let = Let(phi, Sequent(Seq(originalFormula), Seq(new_f)))
+
+    (new_f, originalFormula, Seq(
+      LeftSubstIff("sc_step1", Sequent(Seq(originalFormula), Seq(new_f)), 0, new_f, originalFormula.label, "nc_step0"),
+      NegatedConjecture("nc_step0", Sequent(Seq(new_f), Seq(new_f)), ""), 
+      initial_let))
+
+    //todo : add right iff 
   }
 
   // Transform a formula into nnf
@@ -129,7 +148,7 @@ class Tseitin {
       }
     }
     val new_f = toNNFForm(f)
-    (new_f, NNF("nnf_step", Sequent(Seq(new_f), Seq()), "prenex_step"))
+    (new_f, NNF("nnf_step", Sequent(Seq(originalFormula), Seq(new_f)), "nc_step1"))
   }
 
   // Transform a formula in Prenex Normal form (move quantifier to the top)
@@ -160,7 +179,7 @@ class Tseitin {
   def toPrenex(f: sctptp.FOL.Formula): (sctptp.FOL.Formula, LVL2ProofStep) = {
     val (accQT, accF) = retrieveQT(f)
     val new_f = reInsertQT(accQT, accF)
-    (new_f, Prenex("prenex_step", Sequent(Seq(new_f), Seq()) ,"i0"))
+    (new_f, Prenex("prenex_step", Sequent(Seq(originalFormula), Seq(new_f)) ,"nnf_step"))
   }
 
   // Instantiate universal quantifiers and returns a map [oldName, newName], the new formula, and has renamed them according to P9 standard
@@ -177,19 +196,18 @@ class Tseitin {
                 val new_accT = accT + (bound -> new_term)
                 varCpt = varCpt+1
                 val new_form = substituteVariablesInFormula(inner, new_accT)
-                val ps = RightForall(instantiateName+cpt, Sequent(Seq(), Seq(new_form)), 0, bound, if cpt > 0 then s"${instantiateName}${cpt-1}" else "TODO")
+                val ps = RightForall(instantiateName+cpt, Sequent(Seq(originalFormula), Seq(new_form)), 0, bound, if cpt > 0 then s"${instantiateName}${cpt-1}" else "prenex_step")
                 val (new_f, new_acc_next_steps, new_accProof) = toInstantiatedAux(new_form, new_accVS, new_accT, ps +: accProof , cpt+1)
                 (new_f, new_acc_next_steps, new_accProof)
               }
               case Exists => {
                 val previousVarForall = accVS.foldLeft(Seq[VariableSymbol]())((acc, x) => acc :+ x._2)
                 val new_symbol = FunctionSymbol(skoName+varCpt, previousVarForall.size)
-                // val new_accVS = accVS + (bound -> (1, new_symbol))
-                val new_term = FunctionTerm(new_symbol, previousVarForall.map(x => accT(x)))
+                val new_term = FunctionTerm(new_symbol, previousVarForall.map(x => Variable(x)))
                 val new_accT = accT + (bound -> new_term)
                 skoCpt = skoCpt+1
                 val new_form = substituteVariablesInFormula(inner, new_accT)
-                val ps = RightExists(instantiateName+cpt, Sequent(Seq(),Seq(new_form)), 0, new_term, if cpt > 0 then s"${instantiateName}${cpt-1}" else "TODO")
+                val ps = RightExists(instantiateName+cpt, Sequent(Seq(originalFormula),Seq(new_form)), 0, new_term, if cpt > 0 then s"${instantiateName}${cpt-1}" else "prenex_step")
                 val (new_f, new_acc_next_steps, new_accProof) = toInstantiatedAux(new_form, accVS, new_accT, ps +: accProof , cpt+1)
                 (new_f, new_acc_next_steps, new_accProof)
               }
@@ -314,6 +332,21 @@ class Tseitin {
       case _ => throw new Exception("toFlatternAnd failed")
   }
 
+  // Flattern  a formula in DNF
+  def toFlatternOr(f: sctptp.FOL.Formula): sctptp.FOL.Formula = {
+    def toFlatternOrAux(f2: sctptp.FOL.Formula): Seq[sctptp.FOL.Formula] = {
+      f2 match
+        case ConnectorFormula(Or, args) => args.foldLeft(Seq())((acc, x) => acc ++ toFlatternOrAux(x))
+        case _ => Seq(f2)
+    }
+
+    f match 
+      case ConnectorFormula(Or, args) =>  ConnectorFormula(Or, args.foldLeft(Seq())((acc, x) => acc ++ toFlatternOrAux(x)))
+      case BinderFormula(label, bound, inner) => BinderFormula(label, bound, toFlatternOr(inner))
+      case _ => f
+  }
+
+
   // Input : a formula f and a map an generate the let that connect he variable to the formula
   def generateLet(f: sctptp.FOL.Formula, sf: sctptp.FOL.Formula, cpt: Int): (LVL2ProofStep, AtomicFormula) = {
     val atomicForm = AtomicFormula(AtomicSymbol(Identifier(tseitinStepName + cpt), 0), Seq())
@@ -323,9 +356,9 @@ class Tseitin {
 
   // Input : a formula f and a map an generate the let that connect he variable to the formula
   def generateTseitin(): (Seq[LVL2ProofStep], Map[AtomicFormula, AtomicFormula], Seq[AtomicFormula]) = {
-    val res = tseitinVarTermUp.foldLeft((Seq[LVL2ProofStep](), Map[AtomicFormula, AtomicFormula](), Seq[AtomicFormula](), 0))((acc, x) => {
+    val res = tseitinVarTermUp.foldLeft((Seq[LVL2ProofStep](), Map[AtomicFormula, AtomicFormula](), Seq[AtomicFormula](), tseitinVarTermUp.size-1))((acc, x) => {
       val (ps, psname) = generateLet(x._1, x._2, acc._4)
-      (acc._1 :+ ps, acc._2 + (psname -> x._1.asInstanceOf[AtomicFormula]), acc._3 :+ psname, acc._4 +1)
+      (acc._1 :+ ps, acc._2 + (psname -> x._1.asInstanceOf[AtomicFormula]), acc._3 :+ psname, acc._4-1)
       })
       
     (res._1, res._2, res._3)
@@ -337,27 +370,109 @@ class Tseitin {
     * fof(tsStep3, let, (ladr7 <=> (~p(f(f(a))) | ~p(c)))).
     * fof(tsStep3Exp, plain, [ladr7] --> [((p(V0) | (p(f(V1)) & p(c))) & ladr7)], inference( rightSubstIff, [status(thm), 0, ((p(V0) | (p(f(V1)) & p(c))) & HOLE), 'HOLE'], i1))
     */
-  def computeTseitinReplacementSteps(s: SCProofStep, tsNames: Seq[AtomicFormula], map: Map[AtomicFormula, AtomicFormula], tsSteps: Seq[LVL2ProofStep]): Seq[LVL2ProofStep] = {
+  def computeTseitinReplacementSteps(s: SCProofStep, tsNames: Seq[AtomicFormula], map: Map[AtomicFormula, AtomicFormula], tsSteps: Seq[LVL2ProofStep], original_parent: String): Seq[LVL2ProofStep] = {
+
       tsSteps.foldLeft(
-        (Seq[LVL2ProofStep](), 0))(
+        (Seq[LVL2ProofStep](), 0, Map[Formula, Formula](), s.bot.right(0)))(
           (acc, x) => {
-            val previousForms = tsNames.take(acc._2) // acc + courant
-            val fSubstitued = substituteAtomicsInFormula(x.bot.right(0), map.map(x => (x._1.label -> x._2)))
-            val parent = x.name+tseitinStepNameExpl+(acc._2-1)
+            val new_acc3 = acc._3 + (tseitinVarTermUp(map(tsNames(acc._2))) -> map(tsNames(acc._2)))
+            val previousForms = tsNames.take(acc._2+1) // acc + courant
+            val fSubstituted = substituteFormulaInFormula(
+              acc._4, 
+              new_acc3 
+              )
+            val parent = if (acc._2 == 0) then original_parent else tseitinStepNameExpl+(acc._2-1)
             
             (
-            acc._1 :+ RightSubstIff(x.name+tseitinStepNameExpl,
+            acc._1 :+ RightSubstIff(tseitinStepNameExpl+acc._2,
             Sequent( 
-            previousForms, // les formules d'avant, avec un acc
-            Seq(fSubstitued)), 
+            originalFormula +: previousForms, // les formules d'avant, avec un acc
+            Seq(fSubstituted)), 
             0, 
-            fSubstitued,
+            tseitinVarTermUp(map(tsNames(acc._2))),
             AtomicSymbol(map(tsNames(acc._2)).toString(), 0), 
             parent), 
-            acc._2 +1
-        )})._1
+            acc._2+1, 
+            new_acc3, 
+            fSubstituted
+        )})._1.reverse
   }
   
+  // Generate Tseitin Step
+  def generateTseitinStep(f: Formula, context: Seq[Formula], parent: Int, scproof: SCProof[?]): SCProof[?] = {
+    val firstStep = TseitinStep("tseitinStep", Sequent(context, Seq(f)), tseitinStepNameExpl+parent)
+
+    val clausalSteps = f.asInstanceOf[ConnectorFormula].args.foldLeft((Seq[LVL2ProofStep](), 0))((acc, x) => {
+      (Clausify(acc._2.toString(),Sequent(originalFormula +: context, Seq(x)), "") +: acc._1, acc._2+1)
+    })._1 // :+ firstStep
+
+    val new_steps = scproof.steps.flatMap(x => {
+      x match {
+        case Axiom(name: String, bot: Sequent) => {
+          println(x)
+          val originalStep = clausalSteps.filter(x => areAlphaEquivalent(x.bot.right(0), toFlatternOr(bot.right(0))))
+          if (originalStep.size > 0) 
+            then Some(Clausify(name, Sequent(originalStep(0).bot.left, Seq(toFlatternOr(originalStep(0).bot.right(0)))), ""))
+            else None
+        }
+        case _ => Some(x)
+      }})
+  
+    if new_steps.forall(_.isInstanceOf[LVL1ProofStep]) then LVL1Proof(new_steps.toIndexedSeq.asInstanceOf[IndexedSeq[LVL1ProofStep]], scproof.thmName)
+    if new_steps.forall(_.isInstanceOf[LVL2ProofStep]) then LVL2Proof(new_steps.toIndexedSeq.asInstanceOf[IndexedSeq[LVL2ProofStep]], scproof.thmName)
+    else throw new Exception("Some proof steps could not be unrenamed")
+  }
+
+  // generate axioms to give to p9, writ them on a file, launch p9 on the file, retrieve the result as a list of proof steps
+  def toP9(f: Formula): SCProof[?] = {
+    val path = Paths.get("../proofs/p9/p9.p")
+
+    // Create the file if it doesn't exist
+    if (!Files.exists(path)) {
+      Files.createFile(path)
+    }
+
+    // Write some content into the file
+    val content = f.asInstanceOf[ConnectorFormula].args.foldLeft(("", 0))((acc, x) => {
+      (acc._1 + s"fof(${acc._2}, axiom, ${x.toString()}).\n\n", acc._2+1)
+    })._1
+
+    Files.write(path, content.getBytes(StandardCharsets.UTF_8))
+
+    // println(s"Content written to: ${path.toAbsolutePath}")
+
+    // Command to execute with shell
+    val command = "sh -c \"./../p9-sc-tptp/tptp_to_ladr < ../proofs/p9/p9.p | ./../p9-sc-tptp/prover9 > ../proofs/p9/p9.in && ./../p9-sc-tptp/prooftrans ivy -f ../proofs/p9/p9.in > ../proofs/p9/p9.out\""
+
+    // Run the command and redirect both stdout and stderr to /dev/null
+    val exitCode = command #> new java.io.File("/dev/null") #>> new java.io.File("/dev/null")
+
+
+    val filePath = "../proofs/p9/p9.out"
+    val fileContent = Source.fromFile(filePath).getLines().mkString("\n")
+
+    // Debug: Check the positions of the start and end markers
+    val startPos = fileContent.indexOf(";; BEGINNING OF PROOF OBJECT")
+    val endPos = fileContent.indexOf(";; END OF PROOF OBJECT")
+
+    // Extract content between the markers
+    val proofContent = fileContent.substring(startPos + ";; BEGINNING OF PROOF OBJECT".length, endPos).trim
+
+    // Print the extracted proof content
+    // println("Extracted Proof Content:")
+    // println(proofContent)
+
+    val path2 = Paths.get("../proofs/p9/p9_proof.p")
+
+    // Create the file if it doesn't exist
+    if (!Files.exists(path2)) {
+      Files.createFile(path2)
+    }
+
+    Files.write(path2, proofContent.getBytes(StandardCharsets.UTF_8))
+
+    Parser.reconstructProof(new File("../proofs/p9/p9_proof.p"))
+  }
 
 
   // -----------------------------------------------------
@@ -526,6 +641,8 @@ class Tseitin {
 
     
   }
+
+
   // replace exists x by #x + the formula it satisfy (let too?)
   // But what about the prover? How will the epsilon term will be managed?
   // Reconstruct at the end --- wrapper?
@@ -546,8 +663,8 @@ class Tseitin {
   * [x] Ajouter les let
   * 
   * TODO : 
-  * [ ] Exemple plus simple   
-  * [ ] FOrmule sprécédentes à garder ?
+  * [x] Exemple plus simple   
+  * [x] FOrmule sprécédentes à garder ?
   * [ ] Que faire des forall ?
   * 
   * [ ] Instantiate à droite ?

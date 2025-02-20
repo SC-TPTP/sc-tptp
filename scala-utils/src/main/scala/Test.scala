@@ -273,18 +273,27 @@ object Test {
     // println("\nProof :")
     // println(problem8.toString())
     // println(s"CheckProof : ${checkProof(problem8)}")
-    
-    val newProof = myTseitin.addContextProof(problem9, originalFormula +: tseitinStepNames.reverse)
+
+    val context = originalFormula +: tseitinStepNames.reverse    
+
+    val newProof = myTseitin.addContextProof(problem9, context)
     val newProof3 = newProof.addStepsLVL2Before(tseitinReplacementStep)
     val newProof4 = newProof3.addStepsLVL2Before(tseitinForms)
     val newProof5 = newProof4.addStepsLVL2Before(stepInst)
     val newProof6 = newProof5.addStepLVL2Before(stepPrenex)
     val newProof7 = newProof6.addStepLVL2Before(stepNNF)
     val newProof8 = newProof7.addStepsLVL2Before(stepNC)
+    val newProof9 = myTseitin.renameTseitinConstant(newProof8) // todo after
+    val newProof10 = newProof9.addStepsLVL2After(myTseitin.removeFalse(context, newProof9.steps.last.name))
+    val newProof11 = newProof10.addStepsLVL2After(myTseitin.addPsi(context))
+    val newProof12 = newProof11.addStepsLVL2After(myTseitin.removeTseitin(tseitinStepNames, tseitinStepMap))
+
     println("\nAdd previous steps :")
-    println(newProof8.toString())
+    println(newProof12.toString())
 
+    println("\n")
 
+    
 
   }
 }

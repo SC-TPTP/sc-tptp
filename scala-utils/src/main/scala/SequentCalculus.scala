@@ -200,7 +200,20 @@ object SequentCalculus {
   case class Axiom(name: String, bot: Sequent) extends LVL1ProofStep {
     val premises = Seq()
     override def toString: String =
-      s"fof(${name}, axiom, ${bot})"
+      s"fof(${name}, axiom, ${bot})."
+    def checkCorrectness(premises: String => Sequent): Option[String] = None
+  }
+
+    /**
+   * --------------
+   *    Γ |- Δ
+   *
+   * @param bot Resulting formula
+   */
+  case class LeftFalse(name: String, bot: Sequent) extends LVL1ProofStep {
+    val premises = Seq()
+    override def toString: String =
+      s"fof(${name}, assumption, [${"$"}false] --> [], inference(${LeftFalseRuleName}, [status(thm)], []))."
     def checkCorrectness(premises: String => Sequent): Option[String] = None
   }
 
@@ -220,8 +233,19 @@ object SequentCalculus {
       if bot.right.exists(isSame(_, fi)) then None else Some(s"${fi} is not in the right-hand side of the conclusion.")
   }
 
+    /**
+   * -----------------
+   *   Γ, A |- A, Δ
+   *
+   * @param bot Resulting formula
+   * @param i Index of A on the left
+   */
+  case class ElimIffRefl(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", "elimIffRefl", bot, i, premises)
+    def checkCorrectness(premises: String => Sequent): Option[String] = None
  
-
+  }
   /**
    *    Γ |- Δ
    * -------------

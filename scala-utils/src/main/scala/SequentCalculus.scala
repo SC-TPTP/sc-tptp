@@ -929,7 +929,7 @@ object SequentCalculus {
    /**
    *    Γ |- A[x := t], Δ
    * -------------------
-   *     Γ |- A[x := ϵx. A], Δ
+   *  Γ |- A[x := ϵx. A], Δ
    *
    * @param bot Resulting formula
    * @param i Index of ∃x. A on the right

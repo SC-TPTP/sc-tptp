@@ -64,31 +64,31 @@ object SequentCalculus {
   
   object SCProofStep {
     def outputNIndexes(name: String, rule: String, bot: Sequent, indexes: Seq[Int], premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${indexes.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != indexes.length - 1) then ", " else ""), acc._2 + 1))._1}], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${indexes.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != indexes.length - 1) then ", " else ""), acc._2 + 1))._1}], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     def outputSingleIndex(name: String, role: String, rule: String, bot: Sequent, i: Int, premises: Seq[String]): String = 
-      s"fof(${name}, ${role}, ${bot}, inference(${rule}, [status(thm), ${i}], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+      s"fof(${name}, ${role}, ${bot}, inference(${rule}, [status(thm), ${i}], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
     
     def outputDoubleIndexes(name: String, role: String, rule: String, bot: Sequent, i: Int, j: Int, premises: Seq[String]): String = 
-      s"fof(${name}, ${role}, ${bot}, inference(${rule}, [status(thm), ${i}, ${j}], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+      s"fof(${name}, ${role}, ${bot}, inference(${rule}, [status(thm), ${i}, ${j}], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     def outputWithTerm(name: String, rule: String, bot: Sequent, i: Int, term: String, premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${i}, $$fot(${term})], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${i}, $$fot(${term})], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     def outputWithSubst(name: String, rule: String, bot: Sequent, i: Int, term: String, subterm: String, premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${i}, $$fof(${term})) $$fot(${subterm})], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${i}, $$fof(${term}), $$fot(${subterm})], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     def outputWithSubstIff(name: String, rule: String, bot: Sequent, i: Int, term: String, subterm: String, premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${i}, $$fof(${term})) $$fof(${subterm})], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${i}, $$fof(${term})) $$fof(${subterm})], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     def outputWithSubstMany(name: String, rule: String, bot: Sequent, is: Seq[Int], term: String, subterms: Seq[String], premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), [${is.mkString(", ")}], $$fof(${term}), [${subterms.map(st => s"$$fot(${st})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), [${is.mkString(", ")}], $$fof(${term}), [${subterms.map(st => s"$$fot(${st})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     def outputWithInstFun(name: String, rule: String, bot: Sequent, F: FunctionSymbol, t: (Term, Seq[VariableSymbol]), premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), $$fot(${F.toString()}), $$fot(${t._1.toString()}), [${t._2.map(st => s"$$fot(${st.toString()})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), $$fot(${F.toString()}), $$fot(${t._1.toString()}), [${t._2.map(st => s"$$fot(${st.toString()})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     def outputWithInstPred(name: String, rule: String, bot: Sequent, P: AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), $$fof(${P.toString()}), $$fot(${phi._1.toString()}), [${phi._2.map(st => s"$$fot(${st.toString()})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))"
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), $$fof(${P.toString()}), $$fot(${phi._1.toString()}), [${phi._2.map(st => s"$$fot(${st.toString()})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     }
 
@@ -129,8 +129,15 @@ object SequentCalculus {
       else this.getSequent(length - 1)
     }
 
-    def addStepLVL1(scps: LVL1ProofStep): SCProof[?] = this
-    def addStepLVL2(scps: LVL2ProofStep): SCProof[?] = this
+    def addStepLVL1After(scps: LVL1ProofStep): SCProof[?] = this
+    def addStepsLVL1After(scps: Seq[LVL1ProofStep]): SCProof[?] = this
+    def addStepLVL2After(scps: LVL2ProofStep): SCProof[?] = this
+    def addStepsLVL2After(scps: Seq[LVL2ProofStep]): SCProof[?] = this
+    def addStepLVL1Before(scps: LVL1ProofStep): SCProof[?] = this
+    def addStepsLVL1Before(scps: Seq[LVL1ProofStep]): SCProof[?] = this
+    def addStepLVL2Before(scps: LVL2ProofStep): SCProof[?] = this
+    def addStepsLVL2Before(scps: Seq[LVL2ProofStep]): SCProof[?] = this
+
 
     override def toString(): String = steps.foldLeft("")((acc, e) => acc + "\n" + e.toString())
   }
@@ -156,13 +163,29 @@ object SequentCalculus {
   sealed trait LVL1ProofStep extends SCProofStep
 
   case class LVL1Proof(steps: IndexedSeq[LVL1ProofStep], thmName: String) extends SCProof[LVL1ProofStep] {
-    override def addStepLVL1(scps: LVL1ProofStep): SCProof[LVL1ProofStep] = {
+    override def addStepLVL1After(scps: LVL1ProofStep): SCProof[LVL1ProofStep] = {
+      LVL1Proof(steps :+ scps, thmName)
+    }
+
+    override def addStepsLVL1After(scps: Seq[LVL1ProofStep]): SCProof[LVL1ProofStep] = {
+      LVL1Proof(scps.foldLeft(steps)((acc, x) => acc :+ x), thmName)
+    }
+
+    override def addStepLVL2After(scps: LVL2ProofStep): SCProof[LVL2ProofStep] = throw Exception("Cannot convert a LVL1 proof into a LVL2 proof")
+
+    override def addStepsLVL2After(scps: Seq[LVL2ProofStep]): SCProof[LVL2ProofStep] = throw Exception("Cannot convert a LVL1 proof into a LVL2 proof")
+
+    override def addStepLVL1Before(scps: LVL1ProofStep): SCProof[LVL1ProofStep] = {
       LVL1Proof(scps +: steps, thmName)
     }
 
-    override def addStepLVL2(scps: LVL2ProofStep): SCProof[LVL2ProofStep] = {
-      LVL2Proof(scps +: steps, thmName)
+    override def addStepsLVL1Before(scps: Seq[LVL1ProofStep]): SCProof[LVL1ProofStep] = {
+      LVL1Proof(scps.foldLeft(steps)((acc, x) => x +: acc), thmName)
     }
+
+    override def addStepLVL2Before(scps: LVL2ProofStep): SCProof[LVL2ProofStep] = throw Exception("Cannot convert a LVL1 proof into a LVL2 proof")
+
+    override def addStepsLVL2Before(scps: Seq[LVL2ProofStep]): SCProof[LVL2ProofStep] = throw Exception("Cannot convert a LVL1 proof into a LVL2 proof")
   }
 
 
@@ -177,7 +200,20 @@ object SequentCalculus {
   case class Axiom(name: String, bot: Sequent) extends LVL1ProofStep {
     val premises = Seq()
     override def toString: String =
-      s"fof(${name}, axiom, ${bot})"
+      s"fof(${name}, axiom, ${bot})."
+    def checkCorrectness(premises: String => Sequent): Option[String] = None
+  }
+
+    /**
+   * --------------
+   *    Γ |- Δ
+   *
+   * @param bot Resulting formula
+   */
+  case class LeftFalse(name: String, bot: Sequent) extends LVL1ProofStep {
+    val premises = Seq()
+    override def toString: String =
+      s"fof(${name}, assumption, [${"$"}false] --> [], inference(${LeftFalseRuleName}, [status(thm)], []))."
     def checkCorrectness(premises: String => Sequent): Option[String] = None
   }
 
@@ -197,8 +233,19 @@ object SequentCalculus {
       if bot.right.exists(isSame(_, fi)) then None else Some(s"${fi} is not in the right-hand side of the conclusion.")
   }
 
+    /**
+   * -----------------
+   *   Γ, A |- A, Δ
+   *
+   * @param bot Resulting formula
+   * @param i Index of A on the left
+   */
+  case class ElimIffRefl(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", "elimIffRefl", bot, i, premises)
+    def checkCorrectness(premises: String => Sequent): Option[String] = None
  
-
+  }
   /**
    *    Γ |- Δ
    * -------------
@@ -240,7 +287,7 @@ object SequentCalculus {
             label match
               case Neg =>  (f,  Seq())
               case Or => {
-                val args_flat = LVL2.toFlatternOr(f)
+                val args_flat = LVL2.toFlatternOrSeq(f)
                 (args_flat(index), args_flat.zipWithIndex.filter(_._2 != index).map(_._1))
               } 
               case _ => throw Exception(s"Resolution literal is not correct") 
@@ -874,14 +921,14 @@ object SequentCalculus {
    * @param i Index of ∃x. A on the right
    * @param t Term in place of x in the premise
    */
-  case class RightEpsilon(name: String, bot: Sequent, phi: Formula, x: Variable, t: Term, t1: String) extends LVL1ProofStep {
+  case class RightEpsilon(name: String, bot: Sequent, i: Int, phi: Formula, x: VariableSymbol, t: Term, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputWithTerm(name, RightExistsRuleName, bot, i, t.toString(), premises)
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val At = substituteVariablesInFormula(phi, Map(x -> t))
       val Aepsi = substituteVariablesInFormula(phi, Map(x -> EpsilonTerm(x, phi)))
       if (isSameSet(bot.left, premises(t1).left))
-        if (isSameSet(bot.right :+ inst, premises(t1).right :+ eA))
+        if (isSameSet(bot.right :+ At, premises(t1).right :+ Aepsi))
           None
         else Some("Right-hand side of conclusion :+ A must be the same as right-hand side of premise")
       else Some("Left-hand side of conclusion must be the same as left-hand side of premise :+ A")

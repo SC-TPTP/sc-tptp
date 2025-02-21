@@ -188,7 +188,7 @@ fof(s5, plain
 
 fof(s6, plain
   [] --> [ ! [Y] : ( p(X) || (p(f(Y)) && p(c)) ) => ( p(f(f(a))) &&  p(c) )],
-  inference(leftForall, param(0, $fot(Y)), [s4])
+  inference(leftForall, param(0, $fot(Y)), [s5])
 ).
 
 fof(s7, plain

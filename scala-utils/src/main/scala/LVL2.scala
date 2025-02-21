@@ -9,19 +9,43 @@ object LVL2 {
   type LVL2ProofStep = StrictLVL2ProofStep | LVL1ProofStep
 
   // Flattern a formula with Or connector
-  def toFlatternOr(f: sctptp.FOL.Formula): Seq[sctptp.FOL.Formula] = {
+  def toFlatternOrSeq(f: sctptp.FOL.Formula): Seq[sctptp.FOL.Formula] = {
       f match
-        case ConnectorFormula(Or, args) => args.foldLeft(Seq())((acc, x) => acc ++ toFlatternOr(x))
+        case ConnectorFormula(Or, args) => args.foldLeft(Seq())((acc, x) => acc ++ toFlatternOrSeq(x))
         case _ => Seq(f)
   }
 
   case class LVL2Proof(steps: IndexedSeq[LVL2ProofStep], thmName: String) extends SCProof[LVL2ProofStep] {
-    override def addStepLVL1(scps: LVL1ProofStep): SCProof[LVL2ProofStep] = {
+    override def addStepLVL1After(scps: LVL1ProofStep): SCProof[LVL2ProofStep] = {
+      LVL2Proof(steps :+ scps, thmName)
+    }
+
+    override def addStepsLVL1After(scps: Seq[LVL1ProofStep]): SCProof[LVL2ProofStep] = {
+      LVL2Proof(scps.foldLeft(steps)((acc, x) => acc :+ x), thmName)
+    }
+
+    override def addStepLVL2After(scps: LVL2ProofStep): SCProof[LVL2ProofStep] = {
+      LVL2Proof(steps :+ scps, thmName)
+    }
+
+    override def addStepsLVL2After(scps: Seq[LVL2ProofStep]): SCProof[LVL2ProofStep] = {
+      LVL2Proof(scps.foldLeft(steps)((acc, x) => acc :+ x), thmName)
+    }
+
+    override def addStepLVL1Before(scps: LVL1ProofStep): SCProof[LVL2ProofStep] = {
       LVL2Proof(scps +: steps, thmName)
     }
 
-    override def addStepLVL2(scps: LVL2ProofStep): SCProof[LVL2ProofStep] = {
+    override def addStepsLVL1Before(scps: Seq[LVL1ProofStep]): SCProof[LVL2ProofStep] = {
+      LVL2Proof(scps.foldLeft(steps)((acc, x) => x +: acc), thmName)
+    }
+
+    override def addStepLVL2Before(scps: LVL2ProofStep): SCProof[LVL2ProofStep] = {
       LVL2Proof(scps +: steps, thmName)
+    }
+
+    override def addStepsLVL2Before(scps: Seq[LVL2ProofStep]): SCProof[LVL2ProofStep] = {
+      LVL2Proof(scps.foldLeft(steps)((acc, x) => x +: acc), thmName)
     }
   }
 
@@ -371,7 +395,7 @@ object LVL2 {
             label match
               case Neg =>  (f,  Seq())
               case Or => {
-                val args_flat = toFlatternOr(f)
+                val args_flat = toFlatternOrSeq(f)
                 (args_flat(index), args_flat.filterNot(x => x == args_flat(index)))
               } 
               case _ => throw Exception(s"Resolution literal is not correct") 
@@ -390,7 +414,7 @@ object LVL2 {
           case ConnectorFormula(label, args) => {
             label match
               case Neg =>  bot.left
-              case Or =>  toFlatternOr(bot.left(0))
+              case Or =>  toFlatternOrSeq(bot.left(0))
               case _ => throw Exception(s"Resolution literal is not correct") 
           }
           case _ => throw Exception(s"Resolution literal is not correct") 
@@ -447,7 +471,7 @@ object LVL2 {
    */
   case class Clausify(name: String, bot: Sequent, t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
-    override def toString: String = s"fof(${name}, assumption, ${bot}, inference(clausify, [status(thm)], [${t1}])).";
+    override def toString: String = s"fof(${name}, plain, ${bot}, inference(clausify, [status(thm)], [${t1}])).";
     def checkCorrectness(premises: String => Sequent): Option[String] = None
       // isSubset(bot.left, premises(t1).left) &&
       //   isSubset(bot.right, premises(t1).right)
@@ -462,7 +486,7 @@ object LVL2 {
    */
   case class Prenex(name: String, bot: Sequent, t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
-    override def toString: String = s"fof(${name}, assumption, ${bot}, inference(prenex_step, [status(thm)], [${t1}])).";
+    override def toString: String = s"fof(${name}, plain, ${bot}, inference(prenex, [status(thm)], [${t1}])).";
     def checkCorrectness(premises: String => Sequent): Option[String] = None
       // isSubset(bot.left, premises(t1).left) &&
       //   isSubset(bot.right, premises(t1).right)
@@ -557,7 +581,19 @@ object LVL2 {
    */
   case class NNF(name: String, bot: Sequent, t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
-    override def toString: String = s"fof(${name}, assumption, ${bot}, inference(nnf, [status(thm)], [${t1}])).";
+    override def toString: String = s"fof(${name}, plain, ${bot}, inference(nnf, [status(thm)], [${t1}])).";
+    def checkCorrectness(premises: String => Sequent): Option[String] = None
+  }
+
+  case class Let(name: String, bot: Sequent) extends StrictLVL2ProofStep {
+    val premises = Seq()
+    override def toString: String = s"fof(${name}, let, ${bot.right(0)}).";
+    def checkCorrectness(premises: String => Sequent): Option[String] = None
+  }
+
+  case class TseitinStep(name: String, bot: Sequent, t1: String) extends StrictLVL2ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = s"fof(${name}, plain, ${bot}, inference(tseitin, [status(thm)], [${t1}])).";
     def checkCorrectness(premises: String => Sequent): Option[String] = None
   }
 }

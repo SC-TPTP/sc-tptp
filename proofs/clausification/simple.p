@@ -1,2 +1,3 @@
 fof(test_minimaliste, axiom,
-    ~p(a) | (?[X]: p(X))).
+    (! [X] : p(X)) => (p(a) & (p(b)))    
+).

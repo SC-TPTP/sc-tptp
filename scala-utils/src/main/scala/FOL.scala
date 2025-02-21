@@ -293,6 +293,17 @@ object FOL {
       } else BinderFormula(label, bound, substituteAtomicsInFormula(inner, m, newTaken))
   }
 
+  def substituteFormulaInFormula(phi: Formula, m: Map[Formula, Formula], takenIds: Seq[Identifier] = Seq[Identifier]()): Formula = {
+    if  m.getOrElse(phi, phi) != phi then  m.getOrElse(phi, phi) 
+    else 
+    phi match {
+      case AtomicFormula(label, args) => phi
+      case ConnectorFormula(label, args) => ConnectorFormula(label, args.map(substituteFormulaInFormula(_, m))
+      )
+      case BinderFormula(label, bound, inner) => BinderFormula(label, bound, substituteFormulaInFormula(inner, m))
+    }
+  }
+
 
   def substitutePredicatesInFormula(phi: Formula, m: Map[AtomicSymbol, (Formula, Seq[VariableSymbol])], takenIds: Seq[Identifier] = Seq[Identifier]()): Formula = phi match {
     case AtomicFormula(label, args) => 
@@ -386,7 +397,7 @@ object FOL {
     }
     def toLocallyNamelessInner(phi: Formula, subst: Map[Identifier, Int], i: Int): Formula = {
       phi match {
-        case AtomicFormula(id, args) => AtomicFormula(id, args.map(c => toLocallyNamelessTerm(c, subst, i)))
+        case AtomicFormula(id, args) => {val newId = AtomicSymbol(Identifier(id.id.name, 0), id.arity); AtomicFormula(newId, args.map(c => toLocallyNamelessTerm(c, subst, i)))}
         case ConnectorFormula(id, args) => ConnectorFormula(id, args.map(f => toLocallyNamelessInner(f, subst, i)))
         case BinderFormula(id, bound, inner) => BinderFormula(id, default_bound, toLocallyNamelessInner(inner, subst + (bound.id -> i), i + 1))
 

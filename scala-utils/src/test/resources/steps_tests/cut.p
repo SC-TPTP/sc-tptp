@@ -16,6 +16,6 @@ fof(a4_2, axiom, [![X] : s(X, c)] --> [![Y] : r(f(t))]).
 fof(f4, plain, [![X, Y] : (p(X) & Q(X, Y)), r(Y)] --> [![Y] : r(f(t))], inference(cut, [status(thm), 0, 0], [a4_1, a4_2])).
 
 
-fof(a4_1, axiom, [![X, Y] : (p(X) & Q(#[X] : p(X), Y)), r(Y)] --> [![X] : s(X, c)]).
-fof(a4_2, axiom, [![X] : s(X, c)] --> [![Y] : r(f(t))]).
-fof(f4, plain, [![X, Y] : (p(X) & Q(#[X] : p(X), Y)), r(Y)] --> [![Y] : r(f(t))], inference(cut, [status(thm), 0, 0], [a4_1, a4_2])).
+%fof(a4_1, axiom, [![X, Y] : (p(X) & Q(#[X] : p(X), Y)), r(Y)] --> [![X] : s(X, c)]).
+%fof(a4_2, axiom, [![X] : s(X, c)] --> [![Y] : r(f(t))]).
+%fof(f4, plain, [![X, Y] : (p(X) & Q(#[X] : p(X), Y)), r(Y)] --> [![Y] : r(f(t))], inference(cut, [status(thm), 0, 0], [a4_1, a4_2])).

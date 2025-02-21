@@ -94,7 +94,14 @@ object Parser {
           contextTerm(defedcst) = convertTermToFOL(term)(using defcontext)
        
       case fa: FOFAnnotated =>
-        if fa.role == "conjecture" then ()
+        if fa.role == "conjecture" then 
+          val fofsequent = fa.formula match {
+            case FOF.Logical(formula) => FOF.Sequent(Seq(), Seq(formula))
+            case s: FOF.Sequent => s
+          }
+          val sequent = Sequent(fofsequent.lhs.map(convertFormulaToFol(_)(using defcontext)), fofsequent.rhs.map(convertFormulaToFol(_)(using defcontext)))
+            nameMap(fa.name) = sequent
+            steps = Conjecture(fa.name, sequent) :: steps
         else if fa.role == "let" then
           val formula = fa.formula match {
             case FOF.Logical(formula) => formula
@@ -130,6 +137,8 @@ object Parser {
     given DefContext = context
     val r: Option[SequentCalculus.SCProofStep] = ann match {
       case Inference.Hyp(step) => Some(step)
+      case Inference.LeftFalse(step) => Some(step)
+      case Inference.ElimIffRefl(step) => Some(step)
       case Inference.LeftWeaken(step) => Some(step)
       case Inference.LeftWeakenRes(step) => Some(step)
       case Inference.RightWeaken(step) => Some(step)
@@ -261,6 +270,25 @@ object Parser {
             val left = sequent.lhs.map(convertFormulaToFol)
             val right = sequent.rhs.map(convertFormulaToFol)
               Some(SC.Hyp(name, Sequent(left, right), n.toInt))
+          case _ => None
+        }
+    }
+
+    object ElimIffRefl {
+      def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] =
+        ann_seq match {
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("elimIffRefl", Seq(_, StrOrNum(n)), Seq(t1)), _) =>
+              Some(SC.ElimIffRefl(name, convertSequentToFol(sequent), n.toInt, t1))
+          case _ => None
+        }
+    }
+
+
+    object LeftFalse {
+      def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] =
+        ann_seq match {
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftFalse", Seq(_), Seq()), _) =>
+              Some(SC.LeftFalse(name, convertSequentToFol(sequent)))
           case _ => None
         }
     }
@@ -595,7 +623,6 @@ object Parser {
           case _ => None
         }
     }
-    // case class InstFun(name: String, bot: Sequent, F: FunctionSymbol, t: (Term, List[VariableSymbol]), t1: String) extends LVL1ProofStep {
  
 
     object InstFun {
@@ -667,7 +694,7 @@ object Parser {
     object Prenex {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("prenex_form", Seq(_), Seq(t1)), _) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightPrenex", Seq(_), Seq(t1)), _) =>
             Some(LVL2.Prenex(name, convertSequentToFol(sequent), t1))
           case _ => None
         }
@@ -676,8 +703,8 @@ object Parser {
     object NNF {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("nnf", Seq(_), Seq(t1)), _) =>
-            Some(LVL2.NNF(name, convertSequentToFol(sequent), t1))
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightNnf", Seq(_, StrOrNum(i), StrOrNum(j)), Seq(t1)), _) =>
+            Some(LVL2.NNF(name, convertSequentToFol(sequent), i.toInt, j.toInt, t1))
           case _ => None
         }
     }
@@ -738,5 +765,6 @@ object Parser {
           case _ => None
         }
     }
+  
   }
 }

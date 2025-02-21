@@ -486,7 +486,7 @@ object LVL2 {
    */
   case class Prenex(name: String, bot: Sequent, t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
-    override def toString: String = s"fof(${name}, plain, ${bot}, inference(prenex, [status(thm)], [${t1}])).";
+    override def toString: String = s"fof(${name}, plain, ${bot}, inference(rightPrenex, [status(thm)], [${t1}])).";
     def checkCorrectness(premises: String => Sequent): Option[String] = None
       // isSubset(bot.left, premises(t1).left) &&
       //   isSubset(bot.right, premises(t1).right)
@@ -542,7 +542,7 @@ object LVL2 {
   case class InstantiateMult(name: String, bot: Sequent, i: Int, terms: Seq[(VariableSymbol, Term)], parent: String) extends StrictLVL2ProofStep {
     val premises = Seq(parent)
 
-    override def toString: String = s"fof(${name}, plain, ${bot}, inference(instantiateMult, [status(thm), ${i}, [${terms.foldLeft(("", 0))((acc, x) => {(acc._1 ++ s"[$$fot(${x(0).toString()}), $$fot(${x(1).toString()})]" ++ (if (acc._2 != terms.length - 1) then ", " else ""), acc._2 + 1)})._1}]], [${parent}])).";
+    override def toString: String = s"fof(${name}, plain, ${bot}, inference(instantiateMult, [status(thm), ${i}, [${terms.foldLeft(("", 0))((acc, x) => {(acc._1 ++ s"('${x(0).toString()}', $$fot(${x(1).toString()}))" ++ (if (acc._2 != terms.length - 1) then ", " else ""), acc._2 + 1)})._1}]], [${parent}])).";
 
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val map = terms.foldLeft(Map[sctptp.FOL.VariableSymbol, sctptp.FOL.Term]())((acc, x) => acc + (x._1 -> x._2))
@@ -579,9 +579,9 @@ object LVL2 {
    *  And Δ is the nnf of Γ
    * @param bot Resulting formula
    */
-  case class NNF(name: String, bot: Sequent, t1: String) extends StrictLVL2ProofStep {
+  case class NNF(name: String, bot: Sequent, i: Int, j: Int, t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
-    override def toString: String = s"fof(${name}, plain, ${bot}, inference(nnf, [status(thm)], [${t1}])).";
+    override def toString: String = s"fof(${name}, plain, ${bot}, inference(rightNnf, [status(thm). ${i}, ${j}], [${t1}])).";
     def checkCorrectness(premises: String => Sequent): Option[String] = None
   }
 
@@ -596,4 +596,18 @@ object LVL2 {
     override def toString: String = s"fof(${name}, plain, ${bot}, inference(tseitin, [status(thm)], [${t1}])).";
     def checkCorrectness(premises: String => Sequent): Option[String] = None
   }
+
+   /**
+   *    Γ |- A[x:=y], Δ
+   * -------------------
+   *     Γ |- ∀x. A, Δ
+   *
+   * @param bot Resulting formula
+   * @param i Index of ∀x. A on the right
+   * @param y Variable in place of x in the premise
+   */
+  case class InstForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) extends StrictLVL2ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = SCProofStep.outputWithTerm(name, "instForall", bot, i, y.toString(), premises)
+    def checkCorrectness(premises: String => Sequent): Option[String] = None}
 }

@@ -292,10 +292,10 @@ object Test {
     val newProof11 = newProof10.addStepsLVL2After(myTseitin.removeTseitin(tseitinStepNames, tseitinStepMap))
     val newProof12 = myTseitin.renameTseitinConstant(newProof11) 
     val newProof13 = newProof12.addStepLVL2Before(conjecture)
-
+  
     println("\nProof :")
-    newProof13.steps.drop(8).dropRight(25).map(x => println(x.toString()))
-    // println(newProof13)
+    // newProof13.steps.drop(8).dropRight(25).map(x => println(x.toString()))
+    printProof(newProof13)
 
     println("\n")
 

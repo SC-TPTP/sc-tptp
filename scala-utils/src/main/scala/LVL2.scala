@@ -385,27 +385,34 @@ object LVL2 {
    **/
   case class Res(name: String, bot: Sequent, i1: Int, i2: Int, t1: String, t2: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputDoubleIndexes(name, "plain", "res", bot, i1, i2, premises)
+
+    def computeLit(f : Formula, index: Int): (Formula, Seq[Formula]) = {
+      f match
+        case AtomicFormula(_, _) => (f, Seq())
+        case ConnectorFormula(label, args) => {
+          label match
+            case Neg =>  (f,  Seq())
+            case Or => {
+              val args_flat = toFlatternOrSeq(f)
+              (args_flat(index), args_flat.filterNot(x => x == args_flat(index)))
+            } 
+            case _ => throw Exception(s"Resolution literal is not correct") 
+        }
+        case _ => throw Exception(s"Resolution literal is not correct") 
+    }   
+
+    override val toString: String = SCProofStep.outputDoubleIndexes(name, "plain", "res", bot, i1, i2, premises)
+
+    override def toStringWithPremises(premises2: String => Sequent): String = {
+      val A_Pair = computeLit(premises2(t1).right(0), i1)
+      if A_Pair._1.isInstanceOf[AtomicFormula] 
+        then SCProofStep.outputDoubleIndexes(name, "plain", "res", bot, i1, i2, premises)
+        else SCProofStep.outputDoubleIndexes(name, "plain", "res", bot, i2, i1, premises.reverse)
+    }
+
     def checkCorrectness(premises: String => Sequent): Option[String] =
 
-      def computeLit(f : Formula, index: Int): (Formula, Seq[Formula]) = {
-        f match
-          case AtomicFormula(_, _) => (f, Seq())
-          case ConnectorFormula(label, args) => {
-            label match
-              case Neg =>  (f,  Seq())
-              case Or => {
-                val args_flat = toFlatternOrSeq(f)
-                (args_flat(index), args_flat.filterNot(x => x == args_flat(index)))
-              } 
-              case _ => throw Exception(s"Resolution literal is not correct") 
-          }
-          case _ => throw Exception(s"Resolution literal is not correct") 
-      }    
-
-
       val A_Pair = computeLit(premises(t1).left(0), i1)
-      
       val B_Pair = computeLit(premises(t2).left(0), i2)
 
       val Res = {

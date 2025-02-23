@@ -58,6 +58,7 @@ object SequentCalculus {
     val premises: Seq[String]
 
     def checkCorrectness(premises: String => Sequent): Option[String]
+    def toStringWithPremises(premises: String => Sequent): String = toString
   }
 
 
@@ -156,6 +157,18 @@ object SequentCalculus {
           Some((s"${step.name}:  $msg", step))
       else
         None
+    inner(steps.iterator)
+  }
+
+  def printProof[Steps<:SCProofStep](p: SCProof[Steps]): Unit = {
+    val steps = p.steps
+    val premises: scala.collection.mutable.Map[String, Sequent] = scala.collection.mutable.Map()
+    def inner(steps: Iterator[Steps]): Unit =
+      if steps.hasNext then
+        val step = steps.next()
+        println(step.toStringWithPremises(premises))
+        premises.update(step.name, step.bot)
+        inner(steps)
     inner(steps.iterator)
   }
 

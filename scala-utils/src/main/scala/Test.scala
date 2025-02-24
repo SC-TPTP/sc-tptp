@@ -268,7 +268,7 @@ object Test {
     
 
     // Create tseitin step 
-    val (problem9, last_step) = myTseitin.generateTseitinStep(parsedProblem7, tseitinStepNames.reverse, tseitinReplacementStep, problem8)
+    val (problem9, last_step) = myTseitin.generateTseitinStep(parsedProblem7, tseitinStepNames.reverse, tseitinReplacementStep, problem8, tseitinStepMap, tseitinForms)
     val problem9_flat = myTseitin.modifyOrSteps(problem9)
 
     // Update ID
@@ -280,7 +280,7 @@ object Test {
 
     val context = originalFormula +: tseitinStepNames.reverse    
 
-    val newProof = myTseitin.addContextProof(problem9_flat, context)
+    val newProof = problem9_flat // myTseitin.addContextProof(problem9_flat, context)
     val newProof3 = newProof.addStepsLVL2Before(tseitinReplacementStep_up)
     val newProof4 = newProof3.addStepsLVL2Before(tseitinForms)
     val newProof5 = newProof4.addStepsLVL2Before(stepInst)
@@ -294,7 +294,6 @@ object Test {
     val newProof13 = newProof12.addStepLVL2Before(conjecture)
   
     println("\nProof :")
-    // newProof13.steps.drop(8).dropRight(25).map(x => println(x.toString()))
     printProof(newProof13)
 
     println("\n")

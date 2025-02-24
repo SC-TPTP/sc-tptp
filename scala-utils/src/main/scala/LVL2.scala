@@ -476,9 +476,9 @@ object LVL2 {
    *  And Δ is the negation of Γ
    * @param bot Resulting formula
    */
-  case class Clausify(name: String, bot: Sequent, t1: String) extends StrictLVL2ProofStep {
+  case class Clausify(name: String, bot: Sequent, i:Int, t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
-    override def toString: String = s"fof(${name}, plain, ${bot}, inference(clausify, [status(thm)], [${t1}])).";
+    override def toString: String = s"fof(${name}, plain, ${bot}, inference(clausify, [status(thm), $i], [${t1}])).";
     def checkCorrectness(premises: String => Sequent): Option[String] = None
       // isSubset(bot.left, premises(t1).left) &&
       //   isSubset(bot.right, premises(t1).right)

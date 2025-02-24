@@ -685,8 +685,8 @@ object Parser {
     object Clausify {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("clausify", Seq(_), Seq(t1)), _) =>
-            Some(LVL2.Clausify(name, convertSequentToFol(sequent), t1))
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("clausify", Seq(_,  StrOrNum(i)), Seq(t1)), _) =>
+            Some(LVL2.Clausify(name, convertSequentToFol(sequent), i.toInt, t1))
           case _ => None
         }
     }

@@ -545,12 +545,12 @@ class Tseitin {
       acc + (x.name -> x.bot.right(0))
     })
 
-    println(new_map)
-    println(tseitinVarTermUp)
-    println(tseitinTermVarUp)
-    tsSteps.map(x => println(x))
-    new_tsSteps.map(x => println(x))
-    println("------------")
+    // println(new_map)
+    // println(tseitinVarTermUp)
+    // println(tseitinTermVarUp)
+    // tsSteps.map(x => println(x))
+    // new_tsSteps.map(x => println(x))
+    // println("------------")
 
     val clausalSteps = f.asInstanceOf[ConnectorFormula].args.foldLeft((Seq[LVL2ProofStep](), 0))((acc, x) => {
       val first_elem = {
@@ -606,7 +606,7 @@ class Tseitin {
     val new_new_steps = new_steps.foldLeft(Seq[SCProofStep]())((acc, x) => {
       x match
         case Clausify(name, bot, i, t1) => acc ++ {
-          println(x)
+          // println(x)
           val linked_formula = new_tsSteps(bot.left(i).asInstanceOf[AtomicFormula].label.id.name.drop(1)) 
           if linked_formula.isInstanceOf[BinderFormula]
 
@@ -629,8 +629,8 @@ class Tseitin {
     })
 
     // val new_new_new_steps = removeContextProof(new_new_steps)
-    println("------------")
-    new_new_steps.map(x => println(x))
+    // println("------------")
+    // new_new_steps.map(x => println(x))
   
     if new_new_steps.forall(_.isInstanceOf[LVL1ProofStep]) then (LVL1Proof(new_new_steps.toIndexedSeq.asInstanceOf[IndexedSeq[LVL1ProofStep]], scproof.thmName), last_step)
     if new_new_steps.forall(_.isInstanceOf[LVL2ProofStep]) then (LVL2Proof(new_new_steps.toIndexedSeq.asInstanceOf[IndexedSeq[LVL2ProofStep]], scproof.thmName), last_step)
@@ -857,9 +857,6 @@ class Tseitin {
 
     // Input : a formula f and a map an generate the let that connect the variable to the formula
   def renameTseitinConstant(scproof: SCProof[?]): SCProof[?] = {
-
-
-
     val mapTseitinConstAux = tseitinVarTerm.flatMap((k, v) => {
       k match 
         case AtomicFormula(label, args) if (label.arity == 0) => Some(label)

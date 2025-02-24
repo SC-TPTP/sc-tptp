@@ -1168,12 +1168,11 @@ class Tseitin {
 
     def removeFalse2Aux(l:  Seq[Formula]): Seq[Formula] = {
       l.filter(x => {
-        x.isInstanceOf[AtomicFormula] && x.asInstanceOf[AtomicFormula].label.id.name == "false"
+        !(x.isInstanceOf[AtomicFormula]) || x.asInstanceOf[AtomicFormula].label.id.name != "$false"
       })
     }
 
     val new_steps = scproof.steps.map(x => {
-      println(x)
       x match {
         case Axiom(name: String, bot: Sequent) => Axiom(name, Sequent(bot.left, removeFalse2Aux(bot.right)))
         case Hyp(name: String, bot: Sequent, i: Int) => Hyp(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i)

@@ -172,6 +172,15 @@ object SequentCalculus {
     inner(steps.iterator)
   }
 
+  def ProofToString[Steps<:SCProofStep](p: SCProof[Steps]): String = {
+    val steps = p.steps
+    val premises: scala.collection.mutable.Map[String, Sequent] = scala.collection.mutable.Map()
+    def inner(step: Steps): String =
+        premises.update(step.name, step.bot)
+        step.toStringWithPremises(premises)
+    steps.foldLeft("")((acc, x) => acc ++ inner(x) ++ "\n")
+  }
+
 
   sealed trait LVL1ProofStep extends SCProofStep
 

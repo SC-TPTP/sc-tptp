@@ -9,296 +9,122 @@ import sctptp.SequentCalculus.SCProofStep
 import sctptp.Tseitin
 import sctptp.FOL.iff
 import sctptp.LVL2.LVL2ProofStep
-
-
+import java.io.File
+import scala.io.Source
+import java.nio.file.{Files, Paths}
+import java.nio.charset.StandardCharsets
+import sys.process._
 
 object Test {
 
   def main(args: Array[String]): Unit = {
-    // println("\n First proof:")
-    // println(reconstructProof(new File("proofs/Test.gothm0.p")).toString())
-    // println("\n Second proof:")
-    // println(reconstructProof(new File("proofs/Test.gothm1.p")).toString())
 
-    // val problem = reconstructProof(new File("../proofs/Test.gothm0.p"))
-    // val problem = reconstructProof(new File("proofs/Test.gothm1.p"))
-    // val problem = reconstructProof(new File("proofs/Test.gothm2.p"))
-    // val problem = reconstructProof(new File("proofs/Test.gothm3.p"))
-    // val problem = reconstructProof(new File("proofs/Test.gothm4.p"))
-    // val problem = reconstructProof(new File("proofs/Test.gothm5.p"))
-    // val problem = reconstructProof(new File("proofs/Test.gothm6.p"))
-    // val problem = reconstructProof(new File("proofs/Test.gothm7.p"))
-    // val problem = reconstructProof(new File("proofs/Test.gothm8.p"))
-    // val problem = reconstructProof(new File("proofs/Test.gothm9.p"))
-    // val problem = reconstructProof(new File("../proofs/Test.gothm10.p"))
-    // val problem = reconstructProof(new File("proofs/example.out"))
-    // val problem = reconstructProof(new File("proofs/clausified.p"))
-    // val problem = reconstructProof(new File("proofs/big.p"))
-    
-    // println("\nProblem TPTP:")
-    // println(problem.toString())
-    // println(s"CheckProof : ${checkProof(problem)}")
+    if (args.size < 1){
+      println("You need to provide a file")
+      System.exit(0)
+    }
 
+    // Problem
+    val problem_file = args(0)
+    val problem = reconstructProof(new File(problem_file))
 
-    // println("\nProblem Coq:")
-    // val problemCoq = CoqProof(problem, Map.empty[String, Int], Map.empty[String, Int])
-    // println(problemCoq.toString())
-
-    testSC()
-  }
-
-  def testSC(): Unit = {
-    // // Terms
-    // val x_id = Identifier("X")
-    // val x_label = VariableSymbol(x_id)
-    // val x = Variable(x_label)
-
-    val a_id = Identifier("a")
-    val a_term_label = FunctionSymbol(a_id, 0)
-    val a_term = FunctionTerm(a_term_label, Seq())
-    val a_atomic_label = AtomicSymbol(a_id, 0)
-    val a = AtomicFormula(a_atomic_label, Seq())
-
-    val b_id = Identifier("b")
-    val b_term_label = FunctionSymbol(b_id, 0)
-    val b_term = FunctionTerm(b_term_label, Seq())
-    val b_atomic_label = AtomicSymbol(b_id, 0)
-    val b = AtomicFormula(b_atomic_label, Seq())
-
-    val c_id = Identifier("c")
-    val c_term_label = FunctionSymbol(c_id, 0)
-    val c_term = FunctionTerm(c_term_label, Seq())
-    val c_atomic_label = AtomicSymbol(c_id, 0)
-    val c = AtomicFormula(c_atomic_label, Seq())
-
-    // val f_id = Identifier("f")
-    // val f_label = FunctionSymbol(f_id, 3)
-    // val fx = FunctionTerm(f_label, Seq(x, a_term, x))
-
-    // println("x.toString: " + x.toString())
-    // println("a_term.toString: " + a_term.toString())
-    // println("fx.toString: " + fx.toString())
-
-    // // Atomic Formulas
-    // val a_atomic_label = AtomicSymbol(a_id, 0)
-    // val a = AtomicFormula(a_atomic_label, Seq())
-    // val af_top = AtomicFormula(top, Seq())
-    // val af_bot = AtomicFormula(bot, Seq())
-    // val eq_a_a = AtomicFormula(equality, Seq(a_term, a_term))
-    // val p_id = Identifier("p")
-    // val p_atomic_label = AtomicSymbol(p_id, 2)
-    // val p_a_x = AtomicFormula(p_atomic_label, Seq(a_term, x))
-
-    // println("a.toString: " + a.toString())
-    // println("p_a_x.toString: " + p_a_x.toString())
-    // println("af_top.toString: " + af_top.toString())
-    // println("af_bot.toString: " + af_bot.toString())
-    // println("eq_a_a.toString: " + eq_a_a.toString())
-
-    // // Connector formulas
-    // val neg_a = ConnectorFormula(Neg, Seq(a))
-    // val imp_a_a = ConnectorFormula(Implies, Seq(a, a))
-    // val iff_a_a = ConnectorFormula(Iff, Seq(a, a))
-    // val and_a_a_a = ConnectorFormula(And, Seq(a, a, a))
-    // val or_a_a_a = ConnectorFormula(Or, Seq(a, a, a))
-
-    // println("neg_a.toString: " + neg_a.toString())
-    // println("imp_a.toString: " + imp_a_a.toString())
-    // println("iff_a.toString: " + iff_a_a.toString())
-    // println("and_a.toString: " + and_a_a_a.toString())
-    // println("or_a.toString: " + or_a_a_a.toString())
-
-    // // Binder formulas
-    // val forall_x = BinderFormula(Forall, x_label, a)
-    // val exists_x = BinderFormula(Exists, x_label, a)
-
-    // println("forall_x.toString: " + forall_x.toString())
-    // println("exists_x.toString: " + exists_x.toString())
-
-    // // Sequents
-    // val s1 = Sequent(Seq(a, a, a), Seq(a))
-    
-    // println("s1: " + s1.toString())
-
-
-  //   // Proof step
-  //   val ax1 = Axiom("ax1", s1)
-  //   val hyp = Hyp("hyp", s1, 0, 1)
-  //   val leftHyp = LeftHyp("leftHyp", s1, 0, 1)
-  //   val weakening = LeftWeaken("weakening", s1,"p1")
-  //   val cut = Cut("cut", s1, 0, 1, "p1", "p2")
-  //   val leftAnd = LeftAnd("leftAnd", s1, 0, "p1")
-  //   val leftOr = LeftOr("leftOr", s1, 0, "p1", "p2")
-  //   val leftImp1 = LeftImp1("leftImp1", s1, 0, "p1", "p2")
-  //   val leftImp2 = LeftImp2("leftImp2", s1, 0, "p1", "p2")
-  //   val leftIff = LeftIff("leftIff", s1, 0, "p1")
-  //   val leftNot = LeftNot("leftNot", s1, 0, "p1")
-  //   val leftEx = LeftExists("leftEx", s1, 0, x_label, "p1")
-  //   val leftAll = LeftForall("leftAll", s1, 0, a_term, "p1")
-  //   val rightAnd = RightAnd("rightAnd", s1, 0, "p1", "p2")
-  //   val rightOr = RightOr("rightOr", s1, 0, "p1")
-  //   val rightImp = RightImp("rightImp", s1, 0, "p1")
-  //   val rightIff = RightIff("rightIff", s1, 0, "p1", "p2")
-  //   val rightNot = RightNot("rightNot", s1, 0, "p1")
-  //   val rightEx = RightExists("rightEx", s1, 0, a_term, "p1")
-  //   val rightAll = RightForall("rightAll", s1, 0, x_label, "p1")
-  //   val leftNotAnd = LeftNotAnd("leftNotAnd", s1, 0, "p1", "p2")
-  //   val leftNotOr = LeftNotOr("leftNotOr", s1, 0, "p1")
-  //   val leftNotImp = LeftNotImp("leftNotImp", s1, 0, "p1")
-  //   val leftNotIff = LeftNotIff("leftNotIff", s1, 0, "p1", "p2")
-  //   val leftNotNot = LeftNotNot("leftNotNot", s1, 0, "p1")
-  //   val leftNotEx = LeftNotEx("leftNotEx", s1, 0, a_term, "p1")
-  //   val leftNotAll = LeftNotAll("leftNotAll", s1, 0, x_label, "p1")
-
-  //   val rightRefl = RightRefl("rightRefl", s1, 0)
-  //   val leftSubst = LeftSubst("leftSubst", s1, 0, 1, p_a_x, x_label, "p1")
-  //   val rightSubst = RightSubst("rightSubst", s1, 0, 1, p_a_x, x_label, "p1")
-
-  //   println("ax1: " + ax1.toString())
-  //   println("hyp: " + hyp.toString())
-  //   println("leftHyp: " + leftHyp.toString())
-  //   println("LeftWeaken: " + weakening.toString())
-  //   println("cut: " + cut.toString())
-  //   println("leftAnd: " + leftAnd.toString())
-  //   println("leftOr: " + leftOr.toString())
-  //   println("leftImp1: " + leftImp1.toString())
-  //   println("leftImp2: " + leftImp2.toString())
-  //   println("leftIff: " + leftIff.toString())
-  //   println("leftNot: " + leftNot.toString())
-  //   println("leftEx: " + leftEx.toString())
-  //   println("leftAll: " + leftAll.toString())
-  //   println("rightAnd: " + rightAnd.toString())
-  //   println("rightOr: " + rightOr.toString())
-  //   println("rightImp: " + rightImp.toString())
-  //   println("rightIff: " + rightIff.toString())
-  //   println("rightNot: " + rightNot.toString())
-  //   println("rightEx: " + rightEx.toString())
-  //   println("rightAll: " + rightAll.toString())
-  //   println("leftNotAnd: " + leftNotAnd.toString())
-  //   println("leftNotOr: " + leftNotOr.toString())
-  //   println("leftNotImp: " + leftNotImp.toString())
-  //   println("leftNotIff: " + leftNotIff.toString())
-  //   println("leftNotNot: " + leftNotNot.toString())
-  //   println("leftNotEx: " + leftNotEx.toString())
-  //   println("leftNotAll: " + leftNotAll.toString())
-  //   println("rightRefl: " + rightRefl.toString())
-  //   println("leftSubst: " + leftSubst.toString())
-  //   println("rightSubst: " + rightSubst.toString())
-
-
-
-  // // Pre processing
-
-    val problem = reconstructProof(new File("../proofs/clausification/simple.p"))
     val conjecture = problem.steps(0).asInstanceOf[LVL2ProofStep]
     val parsedProblem = problem.getSequent(0).right(0)
     val parsedProblemName = problem.thmName
-
-    // val parsedProblem = ConnectorFormula(And, Seq(a, b))
-    // val parsedProblem = ConnectorFormula(Or, Seq(a, b))
-    // val parsedProblem = ConnectorFormula(Or, Seq(ConnectorFormula(And, Seq(a, b)), c))
-
-    println(s"\n** Formula : ${parsedProblemName}** :\n" + parsedProblem)
-
-    
     val myTseitin = new Tseitin()
-
-    // Take the negation (for tests)
     val (parsedProblem1, originalFormula, stepNC) = myTseitin.toNegatedFormula(parsedProblem)
-    // val parsedProblem1 = parsedProblem
-    // println("\n** Negated Formula ** :\n" + parsedProblem1)
 
     // NNF
     val (parsedProblem2, stepNNF) = myTseitin.toNNF(parsedProblem1)
-    // println("\n** Formula in NNF Form ** :\n" + parsedProblem2)
 
     // Prenex
     val (parsedProblem3, stepPrenex) = myTseitin.toPrenex(parsedProblem2)
-    // println("\n** Formula in Prenex Form ** :\n" + parsedProblem3)
 
     // Instantiated and renamed
     val (parsedProblem4, mapVar, stepInst) = myTseitin.toInstantiated(parsedProblem3)
-    val reverseMap = for ((k, v) <- mapVar) yield (v, k) 
-    // println("\n** Formula instantiated ** \n: " + parsedProblem4)
-    // println("\n** Map var ** \n: " + mapVar)
-    // println("\n** Reverse map var ** \n: " + reverseMap)
-
-    // Unrenamed formula 
+    val reverseMap = for ((k, v) <- mapVar) yield (v, k)
+    
+    // Unrenamed formula
     val parsedProblem5 = myTseitin.UnRenameVariables(parsedProblem4, reverseMap)
-    // println("\n** Formula with original names ** :\n" + parsedProblem5)
 
     // Creation of tseitin terms beforme renaming
     val premap = myTseitin.createTseitinVariables(parsedProblem4)
     myTseitin.makeTseitinMaps(premap._1)
-    // println("\n** TS variables ** :\n")
-    // myTseitin.printTseitinVarTerm()
     myTseitin.makeTseitinMapsUp(myTseitin.updateTseitinVariables(myTseitin.getTseitinTermVar()))
-    // println("\n** Updated Variables ** :\n")
-    // myTseitin.printTseitinVarTermUp()
 
     // Tseitin Normal Form
     val parsedProblem6 = myTseitin.toTseitin(parsedProblem4)
-    // println("\n** TseitinForm ** :\n" + parsedProblem6)
 
     // Tseitin Normal Form
     val parsedProblem7 = myTseitin.toFlatternAnd(parsedProblem6)
-    // println("\n ** Flattern ** :\n" +  myTseitin.UnRenameVariables(parsedProblem7, reverseMap))
-
-    // Rename variables 
-    // println("\nUnrennamed version :")
-    // val problem9 = myTseitin.unrenameProof(problem8, reverseMap)
-    // println(problem9.toString())
 
     // Create let steps
     val (tseitinForms, tseitinStepMap, tseitinStepNames) = myTseitin.generateTseitin()
-    // println("\nTseitin Steps :")
-    // tseitinForms.map(x => println(x))
-    // println("\nTseitin Steps Names :")
-    // tseitinStepNames.map(x => println(x))
-    // println("\nTseitin Steps Map :")
-    // tseitinStepMap.map(x => println(s"${x._1} -> ${x._2}"))
 
     // Generate tseistin replacement
     val lastInstForm = stepInst.last
-    val tseitinReplacementStep = myTseitin.computeTseitinReplacementSteps(lastInstForm, tseitinStepNames.reverse, tseitinStepMap, tseitinForms, "i"+(stepInst.size-1))
-
+    val tseitinReplacementStep = myTseitin.computeTseitinReplacementSteps(
+      lastInstForm,
+      tseitinStepNames.reverse,
+      tseitinStepMap,
+      tseitinForms,
+      "i" + (stepInst.size - 1)
+    )
 
     // Problem file
     val problem8 = myTseitin.toP9(parsedProblem7)
-    
 
-    // Create tseitin step 
-    val (problem9, last_step) = myTseitin.generateTseitinStep(parsedProblem7, tseitinStepNames.reverse, tseitinReplacementStep, problem8, tseitinStepMap, tseitinForms)
+    // Create tseitin step
+    val (problem9, last_step) = myTseitin.generateTseitinStep(
+      parsedProblem7,
+      tseitinStepNames.reverse,
+      tseitinReplacementStep,
+      problem8,
+      tseitinStepMap,
+      tseitinForms
+    )
     val problem9_flat = myTseitin.modifyOrSteps(problem9)
 
     // Update ID
     val tseitinReplacementStep_up = myTseitin.updateId(tseitinReplacementStep, last_step)
 
+    // Compute Context
+    val context = originalFormula +: tseitinStepNames.reverse
 
-    
-    // println(problem9_flat.toString())
-
-    val context = originalFormula +: tseitinStepNames.reverse    
-
-    val newProof = problem9_flat // myTseitin.addContextProof(problem9_flat, context)
+    // Add step to the proof
+    val newProof = problem9_flat
     val newProof3 = newProof.addStepsLVL2Before(tseitinReplacementStep_up)
     val newProof4 = newProof3.addStepsLVL2Before(tseitinForms)
     val newProof5 = newProof4.addStepsLVL2Before(stepInst)
     val newProof6 = newProof5.addStepLVL2Before(stepPrenex)
     val newProof7 = newProof6.addStepLVL2Before(stepNNF)
     val newProof8 = newProof7.addStepsLVL2Before(stepNC)
-    val newProof9 = myTseitin.removeFalse2(newProof8) //.addStepsLVL2After(myTseitin.removeFalse(context, newProof8.steps.last.name))
+    val newProof9 = myTseitin.removeFalse2(newProof8)
     val newProof10 = newProof9.addStepsLVL2After(myTseitin.addPsi(context))
     val newProof11 = newProof10.addStepsLVL2After(myTseitin.removeTseitin(tseitinStepNames, tseitinStepMap))
-    val newProof12 = myTseitin.renameTseitinConstant(newProof11) 
+    val newProof12 = myTseitin.renameTseitinConstant(newProof11)
     val newProof13 = newProof12.addStepLVL2Before(conjecture)
-  
-    println("\nProof :")
-    printProof(newProof13)
 
-    println("\n")
+    // println("\nProof :")
+    // printProof(newProof13)
+    // println("\n")
 
-    
+    val final_proof = ProofToString(newProof13)
 
+    // Write in a file
+    val output_file = {
+    if (args.size == 2) 
+      then args(1)
+      else problem_file.dropRight(2).+("_output.p")
+    }
+
+    val path = Paths.get(output_file)
+
+    // Create the file if it doesn't exist
+    if (!Files.exists(path)) {
+      Files.createFile(path)
+    }
+
+    Files.write(path, final_proof.getBytes(StandardCharsets.UTF_8))
   }
 }

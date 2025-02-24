@@ -24,6 +24,8 @@ import scala.util.matching.Regex
 import Parser.*
 import java.io.File
 import sctptp.SequentCalculus.RulesName.LeftFalseRuleName
+import java.io.InputStream
+import java.nio.file.StandardCopyOption
 
 
 
@@ -639,11 +641,17 @@ class Tseitin {
 
   // generate axioms to give to p9, writ them on a file, launch p9 on the file, retrieve the result as a list of proof steps
   def toP9(f: Formula): SCProof[?] = {
-    val path = Paths.get("../proofs/p9/p9.p")
+
+    val pathname = "./p9proof"
+    val pathdir = Paths.get(pathname)
+    if(!(Files.exists(pathdir) && Files.isDirectory(pathdir)))
+      Files.createDirectory(pathdir)
 
     // Create the file if it doesn't exist
-    if (!Files.exists(path)) {
-      Files.createFile(path)
+    val pathfilepname = pathname+"/p9.p"
+    val pathfilep = Paths.get(pathfilepname)
+    if (!Files.exists(pathfilep)) {
+      Files.createFile(pathfilep)
     }
 
     // Write some content into the file
@@ -651,18 +659,41 @@ class Tseitin {
       (acc._1 + s"fof(${acc._2}, axiom, ${x.toString()}).\n\n", acc._2+1)
     })._1
 
-    Files.write(path, content.getBytes(StandardCharsets.UTF_8))
+    Files.write(pathfilep, content.getBytes(StandardCharsets.UTF_8))
 
-    println(s"Content written to: ${path.toAbsolutePath}")
+    println(s"Content written to: ${pathfilep.toAbsolutePath}")
+
+    val pathfileinname = pathname+"/p9.in"
+    val pathfileout = pathname+"/p9.out"
+    
+    println(System.getProperty("user.dir"))
+
+    // Prepare the executable by reading it from the JAR and setting executable permissions
+    val executableName = "sh -c \"../../src/main/ressources/tptp_to_ladr < " + pathfilepname + " | ../../src/main/ressources/prover9 > " + pathfileinname + " && ../../src/main/ressources/prooftrans ivy -f " + pathfileinname + " >  " + pathfileout + "\""
+    val command = executableName // This would be a command that can execute on the system
+
+    try {
+      // Launch the executable directly (assuming it's a script or a binary)
+      val result = command.!
+      if (result == 0) {
+        println("Executable ran successfully!")
+      } else {
+        println(s"Executable failed with exit code $result")
+      }
+    } catch {
+      case e: Exception =>
+        println(s"Error executing the resource: ${e.getMessage}")
+    }
+
 
     // Command to execute with shell
-    val command = "sh -c \"./../p9-sc-tptp/tptp_to_ladr < ../proofs/p9/p9.p | ./../p9-sc-tptp/prover9 > ../proofs/p9/p9.in && ./../p9-sc-tptp/prooftrans ivy -f ../proofs/p9/p9.in > ../proofs/p9/p9.out\""
+    // val command = "sh -c \"./../p9-sc-tptp/tptp_to_ladr < " + pathfilepname + " | ./../p9-sc-tptp/prover9 > " + pathfileinname + " && ./../p9-sc-tptp/prooftrans ivy -f " + pathfileinname + " >  " + pathfileout + "\""
 
     // Run the command and redirect both stdout and stderr to /dev/null
-    val exitCode = command.!
+    // val exitCode = command.!
 
-    val filePath = "../proofs/p9/p9.out"
-    val fileContent = Source.fromFile(filePath).getLines().mkString("\n")
+
+    val fileContent = Source.fromFile(pathfileout).getLines().mkString("\n")
 
     // Debug: Check the positions of the start and end markers
     val startPos = fileContent.indexOf(";; BEGINNING OF PROOF OBJECT")
@@ -675,16 +706,17 @@ class Tseitin {
     // println("Extracted Proof Content:")
     // println(proofContent)
 
-    val path2 = Paths.get("../proofs/p9/p9_proof.p")
+    val pathfileoutname = pathname+"/p9proof.p"
+    val pathproof = Paths.get(pathfileoutname)
 
     // Create the file if it doesn't exist
-    if (!Files.exists(path2)) {
-      Files.createFile(path2)
+    if (!Files.exists(pathproof)) {
+      Files.createFile(pathproof)
     }
 
-    Files.write(path2, proofContent.getBytes(StandardCharsets.UTF_8))
+    Files.write(pathproof, proofContent.getBytes(StandardCharsets.UTF_8))
 
-    Parser.reconstructProof(new File("../proofs/p9/p9_proof.p"))
+    Parser.reconstructProof(new File(pathfileoutname))
   }
 
   def updateId(proof: Seq[LVL2ProofStep], s: String): Seq[LVL2ProofStep] = {

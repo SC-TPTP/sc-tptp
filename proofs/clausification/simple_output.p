@@ -29,7 +29,7 @@ fof(12, plain, [$phi,$tsStep0,$tsStep1] --> [], inference(res, [status(thm), 0],
 fof(psi, let, (! [X]: p(X) => (p(a) & p(b)))).
 fof(addPsi0, assumption, [$psi] --> [$psi], inference(hyp, [status(thm), 0], [])).
 fof(addPsi1, plain, [] --> [$psi,$phi], inference(rightNot, [status(thm), 0], [addPsi0])).
-fof(addPsi2, plain, [$tsStep0,$tsStep1] --> [$psi], inference(cut, [status(thm), 1, 0], [addPsi1, stepFalse1])).
+fof(addPsi2, plain, [$tsStep0,$tsStep1] --> [$psi], inference(cut, [status(thm), 1, 0], [addPsi1, 12])).
 fof(removeTseitin0, plain, [$tsStep0,! [V0]: ((p(V0) & Ts3) <=> (p(V0) & Ts3))] --> [$psi], inference(instPred, [status(thm), 'Ts1', $fof((p(V0) & Ts3)), ['V0']], [addPsi2])).
 fof(removeTseitin1, plain, [$tsStep0] --> [$psi], inference(elimIffRefl, [status(thm), 1], [removeTseitin0])).
 fof(removeTseitin2, plain, [((~p(a) | ~p(b)) <=> (~p(a) | ~p(b)))] --> [$psi], inference(instPred, [status(thm), 'Ts3', $fof((~p(a) | ~p(b))), []], [removeTseitin1])).

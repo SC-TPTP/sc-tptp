@@ -287,7 +287,7 @@ object Test {
     val newProof6 = newProof5.addStepLVL2Before(stepPrenex)
     val newProof7 = newProof6.addStepLVL2Before(stepNNF)
     val newProof8 = newProof7.addStepsLVL2Before(stepNC)
-    val newProof9 = newProof8.addStepsLVL2After(myTseitin.removeFalse(context, newProof8.steps.last.name))
+    val newProof9 = myTseitin.removeFalse2(newProof8) //.addStepsLVL2After(myTseitin.removeFalse(context, newProof8.steps.last.name))
     val newProof10 = newProof9.addStepsLVL2After(myTseitin.addPsi(context))
     val newProof11 = newProof10.addStepsLVL2After(myTseitin.removeTseitin(tseitinStepNames, tseitinStepMap))
     val newProof12 = myTseitin.renameTseitinConstant(newProof11) 

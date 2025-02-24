@@ -968,6 +968,78 @@ class Tseitin {
     )
   }
 
+    // Remove $false
+  def removeFalse2(scproof: SCProof[?]): SCProof[?] = {
+
+    def removeFalse2Aux(l:  Seq[Formula]): Seq[Formula] = {
+      l.filter(x => {
+        x.isInstanceOf[AtomicFormula] && x.asInstanceOf[AtomicFormula].label.id.name == "false"
+      })
+    }
+
+    val new_steps = scproof.steps.map(x => {
+      println(x)
+      x match {
+        case Axiom(name: String, bot: Sequent) => Axiom(name, Sequent(bot.left, removeFalse2Aux(bot.right)))
+        case Hyp(name: String, bot: Sequent, i: Int) => Hyp(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i)
+        case LeftFalse(name: String, bot: Sequent) =>  LeftFalse(name, Sequent(bot.left, removeFalse2Aux(bot.right)))
+        case LeftWeaken(name: String, bot: Sequent, i: Int, t1: String) => LeftWeaken(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case LeftWeakenRes(name: String, bot: Sequent, i: Int, t1: String) => LeftWeakenRes(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case RightWeaken(name: String, bot: Sequent, i: Int, t1: String) => RightWeaken(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case ElimIffRefl(name: String, bot: Sequent, i: Int, t1: String) => ElimIffRefl(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case Cut(name: String, bot: Sequent, i: Int, j: Int, t1: String, t2: String) => Cut(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, j, t1, t2)
+        case LeftAnd(name: String, bot: Sequent, i: Int, t1: String) => LeftAnd(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case LeftOr(name: String, bot: Sequent, i: Int, t1: String, t2: String) =>  LeftOr(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1, t2)
+        case LeftImplies(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftImplies(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1, t2)
+        case LeftIff(name: String, bot: Sequent, i: Int, t1: String) => LeftIff(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case LeftNot(name: String, bot: Sequent, i: Int, t1: String) => LeftNot(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case LeftExists(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => LeftExists(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, y, t1)
+        case LeftForall(name: String, bot: Sequent, i: Int, t: Term, t1: String) => LeftForall(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t, t1)
+        case RightAnd(name: String, bot: Sequent, i: Int, t1: String, t2: String) => RightAnd(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1, t2)
+        case RightOr(name: String, bot: Sequent, i: Int, t1: String) => RightOr(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case RightImplies(name: String, bot: Sequent, i: Int, t1: String) => RightImplies(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case RightIff(name: String, bot: Sequent, i: Int, t1: String, t2: String) => RightIff(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1, t2)
+        case RightNot(name: String, bot: Sequent, i: Int, t1: String) => RightNot(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case RightExists(name: String, bot: Sequent, i: Int, t: Term, t1: String) => RightExists(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t, t1)
+        case RightForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => RightForall(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, y, t1)
+        case RightRefl(name: String, bot: Sequent, i: Int) => RightRefl(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i)
+        case LeftSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, p, x, t1)
+        case RightSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => RightSubst(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, p, x, t1)
+        case LeftSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, r, a, t1) // TODO : check that
+        case RightSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => RightSubstIff(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, r, a, t1) // TODO : check that
+        case InstFun(name: String, bot: Sequent, f: FunctionSymbol, t: (Term, Seq[VariableSymbol]), t1: String) => InstFun(name, Sequent(bot.left, removeFalse2Aux(bot.right)), f, t, t1)
+        case InstPred(name: String, bot: Sequent, p: AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), t1: String) => InstPred(name, Sequent(bot.left, removeFalse2Aux(bot.right)), p, phi, t1)
+        case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>  LeftHyp(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, j)
+        case LeftImp2(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftImp2(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1, t2)
+        case LeftNotAnd(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftNotAnd(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1, t2)
+        case LeftNotOr(name: String, bot: Sequent, i: Int, t1: String) => LeftNotOr(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case LeftNotImp(name: String, bot: Sequent, i: Int, t1: String) => LeftNotImp(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case LeftNotIff(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftNotIff(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1, t2)
+        case LeftNotNot(name: String, bot: Sequent, i: Int, t1: String) => LeftNotNot(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case LeftNotEx(name: String, bot: Sequent, i: Int, t: Term, t1: String) => LeftNotEx(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t, t1)
+        case LeftNotAll(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => LeftNotAll(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, y, t1)
+        case RightSubstMulti(name: String, bot: Sequent, is: List[Int], p: Formula, xs: List[VariableSymbol], t1: String) => RightSubstMulti(name, Sequent(bot.left, removeFalse2Aux(bot.right)), is: List[Int], p, xs, t1)
+        case LeftSubstMulti(name: String, bot: Sequent, is: List[Int], p: Formula, xs: List[VariableSymbol], t1: String) => LeftSubstMulti(name, Sequent(bot.left, removeFalse2Aux(bot.right)), is: List[Int], p, xs, t1)
+        case Congruence(name: String, bot: Sequent) => Congruence(name, Sequent(bot.left, removeFalse2Aux(bot.right)))
+        case Res(name: String, bot: Sequent, i1: Int, i2: Int, t1: String, t2: String) => Res(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i1, i2, t1, t2)
+        case NegatedConjecture(name: String, bot: Sequent, t1: String) => NegatedConjecture(name, Sequent(bot.left, removeFalse2Aux(bot.right)), t1)
+        case Clausify(name: String, bot: Sequent, t1: String) => Clausify(name, Sequent(bot.left, removeFalse2Aux(bot.right)), t1)
+        case NNF(name: String, bot: Sequent, i:Int, j: Int, t1: String) => NNF(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, j, t1)
+        case Instantiate_L(name: String, bot: Sequent, i: Int, x: VariableSymbol, t: Term, parent: String) =>  Instantiate_L(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, x, t, parent)
+        case InstantiateMult(name: String, bot: Sequent, i: Int, terms: Seq[(VariableSymbol, Term)], parent: String) => InstantiateMult(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, terms, parent)
+        case Let(name: String, bot: Sequent) => Let(name, Sequent(bot.left, removeFalse2Aux(bot.right)))
+        case Prenex(name: String, bot: Sequent, t1: String) => Prenex(name, Sequent(bot.left, removeFalse2Aux(bot.right)), t1)
+        case InstForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => InstForall(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, y, t1)
+        case _ => throw Exception("Proof step not found")
+      }
+
+    })
+
+    if new_steps.forall(_.isInstanceOf[LVL1ProofStep]) then LVL1Proof(new_steps.toIndexedSeq.asInstanceOf[IndexedSeq[LVL1ProofStep]], scproof.thmName)
+    if new_steps.forall(_.isInstanceOf[LVL2ProofStep]) then LVL2Proof(new_steps.toIndexedSeq.asInstanceOf[IndexedSeq[LVL2ProofStep]], scproof.thmName)
+    else throw new Exception("Some proof steps could not be unrenamed")
+  }
+
   // Add psi
   def addPsi(context: Seq[AtomicFormula]): Seq[LVL2ProofStep] = {
     Seq(

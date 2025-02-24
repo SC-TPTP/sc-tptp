@@ -1235,12 +1235,12 @@ class Tseitin {
   }
 
   // Add psi
-  def addPsi(context: Seq[AtomicFormula]): Seq[LVL2ProofStep] = {
+  def addPsi(context: Seq[AtomicFormula], parent: String): Seq[LVL2ProofStep] = {
     Seq(
       Let("psi", Sequent(Seq(psi), Seq(originalFormula))),
       Hyp("addPsi0", Sequent(Seq(psi), Seq(psi)), 0),
       RightNot("addPsi1", Sequent(Seq(), Seq(psi, phi)), 0, "addPsi0"),
-      Cut("addPsi2", Sequent(context.drop(1), Seq(psi)), 1, 0, "addPsi1", "stepFalse1")
+      Cut("addPsi2", Sequent(context.drop(1), Seq(psi)), 1, 0, "addPsi1", parent)
     )
   }
 

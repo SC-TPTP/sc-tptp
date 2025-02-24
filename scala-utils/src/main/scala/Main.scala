@@ -15,7 +15,7 @@ import java.nio.file.{Files, Paths}
 import java.nio.charset.StandardCharsets
 import sys.process._
 
-object Test {
+object Main {
 
   def main(args: Array[String]): Unit = {
 
@@ -100,7 +100,7 @@ object Test {
     val newProof7 = newProof6.addStepLVL2Before(stepNNF)
     val newProof8 = newProof7.addStepsLVL2Before(stepNC)
     val newProof9 = myTseitin.removeFalse2(newProof8)
-    val newProof10 = newProof9.addStepsLVL2After(myTseitin.addPsi(context))
+    val newProof10 = newProof9.addStepsLVL2After(myTseitin.addPsi(context, newProof9.steps.last.name))
     val newProof11 = newProof10.addStepsLVL2After(myTseitin.removeTseitin(tseitinStepNames, tseitinStepMap))
     val newProof12 = myTseitin.renameTseitinConstant(newProof11)
     val newProof13 = newProof12.addStepLVL2Before(conjecture)

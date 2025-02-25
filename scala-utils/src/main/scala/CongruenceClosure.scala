@@ -103,7 +103,6 @@ object CongruenceClosure {
                   namen,
                   newbot,
                   0,
-                  0,
                   name,
                   if cutCounter == 0 then congName else s"${sname}_${unfoldCounter}_c${cutCounter-1}"
                 )

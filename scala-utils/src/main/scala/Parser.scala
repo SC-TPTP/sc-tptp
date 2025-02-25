@@ -583,10 +583,10 @@ object Parser {
     object LeftSubst {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftSubst", Seq(_, StrOrNum(n), GenFormula(p), String(xl)), Seq(t1)), _) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftSubst", Seq(_, StrOrNum(n), StrOrNum(forward), GenFormula(p), String(xl)), Seq(t1)), _) =>
             if !(xl(0).isUpper) then throw new Exception(s"Expected a variable (upper word), but got $xl")
             val x = VariableSymbol(xl)
-            Some(SC.LeftSubst(name, convertSequentToFol(sequent), n.toInt, p, x, t1))
+            Some(SC.LeftSubst(name, convertSequentToFol(sequent), n.toInt, forward.toInt != 0, p, x, t1))
           case _ => None
         }
     }
@@ -594,10 +594,10 @@ object Parser {
     object RightSubst {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightSubst", Seq(_, StrOrNum(n), GenFormula(p), String(xl)), Seq(t1)), _) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightSubst", Seq(_, StrOrNum(n), StrOrNum(forward), GenFormula(p), String(xl)), Seq(t1)), _) =>
             if !(xl(0).isUpper) then throw new Exception(s"Expected a variable (upper word), but got $xl")
             val x = VariableSymbol(xl)
-            Some(SC.RightSubst(name, convertSequentToFol(sequent), n.toInt, p, x, t1))
+            Some(SC.RightSubst(name, convertSequentToFol(sequent), n.toInt, forward.toInt != 0, p, x, t1))
           case _ => None
         }
     }
@@ -605,10 +605,10 @@ object Parser {
     object LeftSubstIff {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftSubstIff", Seq(_, StrOrNum(n), GenFormula(p), String(al)), Seq(t1)), _) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftSubstIff", Seq(_, StrOrNum(n), StrOrNum(forward), GenFormula(p), String(al)), Seq(t1)), _) =>
             if !(al(0).isUpper) then throw new Exception(s"Expected an atomic symbol (upper word), but got $al")
             val A = AtomicSymbol(al, 0)
-            Some(SC.LeftSubstIff(name, convertSequentToFol(sequent), n.toInt, p, A, t1))
+            Some(SC.LeftSubstIff(name, convertSequentToFol(sequent), n.toInt, forward.toInt != 0, p, A, t1))
           case _ => None
         }
     }
@@ -616,10 +616,10 @@ object Parser {
     object RightSubstIff {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightSubstIff", Seq(_, StrOrNum(n), GenFormula(p), String(al)), Seq(t1)), _) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightSubstIff", Seq(_, StrOrNum(n), StrOrNum(forward), GenFormula(p), String(al)), Seq(t1)), _) =>
             if !(al(0).isUpper) then throw new Exception(s"Expected an atomic symbol (upper word), but got $al")
             val A = AtomicSymbol(al, 0)
-            Some(SC.RightSubstIff(name, convertSequentToFol(sequent), n.toInt, p, A, t1))
+            Some(SC.RightSubstIff(name, convertSequentToFol(sequent), n.toInt, forward.toInt != 0, p, A, t1))
           case _ => None
         }
     }

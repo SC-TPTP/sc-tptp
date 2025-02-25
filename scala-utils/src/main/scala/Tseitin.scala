@@ -390,7 +390,8 @@ class Tseitin {
               Sequent( 
               previousForms, // les formules d'avant, avec un acc
               Seq(fSubstituted)), 
-              previousForms.size-1, 
+              previousForms.size-1,
+              true, 
               fSubstituted2,
               new_var, 
               parent)
@@ -490,6 +491,7 @@ class Tseitin {
             phi +: (previousForms.dropRight(1) ++old_x), // les formules d'avant, avec un acc
             Seq(fSubstituted)), 
             previousForms.size, 
+            true,
             fSubstituted2,
             new_var, 
             parent)
@@ -730,7 +732,7 @@ class Tseitin {
         case LeftWeakenRes(name: String, bot: Sequent, i: Int, t1: String) => LeftWeakenRes(s, bot, i, t1)
         case RightWeaken(name: String, bot: Sequent, i: Int, t1: String) => RightWeaken(s, bot, i, t1)
         case ElimIffRefl(name: String, bot: Sequent, i: Int, t1: String) => ElimIffRefl(s, bot, i, t1)
-        case Cut(name: String, bot: Sequent, i: Int, j: Int, t1: String, t2: String) => Cut(s, bot, i, j, t1, t2)
+        case Cut(name: String, bot: Sequent, i: Int, t1: String, t2: String) => Cut(s, bot, i, t1, t2)
         case LeftAnd(name: String, bot: Sequent, i: Int, t1: String) => LeftAnd(s, bot, i, t1)
         case LeftOr(name: String, bot: Sequent, i: Int, t1: String, t2: String) =>  LeftOr(s, bot, i, t1, t2)
         case LeftImplies(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftImplies(s, bot, i, t1, t2)
@@ -746,10 +748,10 @@ class Tseitin {
         case RightExists(name: String, bot: Sequent, i: Int, t: Term, t1: String) => RightExists(s, bot, i, t, t1)
         case RightForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => RightForall(s, bot, i, y, t1)
         case RightRefl(name: String, bot: Sequent, i: Int) => RightRefl(s, bot, i)
-        case LeftSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(s, bot, i,  p, x, t1)
-        case RightSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => RightSubst(s, bot, i,  p, x, t1)
-        case LeftSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(s, bot, i,  r, a, t1) // TODO : check that
-        case RightSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => RightSubstIff(s, bot, i,  r, a, t1) // TODO : check that
+        case LeftSubst(name: String, bot: Sequent, i: Int, forward, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(s, bot, i, forward,  p, x, t1)
+        case RightSubst(name: String, bot: Sequent, i: Int, forward, p: Formula, x: VariableSymbol, t1: String) => RightSubst(s, bot, i, forward,  p, x, t1)
+        case LeftSubstIff(name: String, bot: Sequent, i: Int, forward, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(s, bot, i, forward,  r, a, t1) // TODO : check that
+        case RightSubstIff(name: String, bot: Sequent, i: Int, forward, r: Formula, a: AtomicSymbol, t1: String) => RightSubstIff(s, bot, i, forward,  r, a, t1) // TODO : check that
         case InstFun(name: String, bot: Sequent, f: FunctionSymbol, t: (Term, Seq[VariableSymbol]), t1: String) => InstFun(s, bot, f, t, t1)
         case InstPred(name: String, bot: Sequent, p: AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), t1: String) => InstPred(s, bot, p, phi, t1)
         case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>  LeftHyp(s, bot, i, j)
@@ -835,7 +837,7 @@ class Tseitin {
         case LeftWeaken(name: String, bot: Sequent, i: Int, t1: String) => LeftWeaken(name, unrenameSequent(bot), i, t1)
         case LeftWeakenRes(name: String, bot: Sequent, i: Int, t1: String) => LeftWeakenRes(name, unrenameSequent(bot), i, t1)
         case RightWeaken(name: String, bot: Sequent, i: Int, t1: String) => RightWeaken(name, unrenameSequent(bot), i, t1)
-        case Cut(name: String, bot: Sequent, i: Int, j: Int, t1: String, t2: String) => Cut(name, unrenameSequent(bot), i, j, t1, t2)
+        case Cut(name: String, bot: Sequent, i: Int, t1: String, t2: String) => Cut(name, unrenameSequent(bot), i, t1, t2)
         case LeftAnd(name: String, bot: Sequent, i: Int, t1: String) => LeftAnd(name, unrenameSequent(bot), i, t1)
         case LeftOr(name: String, bot: Sequent, i: Int, t1: String, t2: String) =>  LeftOr(name, unrenameSequent(bot), i, t1, t2)
         case LeftImplies(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftImplies(name, unrenameSequent(bot), i, t1, t2)
@@ -851,10 +853,10 @@ class Tseitin {
         case RightExists(name: String, bot: Sequent, i: Int, t: Term, t1: String) => RightExists(name, unrenameSequent(bot), i, t, t1)
         case RightForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => RightForall(name, unrenameSequent(bot), i, y, t1)
         case RightRefl(name: String, bot: Sequent, i: Int) => RightRefl(name, unrenameSequent(bot), i)
-        case LeftSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(name, unrenameSequent(bot), i, UnRenameVariables(p, mapVar), (if (mapVar contains x) then mapVar(x) else x), t1)
-        case RightSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => RightSubst(name, unrenameSequent(bot), i, UnRenameVariables(p, mapVar), (if (mapVar contains x) then mapVar(x) else x), t1)
-        case LeftSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(name, unrenameSequent(bot), i, UnRenameVariables(r, mapVar), a, t1) // TODO : check that
-        case RightSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => RightSubstIff(name, unrenameSequent(bot), i, UnRenameVariables(r, mapVar), a, t1) // TODO : check that
+        case LeftSubst(name: String, bot: Sequent, i: Int, forward, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(name, unrenameSequent(bot), i, forward, UnRenameVariables(p, mapVar), (if (mapVar contains x) then mapVar(x) else x), t1)
+        case RightSubst(name: String, bot: Sequent, i: Int, forward, p: Formula, x: VariableSymbol, t1: String) => RightSubst(name, unrenameSequent(bot), i, forward, UnRenameVariables(p, mapVar), (if (mapVar contains x) then mapVar(x) else x), t1)
+        case LeftSubstIff(name: String, bot: Sequent, i: Int, forward, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(name, unrenameSequent(bot), i, forward, UnRenameVariables(r, mapVar), a, t1) // TODO : check that
+        case RightSubstIff(name: String, bot: Sequent, i: Int, forward, r: Formula, a: AtomicSymbol, t1: String) => RightSubstIff(name, unrenameSequent(bot), i, forward, UnRenameVariables(r, mapVar), a, t1) // TODO : check that
         case InstFun(name: String, bot: Sequent, f: FunctionSymbol, t: (Term, Seq[VariableSymbol]), t1: String) => InstFun(name, unrenameSequent(bot), f, (UnRenameVariablesInTerm(t._1, mapVar), t._2.map(x => (if (mapVar contains x) then mapVar(x) else x))), t1)
         case InstPred(name: String, bot: Sequent, p: AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), t1: String) => InstPred(name, unrenameSequent(bot), p, (UnRenameVariables(phi._1, mapVar), phi._2.map(x => (if (mapVar contains x) then mapVar(x) else x))), t1)
         case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>  LeftHyp(name, unrenameSequent(bot), i, j)
@@ -914,7 +916,7 @@ class Tseitin {
         case LeftWeakenRes(name: String, bot: Sequent, i: Int, t1: String) => LeftWeakenRes(name, renameTseitinConstantSequent(bot), i, t1)
         case RightWeaken(name: String, bot: Sequent, i: Int, t1: String) => RightWeaken(name, renameTseitinConstantSequent(bot), i, t1)
         case ElimIffRefl(name: String, bot: Sequent, i: Int, t1: String) => ElimIffRefl(name, renameTseitinConstantSequent(bot), i, t1)
-        case Cut(name: String, bot: Sequent, i: Int, j: Int, t1: String, t2: String) => Cut(name, renameTseitinConstantSequent(bot), i, j, t1, t2)
+        case Cut(name: String, bot: Sequent, i: Int, t1: String, t2: String) => Cut(name, renameTseitinConstantSequent(bot), i, t1, t2)
         case LeftAnd(name: String, bot: Sequent, i: Int, t1: String) => LeftAnd(name, renameTseitinConstantSequent(bot), i, t1)
         case LeftOr(name: String, bot: Sequent, i: Int, t1: String, t2: String) =>  LeftOr(name, renameTseitinConstantSequent(bot), i, t1, t2)
         case LeftImplies(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftImplies(name, renameTseitinConstantSequent(bot), i, t1, t2)
@@ -931,11 +933,11 @@ class Tseitin {
         case RightForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => RightForall(name, renameTseitinConstantSequent(bot), i, y, t1)
         case InstForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => InstForall(name, renameTseitinConstantSequent(bot), i, y, t1)
         case RightRefl(name: String, bot: Sequent, i: Int) => RightRefl(name, renameTseitinConstantSequent(bot), i)
-        case LeftSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(name, renameTseitinConstantSequent(bot), i,  substituteAtomicsInFormula(p, mapTseitinConst), x, t1)
-        case RightSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => RightSubst(name, renameTseitinConstantSequent(bot), i,  substituteAtomicsInFormula(p, mapTseitinConst), x, t1)
-        case LeftSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(name, renameTseitinConstantSequent(bot), i,  substituteAtomicsInFormula(r, mapTseitinConst),  if (mapTseitinConst contains a) then mapTseitinConst(a).label else a, t1) // TODO : check that
-        case RightSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => 
-          RightSubstIff(name, renameTseitinConstantSequent(bot), i,  substituteAtomicsInFormula(r, mapTseitinConst), 
+        case LeftSubst(name: String, bot: Sequent, i: Int, forward, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(name, renameTseitinConstantSequent(bot), i, forward,  substituteAtomicsInFormula(p, mapTseitinConst), x, t1)
+        case RightSubst(name: String, bot: Sequent, i: Int, forward, p: Formula, x: VariableSymbol, t1: String) => RightSubst(name, renameTseitinConstantSequent(bot), i, forward, substituteAtomicsInFormula(p, mapTseitinConst), x, t1)
+        case LeftSubstIff(name: String, bot: Sequent, i: Int, forward, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(name, renameTseitinConstantSequent(bot), i, forward, substituteAtomicsInFormula(r, mapTseitinConst),  if (mapTseitinConst contains a) then mapTseitinConst(a).label else a, t1) // TODO : check that
+        case RightSubstIff(name: String, bot: Sequent, i: Int, forward, r: Formula, a: AtomicSymbol, t1: String) => 
+          RightSubstIff(name, renameTseitinConstantSequent(bot), i, forward,  substituteAtomicsInFormula(r, mapTseitinConst), 
           {
           val res = mapTseitinConst.filter(x2 => { a.id.name == x2._1.id.name})
           if res.size > 0 
@@ -1014,7 +1016,7 @@ class Tseitin {
         case LeftWeakenRes(name: String, bot: Sequent, i: Int, t1: String) => LeftWeakenRes(name, modifyOrStepsSequent(bot), i, t1)
         case RightWeaken(name: String, bot: Sequent, i: Int, t1: String) => RightWeaken(name, modifyOrStepsSequent(bot), i, t1)
         case ElimIffRefl(name: String, bot: Sequent, i: Int, t1: String) => ElimIffRefl(name, modifyOrStepsSequent(bot), i, t1)
-        case Cut(name: String, bot: Sequent, i: Int, j: Int, t1: String, t2: String) => Cut(name, modifyOrStepsSequent(bot), i, j, t1, t2)
+        case Cut(name: String, bot: Sequent, i: Int, t1: String, t2: String) => Cut(name, modifyOrStepsSequent(bot), i, t1, t2)
         case LeftAnd(name: String, bot: Sequent, i: Int, t1: String) => LeftAnd(name, modifyOrStepsSequent(bot), i, t1)
         case LeftOr(name: String, bot: Sequent, i: Int, t1: String, t2: String) =>  LeftOr(name, modifyOrStepsSequent(bot), i, t1, t2)
         case LeftImplies(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftImplies(name, modifyOrStepsSequent(bot), i, t1, t2)
@@ -1030,10 +1032,10 @@ class Tseitin {
         case RightExists(name: String, bot: Sequent, i: Int, t: Term, t1: String) => RightExists(name, modifyOrStepsSequent(bot), i, t, t1)
         case RightForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => RightForall(name, modifyOrStepsSequent(bot), i, y, t1)
         case RightRefl(name: String, bot: Sequent, i: Int) => RightRefl(name, modifyOrStepsSequent(bot), i)
-        case LeftSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(name, modifyOrStepsSequent(bot), i,  p, x, t1)
-        case RightSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => RightSubst(name, modifyOrStepsSequent(bot), i,  p, x, t1)
-        case LeftSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(name, modifyOrStepsSequent(bot), i,  r, a, t1) // TODO : check that
-        case RightSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => RightSubstIff(name, modifyOrStepsSequent(bot), i,  r, a, t1) // TODO : check that
+        case LeftSubst(name: String, bot: Sequent, i: Int, forward: Boolean, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(name, modifyOrStepsSequent(bot), i, forward,  p, x, t1)
+        case RightSubst(name: String, bot: Sequent, i: Int, forward: Boolean, p: Formula, x: VariableSymbol, t1: String) => RightSubst(name, modifyOrStepsSequent(bot), i, forward,  p, x, t1)
+        case LeftSubstIff(name: String, bot: Sequent, i: Int, forward: Boolean, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(name, modifyOrStepsSequent(bot), i, forward,  r, a, t1) // TODO : check that
+        case RightSubstIff(name: String, bot: Sequent, i: Int, forward: Boolean, r: Formula, a: AtomicSymbol, t1: String) => RightSubstIff(name, modifyOrStepsSequent(bot), i, forward,  r, a, t1) // TODO : check that
         case InstFun(name: String, bot: Sequent, f: FunctionSymbol, t: (Term, Seq[VariableSymbol]), t1: String) => InstFun(name, modifyOrStepsSequent(bot), f, t, t1)
         case InstPred(name: String, bot: Sequent, p: AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), t1: String) => InstPred(name, modifyOrStepsSequent(bot), p, phi, t1)
         case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>  LeftHyp(name, modifyOrStepsSequent(bot), i, j)
@@ -1077,7 +1079,7 @@ class Tseitin {
         case LeftWeakenRes(name: String, bot: Sequent, i: Int, t1: String) => LeftWeakenRes(name, Sequent(bot.left ++ context, bot.right), i, t1)
         case RightWeaken(name: String, bot: Sequent, i: Int, t1: String) => RightWeaken(name, Sequent(bot.left ++ context, bot.right), i, t1)
         case ElimIffRefl(name: String, bot: Sequent, i: Int, t1: String) => ElimIffRefl(name, Sequent(bot.left ++ context, bot.right), i, t1)
-        case Cut(name: String, bot: Sequent, i: Int, j: Int, t1: String, t2: String) => Cut(name, Sequent(bot.left ++ context, bot.right), i, j, t1, t2)
+        case Cut(name: String, bot: Sequent, i: Int, t1: String, t2: String) => Cut(name, Sequent(bot.left ++ context, bot.right), i, t1, t2)
         case LeftAnd(name: String, bot: Sequent, i: Int, t1: String) => LeftAnd(name, Sequent(bot.left ++ context, bot.right), i, t1)
         case LeftOr(name: String, bot: Sequent, i: Int, t1: String, t2: String) =>  LeftOr(name, Sequent(bot.left ++ context, bot.right), i, t1, t2)
         case LeftImplies(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftImplies(name, Sequent(bot.left ++ context, bot.right), i, t1, t2)
@@ -1093,10 +1095,10 @@ class Tseitin {
         case RightExists(name: String, bot: Sequent, i: Int, t: Term, t1: String) => RightExists(name, Sequent(bot.left ++ context, bot.right), i, t, t1)
         case RightForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => RightForall(name, Sequent(bot.left ++ context, bot.right), i, y, t1)
         case RightRefl(name: String, bot: Sequent, i: Int) => RightRefl(name, Sequent(bot.left ++ context, bot.right), i)
-        case LeftSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(name, Sequent(bot.left ++ context, bot.right), i, p, x, t1)
-        case RightSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => RightSubst(name, Sequent(bot.left ++ context, bot.right), i, p, x, t1)
-        case LeftSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(name, Sequent(bot.left ++ context, bot.right), i, r, a, t1) // TODO : check that
-        case RightSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => RightSubstIff(name, Sequent(bot.left ++ context, bot.right), i, r, a, t1) // TODO : check that
+        case LeftSubst(name: String, bot: Sequent, i: Int, forward, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(name, Sequent(bot.left ++ context, bot.right), i, forward, p, x, t1)
+        case RightSubst(name: String, bot: Sequent, i: Int, forward, p: Formula, x: VariableSymbol, t1: String) => RightSubst(name, Sequent(bot.left ++ context, bot.right), i, forward, p, x, t1)
+        case LeftSubstIff(name: String, bot: Sequent, i: Int, forward, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(name, Sequent(bot.left ++ context, bot.right), i, forward, r, a, t1) // TODO : check that
+        case RightSubstIff(name: String, bot: Sequent, i: Int, forward, r: Formula, a: AtomicSymbol, t1: String) => RightSubstIff(name, Sequent(bot.left ++ context, bot.right), i, forward, r, a, t1) // TODO : check that
         case InstFun(name: String, bot: Sequent, f: FunctionSymbol, t: (Term, Seq[VariableSymbol]), t1: String) => InstFun(name, Sequent(bot.left ++ context, bot.right), f, t, t1)
         case InstPred(name: String, bot: Sequent, p: AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), t1: String) => InstPred(name, Sequent(bot.left ++ context, bot.right), p, phi, t1)
         case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>  LeftHyp(name, Sequent(bot.left ++ context, bot.right), i, j)
@@ -1141,7 +1143,7 @@ class Tseitin {
         case LeftWeakenRes(name: String, bot: Sequent, i: Int, t1: String) => LeftWeakenRes(name, Sequent(Seq(), bot.right), i, t1)
         case RightWeaken(name: String, bot: Sequent, i: Int, t1: String) => RightWeaken(name, Sequent(Seq(), bot.right), i, t1)
         case ElimIffRefl(name: String, bot: Sequent, i: Int, t1: String) => ElimIffRefl(name, Sequent(Seq(), bot.right), i, t1)
-        case Cut(name: String, bot: Sequent, i: Int, j: Int, t1: String, t2: String) => Cut(name, Sequent(Seq(), bot.right), i, j, t1, t2)
+        case Cut(name: String, bot: Sequent, i: Int, t1: String, t2: String) => Cut(name, Sequent(Seq(), bot.right), i, t1, t2)
         case LeftAnd(name: String, bot: Sequent, i: Int, t1: String) => LeftAnd(name, Sequent(Seq(), bot.right), i, t1)
         case LeftOr(name: String, bot: Sequent, i: Int, t1: String, t2: String) =>  LeftOr(name, Sequent(Seq(), bot.right), i, t1, t2)
         case LeftImplies(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftImplies(name, Sequent(Seq(), bot.right), i, t1, t2)
@@ -1157,10 +1159,10 @@ class Tseitin {
         case RightExists(name: String, bot: Sequent, i: Int, t: Term, t1: String) => RightExists(name, Sequent(Seq(), bot.right), i, t, t1)
         case RightForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => RightForall(name, Sequent(Seq(), bot.right), i, y, t1)
         case RightRefl(name: String, bot: Sequent, i: Int) => RightRefl(name, Sequent(Seq(), bot.right), i)
-        case LeftSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(name, Sequent(Seq(), bot.right), i, p, x, t1)
-        case RightSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => RightSubst(name, Sequent(Seq(), bot.right), i, p, x, t1)
-        case LeftSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(name, Sequent(Seq(), bot.right), i, r, a, t1) // TODO : check that
-        case RightSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => RightSubstIff(name, Sequent(Seq(), bot.right), i, r, a, t1) // TODO : check that
+        case LeftSubst(name: String, bot: Sequent, i: Int, forward, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(name, Sequent(Seq(), bot.right), i, forward, p, x, t1)
+        case RightSubst(name: String, bot: Sequent, i: Int, forward, p: Formula, x: VariableSymbol, t1: String) => RightSubst(name, Sequent(Seq(), bot.right), i, forward, p, x, t1)
+        case LeftSubstIff(name: String, bot: Sequent, i: Int, forward, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(name, Sequent(Seq(), bot.right), i, forward, r, a, t1) // TODO : check that
+        case RightSubstIff(name: String, bot: Sequent, i: Int, forward, r: Formula, a: AtomicSymbol, t1: String) => RightSubstIff(name, Sequent(Seq(), bot.right), i, forward, r, a, t1) // TODO : check that
         case InstFun(name: String, bot: Sequent, f: FunctionSymbol, t: (Term, Seq[VariableSymbol]), t1: String) => InstFun(name, Sequent(Seq(), bot.right), f, t, t1)
         case InstPred(name: String, bot: Sequent, p: AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), t1: String) => InstPred(name, Sequent(Seq(), bot.right), p, phi, t1)
         case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>  LeftHyp(name, Sequent(Seq(), bot.right), i, j)
@@ -1191,7 +1193,7 @@ class Tseitin {
   def removeFalse(context: Seq[AtomicFormula], lastId: String): Seq[LVL1ProofStep] = {
     Seq(
       LeftFalse("stepFalse0", Sequent(Seq(), Seq())),
-      Cut("stepFalse1", Sequent(context, Seq()), 0, 0, lastId , "stepFalse0")
+      Cut("stepFalse1", Sequent(context, Seq()), 0, lastId , "stepFalse0")
     )
   }
 
@@ -1213,7 +1215,7 @@ class Tseitin {
         case LeftWeakenRes(name: String, bot: Sequent, i: Int, t1: String) => LeftWeakenRes(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
         case RightWeaken(name: String, bot: Sequent, i: Int, t1: String) => RightWeaken(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
         case ElimIffRefl(name: String, bot: Sequent, i: Int, t1: String) => ElimIffRefl(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
-        case Cut(name: String, bot: Sequent, i: Int, j: Int, t1: String, t2: String) => Cut(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, j, t1, t2)
+        case Cut(name: String, bot: Sequent, i: Int, t1: String, t2: String) => Cut(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1, t2)
         case LeftAnd(name: String, bot: Sequent, i: Int, t1: String) => LeftAnd(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
         case LeftOr(name: String, bot: Sequent, i: Int, t1: String, t2: String) =>  LeftOr(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1, t2)
         case LeftImplies(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftImplies(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1, t2)
@@ -1229,10 +1231,10 @@ class Tseitin {
         case RightExists(name: String, bot: Sequent, i: Int, t: Term, t1: String) => RightExists(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t, t1)
         case RightForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => RightForall(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, y, t1)
         case RightRefl(name: String, bot: Sequent, i: Int) => RightRefl(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i)
-        case LeftSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, p, x, t1)
-        case RightSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => RightSubst(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, p, x, t1)
-        case LeftSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, r, a, t1) // TODO : check that
-        case RightSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => RightSubstIff(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, r, a, t1) // TODO : check that
+        case LeftSubst(name: String, bot: Sequent, i: Int, forward, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, forward, p, x, t1)
+        case RightSubst(name: String, bot: Sequent, i: Int, forward, p: Formula, x: VariableSymbol, t1: String) => RightSubst(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, forward, p, x, t1)
+        case LeftSubstIff(name: String, bot: Sequent, i: Int, forward, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, forward, r, a, t1) // TODO : check that
+        case RightSubstIff(name: String, bot: Sequent, i: Int, forward, r: Formula, a: AtomicSymbol, t1: String) => RightSubstIff(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, forward, r, a, t1) // TODO : check that
         case InstFun(name: String, bot: Sequent, f: FunctionSymbol, t: (Term, Seq[VariableSymbol]), t1: String) => InstFun(name, Sequent(bot.left, removeFalse2Aux(bot.right)), f, t, t1)
         case InstPred(name: String, bot: Sequent, p: AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), t1: String) => InstPred(name, Sequent(bot.left, removeFalse2Aux(bot.right)), p, phi, t1)
         case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>  LeftHyp(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, j)
@@ -1272,7 +1274,7 @@ class Tseitin {
       Let("psi", Sequent(Seq(psi), Seq(originalFormula))),
       Hyp("addPsi0", Sequent(Seq(psi), Seq(psi)), 0),
       RightNot("addPsi1", Sequent(Seq(), Seq(psi, phi)), 0, "addPsi0"),
-      Cut("addPsi2", Sequent(context.drop(1), Seq(psi)), 1, 0, "addPsi1", parent)
+      Cut("addPsi2", Sequent(context.drop(1), Seq(psi)), 1, "addPsi1", parent)
     )
   }
 

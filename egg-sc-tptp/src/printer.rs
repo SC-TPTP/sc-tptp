@@ -167,8 +167,8 @@ pub enum SCTPTPRule {
   RightRefl {name: String, bot: fol::Sequent, i: i32},
   RightReflIff {name: String, bot: fol::Sequent, i: i32},
   //format!("fof(f{i}, plain, [{newleft}] --> [{base} = {res}], inference(rightSubst, [status(thm), 0, $fof({base} = {with_hole}), $fot(HOLE)), [f{}])).\n", *i-1) 
-  RightSubst {name: String, bot: fol::Sequent, premise: String, i: i32, phi: fol::Formula, v: String},
-  RightSubstIff {name: String, bot: fol::Sequent, premise: String, i: i32, phi: fol::Formula, v: String},
+  RightSubst {name: String, bot: fol::Sequent, premise: String, i: i32, flip:bool, phi: fol::Formula, v: String},
+  RightSubstIff {name: String, bot: fol::Sequent, premise: String, i: i32, flip:bool, phi: fol::Formula, v: String},
   LeftForall {name: String, bot: fol::Sequent, premise: String, i: i32, t: fol::Term},
   Cut {name: String, bot: fol::Sequent, premise1: String, premise2: String, i1: i32, i2: i32},
   RightSubstEqForallLocal {name: String, bot: fol::Sequent, premise: String, i: i32, phi: fol::Formula, v: String},
@@ -191,10 +191,10 @@ impl std::fmt::Display for SCTPTPRule {
         write!(f, "fof({}, plain, {}, inference(rightRefl, [status(thm), {}], [])).", name, bot, i),
       SCTPTPRule::RightReflIff {name, bot, i} => 
         write!(f, "fof({}, plain, {}, inference(rightReflIff, [status(thm), {}], [])).", name, bot, i),
-      SCTPTPRule::RightSubst {name, bot, premise, i, phi, v} => 
-        write!(f, "fof({}, plain, {}, inference(rightSubst, [status(thm), {}, $fof({}), '{}'], [{}])).", name, bot, i, phi, v, premise),
-      SCTPTPRule::RightSubstIff {name, bot, premise, i, phi, v} => 
-        write!(f, "fof({}, plain, {}, inference(rightSubstIff, [status(thm), {}, $fof({}), '{}'], [{}])).", name, bot, i, phi, v, premise),
+      SCTPTPRule::RightSubst {name, bot, premise, i, flip, phi, v} => 
+        write!(f, "fof({}, plain, {}, inference(rightSubst, [status(thm), {}, {}, $fof({}), '{}'], [{}])).", name, bot, i, if *flip {true} else {false}, phi, v, premise),
+      SCTPTPRule::RightSubstIff {name, bot, premise, i, flip, phi, v} => 
+        write!(f, "fof({}, plain, {}, inference(rightSubstIff, [status(thm), {}, {}, $fof({}), '{}'], [{}])).", name, bot, i, if *flip {true} else {false}, phi, v, premise),
       SCTPTPRule::LeftForall {name, bot, premise, i, t} => 
         write!(f, "fof({}, plain, {}, inference(leftForall, [status(thm), {}, $fot({})], [{}])).", name, bot, i, t, premise),
       SCTPTPRule::Cut {name, bot, premise1, premise2, i1, i2} => 
@@ -252,6 +252,7 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
         bot: fol::Sequent {left: newleft, right: vec![res.clone()]},
         premise: format!("f{}", *i-1),
         i: 0,
+        flip: backward,
         phi: with_hole,
         v: "HOLE".to_owned()
       };
@@ -307,6 +308,7 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
         bot: fol::Sequent {left: newleft, right: vec![res.clone()]},
         premise: format!("f{}", *i-1),
         i: 0,
+        flip: backward,
         phi: with_hole,
         v: "HOLE".to_owned()
       };

@@ -58,6 +58,7 @@ object SequentCalculus {
     val premises: Seq[String]
 
     def checkCorrectness(premises: String => Sequent): Option[String]
+    def toStringWithPremises(premises: String => Sequent): String = toString
   }
 
 
@@ -76,7 +77,7 @@ object SequentCalculus {
       s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${i}, $$fot(${term})], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     def outputWithSubst(name: String, rule: String, bot: Sequent, i: Int, term: String, subterm: String, premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${i}, $$fof(${term}), $$fot(${subterm})], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${i}, $$fof(${term}), '${subterm}'], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     def outputWithSubstIff(name: String, rule: String, bot: Sequent, i: Int, term: String, subterm: String, premises: Seq[String]): String = 
       s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${i}, $$fof(${term})) $$fof(${subterm})], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
@@ -88,7 +89,7 @@ object SequentCalculus {
       s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), $$fot(${F.toString()}), $$fot(${t._1.toString()}), [${t._2.map(st => s"$$fot(${st.toString()})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     def outputWithInstPred(name: String, rule: String, bot: Sequent, P: AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), $$fof(${P.toString()}), $$fot(${phi._1.toString()}), [${phi._2.map(st => s"$$fot(${st.toString()})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), '${P.toString()}', $$fof(${phi._1.toString()}), [${phi._2.map(st => s"'${st.toString()}'").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     }
 
@@ -159,6 +160,27 @@ object SequentCalculus {
     inner(steps.iterator)
   }
 
+  def printProof[Steps<:SCProofStep](p: SCProof[Steps]): Unit = {
+    val steps = p.steps
+    val premises: scala.collection.mutable.Map[String, Sequent] = scala.collection.mutable.Map()
+    def inner(steps: Iterator[Steps]): Unit =
+      if steps.hasNext then
+        val step = steps.next()
+        println(step.toStringWithPremises(premises))
+        premises.update(step.name, step.bot)
+        inner(steps)
+    inner(steps.iterator)
+  }
+
+  def ProofToString[Steps<:SCProofStep](p: SCProof[Steps]): String = {
+    val steps = p.steps
+    val premises: scala.collection.mutable.Map[String, Sequent] = scala.collection.mutable.Map()
+    def inner(step: Steps): String =
+        premises.update(step.name, step.bot)
+        step.toStringWithPremises(premises)
+    steps.foldLeft("")((acc, x) => acc ++ inner(x) ++ "\n")
+  }
+
 
   sealed trait LVL1ProofStep extends SCProofStep
 
@@ -190,6 +212,20 @@ object SequentCalculus {
 
 
   private def contains(seq: Seq[Formula], f: Formula): Boolean = seq.contains(f)
+
+
+  /**
+   * --------------
+   *    Γ |- Δ
+   *
+   * @param bot Resulting formula
+   */
+  case class Conjecture(name: String, bot: Sequent) extends LVL1ProofStep {
+    val premises = Seq()
+    override def toString: String =
+      s"fof(${name}, conjecture, ${bot})."
+    def checkCorrectness(premises: String => Sequent): Option[String] = None
+  }
 
   /**
    * --------------
@@ -227,7 +263,7 @@ object SequentCalculus {
    */
   case class Hyp(name: String, bot: Sequent, i: Int) extends LVL1ProofStep {
     val premises = Seq()
-    override def toString: String = SCProofStep.outputSingleIndex(name, HypRuleName, "assumption", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, "assumption", HypRuleName, bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val fi = bot.left(i)
       if bot.right.exists(isSame(_, fi)) then None else Some(s"${fi} is not in the right-hand side of the conclusion.")
@@ -652,7 +688,7 @@ object SequentCalculus {
    */
   case class RightNot(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, RightNotRuleName, "plain", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", RightNotRuleName, bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val nA = bot.right(i)
       nA match

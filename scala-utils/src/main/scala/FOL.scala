@@ -279,8 +279,9 @@ object FOL {
   }
 
 
-  def substituteAtomicsInFormula(phi: Formula, m: Map[AtomicSymbol, Formula], takenIds: Seq[Identifier] = Seq[Identifier]()): Formula = phi match {
-    case AtomicFormula(label, args) => if args.size == 0 then m.getOrElse(label, phi) else phi
+  def substituteAtomicsInFormula(phi: Formula, m: Map[AtomicSymbol, Formula], takenIds: Seq[Identifier] = Seq[Identifier]()): Formula = 
+    phi match {
+    case AtomicFormula(label, args) => if args.size == 0 then {m.toSeq.foldLeft(phi)((acc, x) => {if (x._1.id.name == label.id.name) then x._2 else acc})} else phi
     case ConnectorFormula(label, args) => ConnectorFormula(label, args.map(substituteAtomicsInFormula(_, m))
     )
     case BinderFormula(label, bound, inner) => 

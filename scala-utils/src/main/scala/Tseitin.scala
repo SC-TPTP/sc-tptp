@@ -24,6 +24,8 @@ import scala.util.matching.Regex
 import Parser.*
 import java.io.File
 import sctptp.SequentCalculus.RulesName.LeftFalseRuleName
+import java.io.InputStream
+import java.nio.file.StandardCopyOption
 
 
 
@@ -37,10 +39,11 @@ class Tseitin {
   val ladrName = "ts"
   var ladrCpt = -1
   val instantiateName = "i"
-  val tseitinStepName = "tsStep"
+  val tseitinStepName = "$tsStep"
   val tseitinStepNameExpl = "tsStepExpl"
   val NoneFormula : Formula = AtomicFormula(AtomicSymbol("None", 0), Seq())
   var phi = NoneFormula
+  val psi = AtomicFormula(AtomicSymbol("$psi", 0), Seq())
   var originalFormula = NoneFormula
   var cptTSExpSteps = -1
 
@@ -87,17 +90,14 @@ class Tseitin {
     // Transform a formula into nnf
   def toNegatedFormula(f: sctptp.FOL.Formula): (sctptp.FOL.Formula, AtomicFormula, Seq[LVL2ProofStep]) = {
     val phi_name = "phi"
-    phi = AtomicFormula(AtomicSymbol(Identifier("phi"), 0), Seq())
+    phi = AtomicFormula(AtomicSymbol(Identifier("$"+phi_name), 0), Seq())
     originalFormula = f
     val new_f = ConnectorFormula(Neg , Seq(f)) 
     val initial_let = Let(phi_name, Sequent(Seq(phi), Seq(new_f)))
 
     (new_f, phi.asInstanceOf[AtomicFormula], Seq(
-      LeftSubstIff("sc_step1", Sequent(Seq(phi), Seq(new_f)), 0, new_f, phi.asInstanceOf[AtomicFormula].label, "nc_step0"),
-      NegatedConjecture("nc_step0", Sequent(Seq(new_f), Seq(new_f)), ""), 
+      Hyp("negated_conjecture", Sequent(Seq(new_f), Seq(new_f)), 0), 
       initial_let))
-
-    //todo : add right iff 
   }
 
   // Transform a formula into nnf
@@ -152,7 +152,7 @@ class Tseitin {
       }
     }
     val new_f = toNNFForm(f)
-    (new_f, NNF("nnf_step", Sequent(Seq(phi), Seq(new_f)), "nc_step1"))
+    (new_f, NNF("nnf_step", Sequent(Seq(phi), Seq(new_f)), 0, 0, "negated_conjecture"))
   }
 
   // Transform a formula in Prenex Normal form (move quantifier to the top)
@@ -188,8 +188,8 @@ class Tseitin {
 
   // Instantiate universal quantifiers and returns a map [oldName, newName], the new formula, and has renamed them according to P9 standard
   // 0 = forall, 1 = exists
-  def toInstantiated(f: sctptp.FOL.Formula): (sctptp.FOL.Formula, Map[VariableSymbol, VariableSymbol], Seq[LVL1ProofStep]) = {
-      def toInstantiatedAux(f2: sctptp.FOL.Formula, accVS: Map[VariableSymbol, VariableSymbol], accT: Map[VariableSymbol, Term], accProof: Seq[LVL1ProofStep], cpt: Int): (sctptp.FOL.Formula, Map[VariableSymbol, VariableSymbol], Seq[LVL1ProofStep]) = {
+  def toInstantiated(f: sctptp.FOL.Formula): (sctptp.FOL.Formula, Map[VariableSymbol, VariableSymbol], Seq[LVL2ProofStep]) = {
+      def toInstantiatedAux(f2: sctptp.FOL.Formula, accVS: Map[VariableSymbol, VariableSymbol], accT: Map[VariableSymbol, Term], accProof: Seq[LVL2ProofStep], cpt: Int): (sctptp.FOL.Formula, Map[VariableSymbol, VariableSymbol], Seq[LVL2ProofStep]) = {
         f2 match 
           case BinderFormula(label, bound, inner) => {
             label match
@@ -200,7 +200,7 @@ class Tseitin {
                 val new_accT = accT + (bound -> new_term)
                 varCpt = varCpt+1
                 val new_form = substituteVariablesInFormula(inner, new_accT)
-                val ps = RightForall(instantiateName+cpt, Sequent(Seq(phi), Seq(new_form)), 0, bound, if cpt > 0 then s"${instantiateName}${cpt-1}" else "prenex_step")
+                val ps = InstForall(instantiateName+cpt, Sequent(Seq(phi), Seq(new_form)), 0, new_symbol, if cpt > 0 then s"${instantiateName}${cpt-1}" else "prenex_step")
                 val (new_f, new_acc_next_steps, new_accProof) = toInstantiatedAux(new_form, new_accVS, new_accT, ps +: accProof , cpt+1)
                 (new_f, new_acc_next_steps, new_accProof)
               }
@@ -273,47 +273,48 @@ class Tseitin {
   def toTseitin(f2: sctptp.FOL.Formula): sctptp.FOL.Formula =  {
 
     def toTseitinAux(f: sctptp.FOL.Formula): (sctptp.FOL.Formula, sctptp.FOL.Formula) = {
-    val varT = if (getTseitinTermVar() contains f) then getTseitinTermVar()(f) else f
-    val varTneg = ConnectorFormula(Neg, Seq(varT))
-    f match
-      case AtomicFormula(label, args) => (f, NoneFormula) 
-      case ConnectorFormula(label, args) => {
-        // println(s"La variable introduite pour ${f.toString()} est ${varT.toString()}")
-        label match {
-          case Neg => {
-            val (p, c) = toTseitinAux(args(0))
-            (ConnectorFormula(Neg, Seq(p)), c)
-          }
-          case And => {
-            val (p1, c1) = toTseitinAux(args(0))
-            val (p2, c2) = toTseitinAux(args(1))
-            val formTokeep = 
-              (c1, c2) match
-                case (NoneFormula, NoneFormula) => Seq()
-                case (_, NoneFormula) => Seq(c1)
-                case (NoneFormula, _) => Seq(c2)
-                case (_, _) => Seq(c1, c2)
-            val new_c = ConnectorFormula(And, formTokeep ++ Seq(ConnectorFormula(Or, Seq(varT, ConnectorFormula(Neg, Seq(p1)), ConnectorFormula(Neg, Seq(p2))))) :+ ConnectorFormula(Or, Seq(varTneg, p1)) :+ ConnectorFormula(Or, Seq(varTneg, p2)))
-            (varT, new_c)
-          } 
 
-          case Or => {
-            val (p1, c1) = toTseitinAux(args(0))
-            val (p2, c2) = toTseitinAux(args(1))
-            val formTokeep = 
-              (c1, c2) match
-                case (NoneFormula, NoneFormula) => Seq()
-                case (_, NoneFormula) => Seq(c1)
-                case (NoneFormula, _) => Seq(c2)
-                case (_, _) => Seq(c1, c2)
-            val new_c = ConnectorFormula(And, formTokeep ++ Seq(ConnectorFormula(Or, Seq(varTneg, p1, p2))) :+ ConnectorFormula(Or, Seq(varT, ConnectorFormula(Neg, Seq(p1)))) :+ ConnectorFormula(Or, Seq(varT, ConnectorFormula(Neg, Seq(p2)))))
-            (varT, new_c)
-          } 
-          case _ => throw new Exception("toTseitin failed")
+      val varT = if (getTseitinTermVar() contains f) then getTseitinTermVar()(f) else f
+      val varTneg = ConnectorFormula(Neg, Seq(varT))
+      f match
+        case AtomicFormula(label, args) => (f, NoneFormula) 
+        case ConnectorFormula(label, args) => {
+          // println(s"La variable introduite pour ${f.toString()} est ${varT.toString()}")
+          label match {
+            case Neg => {
+              val (p, c) = toTseitinAux(args(0))
+              (ConnectorFormula(Neg, Seq(p)), c)
+            }
+            case And => {
+              val (p1, c1) = toTseitinAux(args(0))
+              val (p2, c2) = toTseitinAux(args(1))
+              val formTokeep = 
+                (c1, c2) match
+                  case (NoneFormula, NoneFormula) => Seq()
+                  case (_, NoneFormula) => Seq(c1)
+                  case (NoneFormula, _) => Seq(c2)
+                  case (_, _) => Seq(c1, c2)
+              val new_c = ConnectorFormula(And, formTokeep ++ Seq(ConnectorFormula(Or, Seq(varT, ConnectorFormula(Neg, Seq(p1)), ConnectorFormula(Neg, Seq(p2))))) :+ ConnectorFormula(Or, Seq(varTneg, p1)) :+ ConnectorFormula(Or, Seq(varTneg, p2)))
+              (varT, new_c)
+            } 
+
+            case Or => {
+              val (p1, c1) = toTseitinAux(args(0))
+              val (p2, c2) = toTseitinAux(args(1))
+              val formTokeep = 
+                (c1, c2) match
+                  case (NoneFormula, NoneFormula) => Seq()
+                  case (_, NoneFormula) => Seq(c1)
+                  case (NoneFormula, _) => Seq(c2)
+                  case (_, _) => Seq(c1, c2)
+              val new_c = ConnectorFormula(And, formTokeep ++ Seq(ConnectorFormula(Or, Seq(varTneg, p1, p2))) :+ ConnectorFormula(Or, Seq(varT, ConnectorFormula(Neg, Seq(p1)))) :+ ConnectorFormula(Or, Seq(varT, ConnectorFormula(Neg, Seq(p2)))))
+              (varT, new_c)
+            } 
+            case _ => throw new Exception("toTseitin failed")
+          }
         }
+        case BinderFormula(label, bound, inner) => (varT, BinderFormula(label, bound, toTseitin(inner)))
       }
-      case BinderFormula(label, bound, inner) => (varT, BinderFormula(label, bound, toTseitin(inner)))
-    }
 
     val (l: sctptp.FOL.Formula, c: sctptp.FOL.Formula) = toTseitinAux(f2) 
     // println(s"c = ${c.toString()}")
@@ -354,7 +355,7 @@ class Tseitin {
   def generateLet(f: sctptp.FOL.Formula, sf: sctptp.FOL.Formula, cpt: Int): (LVL2ProofStep, AtomicFormula) = {
     val atomicForm = AtomicFormula(AtomicSymbol(Identifier(tseitinStepName + cpt), 0), Seq())
     val new_f = sf.freeVariables.foldLeft(ConnectorFormula(Iff, Seq(f, sf)).asInstanceOf[Formula])((acc, x) => BinderFormula(Forall, x, acc))
-    (Let(atomicForm.label.id.name, Sequent(Seq(), Seq(new_f))), atomicForm)
+    (Let(atomicForm.label.id.name.drop(1), Sequent(Seq(), Seq(new_f))), atomicForm)
   }
 
   // Input : a formula f and a map an generate the let that connect he variable to the formula
@@ -367,31 +368,85 @@ class Tseitin {
     (res._1, res._2, res._3)
     }
   
-
   // Compute tsStep steps, that replace a tseitin formula
   def computeTseitinReplacementSteps(s: SCProofStep, tsNames: Seq[AtomicFormula], map: Map[AtomicFormula, AtomicFormula], tsSteps: Seq[LVL2ProofStep], original_parent: String): Seq[LVL2ProofStep] = {
 
       // if there is a forall in the corresponding axiom, first instantiate it 
-      def computeTseitinReplacementStepsAux(f: Formula, final_f: RightSubstIff, f_right: Formula): Seq[LVL2ProofStep] = {
+      def computeTseitinReplacementStepsAux(
+        f: Formula, 
+        f_right: Formula,
+        previousForms: Seq[Formula],
+        fSubstituted: Formula,
+        fSubstituted2: Formula,
+        new_var: AtomicSymbol,
+        parent: String,
+        ): Seq[LVL2ProofStep] = {
         val f_with_qt = f
 
         f_with_qt match
-          case AtomicFormula(label, args) => Seq(final_f)
-          case ConnectorFormula(label, args) => Seq(final_f)
-          case BinderFormula(label, bound, inner) => 
+          case AtomicFormula(_, _) |  ConnectorFormula(_, _) => {
+              cptTSExpSteps = cptTSExpSteps + 1
+              val final_f = RightSubstIff(tseitinStepNameExpl+cptTSExpSteps,
+              Sequent( 
+              previousForms, // les formules d'avant, avec un acc
+              Seq(fSubstituted)), 
+              previousForms.size-1, 
+              fSubstituted2,
+              new_var, 
+              parent)
+              Seq(final_f)
+          }
+          case BinderFormula(label, bound, inner) => {
             label match
               case Forall => {
                 cptTSExpSteps = cptTSExpSteps+1
-                val f_next_step = LeftForall(tseitinStepNameExpl+cptTSExpSteps, Sequent(final_f.bot.left :+ inner, Seq(f_right)), 0, Variable(bound), tseitinStepNameExpl+(cptTSExpSteps-1))
-                f_next_step +: computeTseitinReplacementStepsAux(inner, final_f, f_right) // same with inner
+                val f_next_step = LeftForall(tseitinStepNameExpl+cptTSExpSteps, Sequent(phi +: tsNames.take(previousForms.size+1), Seq(f_right)), previousForms.size, Variable(bound), tseitinStepNameExpl+(cptTSExpSteps+2))
+                computeTseitinReplacementStepsAux(inner, f_right, previousForms, fSubstituted, fSubstituted2, new_var, parent) :+ f_next_step// same with inner
               }
               case Exists => throw Exception("Compute Tseitin replacement step: existential quantifier not allowed")
+          }
       }
+      
+      def computeInnerFromStep(s: LVL2ProofStep): Formula = {
+        def computeInnerFromStepAux(f: Formula): Formula = {
+          f match 
+            case AtomicFormula(label, args) => f
+            case ConnectorFormula(label, args) => f 
+            case BinderFormula(label, bound, inner) => computeInnerFromStepAux(inner)
+        }
 
-      // computeTseitinReplacementStepsAux
+        s.bot.right(0) match 
+          case AtomicFormula(label, args) => AtomicFormula(AtomicSymbol("$"+s.name, 0), Seq())
+          case ConnectorFormula(label, args) => AtomicFormula(AtomicSymbol("$"+s.name, 0), Seq())
+          case BinderFormula(label, bound, inner) => computeInnerFromStepAux(inner)
+      }
+      // fof(i0, plain, [$phi] --> [(p(V0) & (~p(a) | ~p(b)))], inference(instForall, [status(thm), 0, $fot(V0)], [prenex_step])).
+      // fof(tsStep0, let, (Ts3 <=> (~p(a) | ~p(b)))).
+      // fof(tsStep1, let, ! [V0]: (Ts1(V0) <=> (p(V0) & Ts3))).
 
-      tsSteps.foldLeft(
-        (Seq[LVL2ProofStep](), 0, Map[Formula, Formula](), s.bot.right(0)))(
+      // TS1
+      // fof(tsStepExpl0, plain, [$phi,$tsStep0] --> [(p(V0) & Ts3)], inference(rightSubstIff, [status(thm), 1, $fof(p(V0) & A), 'A'], [i0])).
+      
+      
+      // fof(tsStepExpl1, plain, [$phi,$tsStep0,(Ts1(V0) <=> (p(V0) & Ts3))] --> [Ts1(V0)], inference(rightSubstIff, [status(thm), 2, $fof(A), 'A'], [tsStepExpl0])).
+      
+      // TS0
+      // fof(4, plain, [$phi,$tsStep0,$tsStep1] --> [Ts1(V0)], inference(leftForall, [status(thm), 2, $fot(V0)], [tsStepExpl1])).
+
+
+      // println("#####################")
+      // tsSteps.map(x => println(x))
+      // println("-------------------")
+      // println(tsNames)
+      // println("-------------------")
+      // println(map)
+      // println("-------------------")
+      // println(tseitinTermVarUp)
+      // println("#####################")
+
+
+      val final_res = tsSteps.foldLeft(
+        (Seq[LVL2ProofStep](), 0, Map[Formula, Formula](), s.bot.right(0), Seq[LVL2ProofStep]()))(
           (acc, x) => {
 
             val new_acc3 = acc._3 + (tseitinVarTermUp(map(tsNames(acc._2))) -> map(tsNames(acc._2)))
@@ -400,65 +455,203 @@ class Tseitin {
               acc._4, 
               new_acc3 
               )
+
+            val new_var = AtomicSymbol(Identifier("A"), 0)
+            val fSubstituted2 = substituteFormulaInFormula(
+              acc._4, 
+              acc._3 + (tseitinVarTermUp(map(tsNames(acc._2))) -> AtomicFormula(new_var, Seq())) 
+            )
             val parent = if (acc._2 == 0) then original_parent else tseitinStepNameExpl+cptTSExpSteps
             
-            cptTSExpSteps = cptTSExpSteps + 1
-            val final_f = RightSubstIff(tseitinStepNameExpl+cptTSExpSteps,
-            Sequent( 
-            phi +: previousForms, // les formules d'avant, avec un acc
-            Seq(fSubstituted)), 
-            0, 
-            tseitinVarTermUp(map(tsNames(acc._2))),
-            AtomicSymbol(map(tsNames(acc._2)).toString(), 0), 
-            parent)
 
             // Compute the formula with free variables
-            val aux_steps = computeTseitinReplacementStepsAux(x.bot.right(0), final_f, substituteFormulaInFormula(
-              fSubstituted, 
-              if (acc._2 < tsSteps.size -1) 
-                then new_acc3 + (tseitinVarTermUp(map(tsNames(acc._2 + 1))) -> map(tsNames(acc._2 + 1)))
-                else new_acc3
-              ))
+            val aux_steps = computeTseitinReplacementStepsAux(
+              x.bot.right(0), 
+              substituteFormulaInFormula(
+                fSubstituted, 
+                if (acc._2 < tsSteps.size -1) 
+                  then new_acc3 + (tseitinVarTermUp(map(tsNames(acc._2 + 1))) -> map(tsNames(acc._2 + 1)))
+                  else new_acc3
+              ), 
+              phi +: previousForms,
+              fSubstituted,
+              fSubstituted2,
+              new_var,
+              parent
+              ).reverse
+
+            // cptTSExpSteps = cptTSExpSteps + 1
+            val final_f = aux_steps.last
+
+            val old_x = if (acc._5.size == 0) then Seq() else (Seq(computeInnerFromStep(acc._5(0))))
+
+            val final_f2 = RightSubstIff(tseitinStepNameExpl+cptTSExpSteps,
+            Sequent( 
+            phi +: (previousForms.dropRight(1) ++old_x), // les formules d'avant, avec un acc
+            Seq(fSubstituted)), 
+            previousForms.size, 
+            fSubstituted2,
+            new_var, 
+            parent)
+
+            
+            val final_f3 = if aux_steps.size > 1 then final_f else final_f2
+            val final_aux = aux_steps.dropRight(1) // if aux_steps.size == 0 then Seq() else aux_steps.dropRight(1)
+
+            // println(s"Je traite : ${x.name}")
+            // println(s"fSubst = " + fSubstituted)
+            // println(s"final_f = " + final_f)
+            // println(s"fSubst2 = " + fSubstituted)
+            // println(AtomicFormula(AtomicSymbol("$"+x.name, 0), Seq()))
+            // println(map(AtomicFormula(AtomicSymbol("$"+x.name, 0), Seq())))
+            // println(substituteFormulaInFormula(fSubstituted, 
+            // Map[Formula, Formula]() + (AtomicFormula(AtomicSymbol(map(tsNames(acc._2)).toString(), 0), Seq()) -> AtomicFormula(new_var, Seq()))))
+            // println(s"Aux steps = ")
+            // aux_steps.map(x => println(x))
+            // println(s"acc._1 steps = ")
+            // acc._1.map(x => println(x))
+            // println(s"final_aux = ")
+            // final_aux.map(x => println(x))
+            // println(s"final_2 = " + final_f2)
+            // println(s"final_3 = " + final_f3)
+
+            // println("----------------------")
+
+
 
             (
-            acc._1 ++ aux_steps.reverse, 
+            (final_f3 +: final_aux).reverse ++ acc._1, 
             acc._2+1, 
             new_acc3, 
-            fSubstituted
-        )})._1.reverse
+            fSubstituted,
+            Seq(x)
+        )})._1
+
+      // TS1
+      // fof(tsStepExpl0, plain, [$phi,$tsStep0] --> [(p(V0) & Ts3)], inference(rightSubstIff, [status(thm), 1, $fof(p(V0) & A), 'A'], [i0])).
+      
+      
+      // fof(tsStepExpl1, plain, [$phi,$tsStep0,(Ts1(V0) <=> (p(V0) & Ts3))] --> [Ts1(V0)], inference(rightSubstIff, [status(thm), 2, $fof(A), 'A'], [tsStepExpl0])).
+      
+      // TS0
+      // fof(4, plain, [$phi,$tsStep0,$tsStep1] --> [Ts1(V0)], inference(leftForall, [status(thm), 2, $fot(V0)], [tsStepExpl1])).
+
+        final_res(1) +: final_res(0) +: final_res(2) +: Seq()
   }
   
   // Generate Tseitin Step
-  def generateTseitinStep(f: Formula, context: Seq[Formula], parent: Int, scproof: SCProof[?]): SCProof[?] = {
-    val firstStep = TseitinStep("tseitinStep", Sequent(context, Seq(f)), tseitinStepNameExpl+parent)
+  def generateTseitinStep(f: Formula, context: Seq[Formula], parent: Seq[LVL2ProofStep], scproof: SCProof[?], map: Map[AtomicFormula, AtomicFormula], tsSteps: Seq[LVL2ProofStep]): (SCProof[?], String) = {
+
+    val new_map = map.map(_.swap)
+    val new_tsSteps = tsSteps.foldLeft(Map[String, Formula]())((acc, x) => {
+      acc + (x.name -> x.bot.right(0))
+    })
+
+    // println(new_map)
+    // println(tseitinVarTermUp)
+    // println(tseitinTermVarUp)
+    // tsSteps.map(x => println(x))
+    // new_tsSteps.map(x => println(x))
+    // println("------------")
 
     val clausalSteps = f.asInstanceOf[ConnectorFormula].args.foldLeft((Seq[LVL2ProofStep](), 0))((acc, x) => {
-      (Clausify(acc._2.toString(),Sequent(phi +: context, Seq(x)), "") +: acc._1, acc._2+1)
-    })._1 // :+ firstStep
+      val first_elem = {
+        x match
+          case AtomicFormula(label, args) => x
+          case ConnectorFormula(label, args) => args(0)
+          case BinderFormula(label, bound, inner) => throw Exception("Forall in clausal step")
+      } 
+      val first_elem_neg = {
+        first_elem match
+          case AtomicFormula(label, args) => ConnectorFormula(Neg, Seq(first_elem))
+          case ConnectorFormula(label, args) => {
+            label match
+              case Neg => args(0)
+              case _ => first_elem
+          }
+          case BinderFormula(label, bound, inner) => throw Exception("Forall in clausal step")
+        
+      }
+      val associated_step = new_map.toSeq.foldLeft(NoneFormula)((acc, x) => {
+        if (areAlphaEquivalent(x._1, first_elem) || areAlphaEquivalent(x._1, first_elem_neg)) 
+          then (x._2) 
+          else (acc)
+      })
 
-    val new_steps = scproof.steps.flatMap(x => {
+      val clausify_step = Clausify(acc._2.toString(),Sequent(phi +: context, Seq(x)), context.indexOf(associated_step)+1, "")
+      (clausify_step +: acc._1, acc._2+1)
+    })._1 
+
+    var last_step = "-1"
+
+    val new_steps = scproof.steps.filter(x => {
+      if !(areAlphaEquivalent(x.bot.right(0), parent(0).bot.right(0)))
+      then true 
+      else {last_step = x.name; false}
+      }
+      ).flatMap(x => {
       x match {
         case Axiom(name: String, bot: Sequent) => {
-          val originalStep = clausalSteps.filter(x => areAlphaEquivalent(x.bot.right(0), toFlatternOr(bot.right(0))))
+          val flat_formula = toFlatternOr(bot.right(0))
+          val originalStep = clausalSteps.filter(x => areAlphaEquivalent(x.bot.right(0), flat_formula))
           if (originalStep.size > 0) 
-            then Some(Clausify(name, Sequent(Seq(), Seq(toFlatternOr(originalStep(0).bot.right(0)))), ""))
+            then {
+              if flat_formula.isInstanceOf[ConnectorFormula]
+                then Some(Clausify(name, Sequent(phi +: context, flat_formula.asInstanceOf[ConnectorFormula].args), originalStep(0).asInstanceOf[Clausify].i, ""))
+                else Some(Clausify(name, Sequent(phi +: context, Seq(flat_formula)), originalStep(0).asInstanceOf[Clausify].i, ""))
+            }
             else None
         }
         case _ => Some(x)
       }})
+
+    val new_new_steps = new_steps.foldLeft(Seq[SCProofStep]())((acc, x) => {
+      x match
+        case Clausify(name, bot, i, t1) => acc ++ {
+          // println(x)
+          val linked_formula = new_tsSteps(bot.left(i).asInstanceOf[AtomicFormula].label.id.name.drop(1)) 
+          if linked_formula.isInstanceOf[BinderFormula]
+
+            then {
+              val linked_form_binder = linked_formula.asInstanceOf[BinderFormula]
+              val inst_form = linked_form_binder.inner
+
+              // modify x
+              val new_x = Clausify("a"+name, Sequent(bot.left.dropRight(1) :+ inst_form, bot.right), i, t1)
+
+              // create forall step
+              val forallstep = LeftForall(name, bot, i, Variable(linked_form_binder.bound), "a"+name)
+
+              Seq(new_x, forallstep)
+            }
+            else Seq(x)
+        }
+        case _ => acc :+ addContextStep(x, phi +: context)
+      
+    })
+
+    // val new_new_new_steps = removeContextProof(new_new_steps)
+    // println("------------")
+    // new_new_steps.map(x => println(x))
   
-    if new_steps.forall(_.isInstanceOf[LVL1ProofStep]) then LVL1Proof(new_steps.toIndexedSeq.asInstanceOf[IndexedSeq[LVL1ProofStep]], scproof.thmName)
-    if new_steps.forall(_.isInstanceOf[LVL2ProofStep]) then LVL2Proof(new_steps.toIndexedSeq.asInstanceOf[IndexedSeq[LVL2ProofStep]], scproof.thmName)
+    if new_new_steps.forall(_.isInstanceOf[LVL1ProofStep]) then (LVL1Proof(new_new_steps.toIndexedSeq.asInstanceOf[IndexedSeq[LVL1ProofStep]], scproof.thmName), last_step)
+    if new_new_steps.forall(_.isInstanceOf[LVL2ProofStep]) then (LVL2Proof(new_new_steps.toIndexedSeq.asInstanceOf[IndexedSeq[LVL2ProofStep]], scproof.thmName), last_step)
     else throw new Exception("Some proof steps could not be unrenamed")
   }
 
   // generate axioms to give to p9, writ them on a file, launch p9 on the file, retrieve the result as a list of proof steps
   def toP9(f: Formula): SCProof[?] = {
-    val path = Paths.get("../proofs/p9/p9.p")
+
+    val pathname = "./p9proof"
+    val pathdir = Paths.get(pathname)
+    if(!(Files.exists(pathdir) && Files.isDirectory(pathdir)))
+      Files.createDirectory(pathdir)
 
     // Create the file if it doesn't exist
-    if (!Files.exists(path)) {
-      Files.createFile(path)
+    val pathfilepname = pathname+"/p9.p"
+    val pathfilep = Paths.get(pathfilepname)
+    if (!Files.exists(pathfilep)) {
+      Files.createFile(pathfilep)
     }
 
     // Write some content into the file
@@ -466,19 +659,41 @@ class Tseitin {
       (acc._1 + s"fof(${acc._2}, axiom, ${x.toString()}).\n\n", acc._2+1)
     })._1
 
-    Files.write(path, content.getBytes(StandardCharsets.UTF_8))
+    Files.write(pathfilep, content.getBytes(StandardCharsets.UTF_8))
 
-    // println(s"Content written to: ${path.toAbsolutePath}")
+    println(s"Content written to: ${pathfilep.toAbsolutePath}")
+
+    val pathfileinname = pathname+"/p9.in"
+    val pathfileout = pathname+"/p9.out"
+    
+    println(System.getProperty("user.dir"))
+
+    // Prepare the executable by reading it from the JAR and setting executable permissions
+    val executableName = "sh -c \"../../src/main/ressources/tptp_to_ladr < " + pathfilepname + " | ../../src/main/ressources/prover9 > " + pathfileinname + " && ../../src/main/ressources/prooftrans ivy -f " + pathfileinname + " >  " + pathfileout + "\""
+    val command = executableName // This would be a command that can execute on the system
+
+    try {
+      // Launch the executable directly (assuming it's a script or a binary)
+      val result = command.!
+      if (result == 0) {
+        println("Executable ran successfully!")
+      } else {
+        println(s"Executable failed with exit code $result")
+      }
+    } catch {
+      case e: Exception =>
+        println(s"Error executing the resource: ${e.getMessage}")
+    }
+
 
     // Command to execute with shell
-    val command = "sh -c \"./../p9-sc-tptp/tptp_to_ladr < ../proofs/p9/p9.p | ./../p9-sc-tptp/prover9 > ../proofs/p9/p9.in && ./../p9-sc-tptp/prooftrans ivy -f ../proofs/p9/p9.in > ../proofs/p9/p9.out\""
+    // val command = "sh -c \"./../p9-sc-tptp/tptp_to_ladr < " + pathfilepname + " | ./../p9-sc-tptp/prover9 > " + pathfileinname + " && ./../p9-sc-tptp/prooftrans ivy -f " + pathfileinname + " >  " + pathfileout + "\""
 
     // Run the command and redirect both stdout and stderr to /dev/null
-    val exitCode = command #> new java.io.File("/dev/null") #>> new java.io.File("/dev/null")
+    // val exitCode = command.!
 
 
-    val filePath = "../proofs/p9/p9.out"
-    val fileContent = Source.fromFile(filePath).getLines().mkString("\n")
+    val fileContent = Source.fromFile(pathfileout).getLines().mkString("\n")
 
     // Debug: Check the positions of the start and end markers
     val startPos = fileContent.indexOf(";; BEGINNING OF PROOF OBJECT")
@@ -491,16 +706,78 @@ class Tseitin {
     // println("Extracted Proof Content:")
     // println(proofContent)
 
-    val path2 = Paths.get("../proofs/p9/p9_proof.p")
+    val pathfileoutname = pathname+"/p9proof.p"
+    val pathproof = Paths.get(pathfileoutname)
 
     // Create the file if it doesn't exist
-    if (!Files.exists(path2)) {
-      Files.createFile(path2)
+    if (!Files.exists(pathproof)) {
+      Files.createFile(pathproof)
     }
 
-    Files.write(path2, proofContent.getBytes(StandardCharsets.UTF_8))
+    Files.write(pathproof, proofContent.getBytes(StandardCharsets.UTF_8))
 
-    Parser.reconstructProof(new File("../proofs/p9/p9_proof.p"))
+    Parser.reconstructProof(new File(pathfileoutname))
+  }
+
+  def updateId(proof: Seq[LVL2ProofStep], s: String): Seq[LVL2ProofStep] = {
+
+    def updateIdStep(step: LVL2ProofStep, s: String): LVL2ProofStep = {
+      step match {
+        case Axiom(name: String, bot: Sequent) => Axiom(s, bot)
+        case Hyp(name: String, bot: Sequent, i: Int) => Hyp(s, bot, i)
+        case LeftFalse(name: String, bot: Sequent) =>  LeftFalse(s, bot)
+        case LeftWeaken(name: String, bot: Sequent, i: Int, t1: String) => LeftWeaken(s, bot, i, t1)
+        case LeftWeakenRes(name: String, bot: Sequent, i: Int, t1: String) => LeftWeakenRes(s, bot, i, t1)
+        case RightWeaken(name: String, bot: Sequent, i: Int, t1: String) => RightWeaken(s, bot, i, t1)
+        case ElimIffRefl(name: String, bot: Sequent, i: Int, t1: String) => ElimIffRefl(s, bot, i, t1)
+        case Cut(name: String, bot: Sequent, i: Int, j: Int, t1: String, t2: String) => Cut(s, bot, i, j, t1, t2)
+        case LeftAnd(name: String, bot: Sequent, i: Int, t1: String) => LeftAnd(s, bot, i, t1)
+        case LeftOr(name: String, bot: Sequent, i: Int, t1: String, t2: String) =>  LeftOr(s, bot, i, t1, t2)
+        case LeftImplies(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftImplies(s, bot, i, t1, t2)
+        case LeftIff(name: String, bot: Sequent, i: Int, t1: String) => LeftIff(s, bot, i, t1)
+        case LeftNot(name: String, bot: Sequent, i: Int, t1: String) => LeftNot(s, bot, i, t1)
+        case LeftExists(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => LeftExists(s, bot, i, y, t1)
+        case LeftForall(name: String, bot: Sequent, i: Int, t: Term, t1: String) => LeftForall(s, bot, i, t, t1)
+        case RightAnd(name: String, bot: Sequent, i: Int, t1: String, t2: String) => RightAnd(s, bot, i, t1, t2)
+        case RightOr(name: String, bot: Sequent, i: Int, t1: String) => RightOr(s, bot, i, t1)
+        case RightImplies(name: String, bot: Sequent, i: Int, t1: String) => RightImplies(s, bot, i, t1)
+        case RightIff(name: String, bot: Sequent, i: Int, t1: String, t2: String) => RightIff(s, bot, i, t1, t2)
+        case RightNot(name: String, bot: Sequent, i: Int, t1: String) => RightNot(s, bot, i, t1)
+        case RightExists(name: String, bot: Sequent, i: Int, t: Term, t1: String) => RightExists(s, bot, i, t, t1)
+        case RightForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => RightForall(s, bot, i, y, t1)
+        case RightRefl(name: String, bot: Sequent, i: Int) => RightRefl(s, bot, i)
+        case LeftSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(s, bot, i,  p, x, t1)
+        case RightSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => RightSubst(s, bot, i,  p, x, t1)
+        case LeftSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(s, bot, i,  r, a, t1) // TODO : check that
+        case RightSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => RightSubstIff(s, bot, i,  r, a, t1) // TODO : check that
+        case InstFun(name: String, bot: Sequent, f: FunctionSymbol, t: (Term, Seq[VariableSymbol]), t1: String) => InstFun(s, bot, f, t, t1)
+        case InstPred(name: String, bot: Sequent, p: AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), t1: String) => InstPred(s, bot, p, phi, t1)
+        case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>  LeftHyp(s, bot, i, j)
+        case LeftImp2(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftImp2(s, bot, i, t1, t2)
+        case LeftNotAnd(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftNotAnd(s, bot, i, t1, t2)
+        case LeftNotOr(name: String, bot: Sequent, i: Int, t1: String) => LeftNotOr(s, bot, i, t1)
+        case LeftNotImp(name: String, bot: Sequent, i: Int, t1: String) => LeftNotImp(s, bot, i, t1)
+        case LeftNotIff(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftNotIff(s, bot, i, t1, t2)
+        case LeftNotNot(name: String, bot: Sequent, i: Int, t1: String) => LeftNotNot(s, bot, i, t1)
+        case LeftNotEx(name: String, bot: Sequent, i: Int, t: Term, t1: String) => LeftNotEx(s, bot, i, t, t1)
+        case LeftNotAll(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => LeftNotAll(s, bot, i, y, t1)
+        case RightSubstMulti(name: String, bot: Sequent, is: List[Int], p: Formula, xs: List[VariableSymbol], t1: String) => RightSubstMulti(s, bot, is: List[Int],  p, xs, t1)
+        case LeftSubstMulti(name: String, bot: Sequent, is: List[Int], p: Formula, xs: List[VariableSymbol], t1: String) => LeftSubstMulti(s, bot, is: List[Int],  p, xs, t1)
+        case Congruence(name: String, bot: Sequent) => Congruence(s, bot)
+        case Res(name: String, bot: Sequent, i1: Int, i2: Int, t1: String, t2: String) => Res(s, bot, i1, i2, t1, t2)
+        case NegatedConjecture(name: String, bot: Sequent, t1: String) => NegatedConjecture(s, bot, t1)
+        case Clausify(name: String, bot: Sequent, i: Int, t1: String) => Clausify(s, bot, i, t1)
+        case NNF(name: String, bot: Sequent, i:Int, j: Int, t1: String) => NNF(s, bot, i, j, t1)
+        case Instantiate_L(name: String, bot: Sequent, i: Int, x: VariableSymbol, t: Term, parent: String) =>  Instantiate_L(s, bot, i, x, t, parent)
+        case InstantiateMult(name: String, bot: Sequent, i: Int, terms: Seq[(VariableSymbol, Term)], parent: String) => InstantiateMult(s, bot, i, terms, parent)
+        case Prenex(name: String, bot: Sequent, t1: String) => Prenex(s, bot, t1)
+        case Let(name: String, bot: Sequent) => Let(s, bot)
+        case TseitinStep(name: String, bot: Sequent, t1: String) => TseitinStep(s, bot, t1)
+        case _ => throw Exception("Proof step not found")
+      }
+    }
+
+    updateIdStep(proof(0), s) +: proof.drop(1)
   }
 
 
@@ -594,8 +871,8 @@ class Tseitin {
         case Congruence(name: String, bot: Sequent) => Congruence(name, unrenameSequent(bot))
         case Res(name: String, bot: Sequent, i1: Int, i2: Int, t1: String, t2: String) => Res(name, unrenameSequent(bot), i1, i2, t1, t2)
         case NegatedConjecture(name: String, bot: Sequent, t1: String) => NegatedConjecture(name, unrenameSequent(bot), t1)
-        case Clausify(name: String, bot: Sequent, t1: String) => Clausify(name, unrenameSequent(bot), t1)
-        case NNF(name: String, bot: Sequent, t1: String) => NNF(name, unrenameSequent(bot), t1)
+        case Clausify(name: String, bot: Sequent, i: Int, t1: String) => Clausify(name, unrenameSequent(bot), i, t1)
+        case NNF(name: String, bot: Sequent, i:Int, j: Int, t1: String) => NNF(name, unrenameSequent(bot), i, j, t1)
         case Instantiate_L(name: String, bot: Sequent, i: Int, x: VariableSymbol, t: Term, parent: String) =>  Instantiate_L(name, unrenameSequent(bot), i, (if (mapVar contains x) then mapVar(x) else x), UnRenameVariablesInTerm(t, mapVar), parent)
         case InstantiateMult(name: String, bot: Sequent, i: Int, terms: Seq[(VariableSymbol, Term)], parent: String) => InstantiateMult(name, unrenameSequent(bot), i: Int, terms.map((x, y) => { ((if (mapVar contains x) then mapVar(x) else x), UnRenameVariablesInTerm(y, mapVar))}), parent)
         case _ => throw Exception("Proof step not found")
@@ -612,7 +889,6 @@ class Tseitin {
 
     // Input : a formula f and a map an generate the let that connect the variable to the formula
   def renameTseitinConstant(scproof: SCProof[?]): SCProof[?] = {
-
     val mapTseitinConstAux = tseitinVarTerm.flatMap((k, v) => {
       k match 
         case AtomicFormula(label, args) if (label.arity == 0) => Some(label)
@@ -633,9 +909,11 @@ class Tseitin {
       x match {
         case Axiom(name: String, bot: Sequent) => Axiom(name, renameTseitinConstantSequent(bot))
         case Hyp(name: String, bot: Sequent, i: Int) => Hyp(name, renameTseitinConstantSequent(bot), i)
+        case LeftFalse(name: String, bot: Sequent) =>  LeftFalse(name, renameTseitinConstantSequent(bot))
         case LeftWeaken(name: String, bot: Sequent, i: Int, t1: String) => LeftWeaken(name, renameTseitinConstantSequent(bot), i, t1)
         case LeftWeakenRes(name: String, bot: Sequent, i: Int, t1: String) => LeftWeakenRes(name, renameTseitinConstantSequent(bot), i, t1)
         case RightWeaken(name: String, bot: Sequent, i: Int, t1: String) => RightWeaken(name, renameTseitinConstantSequent(bot), i, t1)
+        case ElimIffRefl(name: String, bot: Sequent, i: Int, t1: String) => ElimIffRefl(name, renameTseitinConstantSequent(bot), i, t1)
         case Cut(name: String, bot: Sequent, i: Int, j: Int, t1: String, t2: String) => Cut(name, renameTseitinConstantSequent(bot), i, j, t1, t2)
         case LeftAnd(name: String, bot: Sequent, i: Int, t1: String) => LeftAnd(name, renameTseitinConstantSequent(bot), i, t1)
         case LeftOr(name: String, bot: Sequent, i: Int, t1: String, t2: String) =>  LeftOr(name, renameTseitinConstantSequent(bot), i, t1, t2)
@@ -651,13 +929,28 @@ class Tseitin {
         case RightNot(name: String, bot: Sequent, i: Int, t1: String) => RightNot(name, renameTseitinConstantSequent(bot), i, t1)
         case RightExists(name: String, bot: Sequent, i: Int, t: Term, t1: String) => RightExists(name, renameTseitinConstantSequent(bot), i, t, t1)
         case RightForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => RightForall(name, renameTseitinConstantSequent(bot), i, y, t1)
+        case InstForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => InstForall(name, renameTseitinConstantSequent(bot), i, y, t1)
         case RightRefl(name: String, bot: Sequent, i: Int) => RightRefl(name, renameTseitinConstantSequent(bot), i)
         case LeftSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(name, renameTseitinConstantSequent(bot), i,  substituteAtomicsInFormula(p, mapTseitinConst), x, t1)
         case RightSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => RightSubst(name, renameTseitinConstantSequent(bot), i,  substituteAtomicsInFormula(p, mapTseitinConst), x, t1)
-        case LeftSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(name, renameTseitinConstantSequent(bot), i,  substituteAtomicsInFormula(r, mapTseitinConst), a, t1) // TODO : check that
-        case RightSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => RightSubstIff(name, renameTseitinConstantSequent(bot), i,  substituteAtomicsInFormula(r, mapTseitinConst), a, t1) // TODO : check that
+        case LeftSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(name, renameTseitinConstantSequent(bot), i,  substituteAtomicsInFormula(r, mapTseitinConst),  if (mapTseitinConst contains a) then mapTseitinConst(a).label else a, t1) // TODO : check that
+        case RightSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => 
+          RightSubstIff(name, renameTseitinConstantSequent(bot), i,  substituteAtomicsInFormula(r, mapTseitinConst), 
+          {
+          val res = mapTseitinConst.filter(x2 => { a.id.name == x2._1.id.name})
+          if res.size > 0 
+          then res.head._2.label
+          else a 
+          },          
+          t1) // TODO : check that
         case InstFun(name: String, bot: Sequent, f: FunctionSymbol, t: (Term, Seq[VariableSymbol]), t1: String) => InstFun(name, renameTseitinConstantSequent(bot), f, t, t1)
-        case InstPred(name: String, bot: Sequent, p: AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), t1: String) => InstPred(name, renameTseitinConstantSequent(bot), p, ( substituteAtomicsInFormula(phi._1, mapTseitinConst), phi._2), t1)
+        case InstPred(name: String, bot: Sequent, p: AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), t1: String) => InstPred(name, renameTseitinConstantSequent(bot), { if (mapTseitinConst contains p) then mapTseitinConst(p).label else p}, 
+        (substituteAtomicsInFormula(phi._1, mapTseitinConst), phi._2.map(x => {
+          val res = mapTseitinConst.filter(x2 => { x.name.name == x2._1.id.name})
+          if res.size > 0 
+          then VariableSymbol(res.head._2.label.id)
+          else x 
+          })), t1)
         case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>  LeftHyp(name, renameTseitinConstantSequent(bot), i, j)
         case LeftImp2(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftImp2(name, renameTseitinConstantSequent(bot), i, t1, t2)
         case LeftNotAnd(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftNotAnd(name, renameTseitinConstantSequent(bot), i, t1, t2)
@@ -672,8 +965,8 @@ class Tseitin {
         case Congruence(name: String, bot: Sequent) => Congruence(name, renameTseitinConstantSequent(bot))
         case Res(name: String, bot: Sequent, i1: Int, i2: Int, t1: String, t2: String) => Res(name, renameTseitinConstantSequent(bot), i1, i2, t1, t2)
         case NegatedConjecture(name: String, bot: Sequent, t1: String) => NegatedConjecture(name, renameTseitinConstantSequent(bot), t1)
-        case Clausify(name: String, bot: Sequent, t1: String) => Clausify(name, renameTseitinConstantSequent(bot), t1)
-        case NNF(name: String, bot: Sequent, t1: String) => NNF(name, renameTseitinConstantSequent(bot), t1)
+        case Clausify(name: String, bot: Sequent,  i: Int, t1: String) => Clausify(name, renameTseitinConstantSequent(bot), i, t1)
+        case NNF(name: String, bot: Sequent, i:Int, j: Int, t1: String) => NNF(name, renameTseitinConstantSequent(bot), i, j, t1)
         case Instantiate_L(name: String, bot: Sequent, i: Int, x: VariableSymbol, t: Term, parent: String) =>  Instantiate_L(name, renameTseitinConstantSequent(bot), i, x, t, parent)
         case InstantiateMult(name: String, bot: Sequent, i: Int, terms: Seq[(VariableSymbol, Term)], parent: String) => InstantiateMult(name, renameTseitinConstantSequent(bot), i, terms, parent)
         case Prenex(name: String, bot: Sequent, t1: String) => Prenex(name, renameTseitinConstantSequent(bot), t1)
@@ -691,15 +984,99 @@ class Tseitin {
     
   }
 
-  // Add context 
-  def addContextProof(scproof: SCProof[?], context: Seq[AtomicFormula]): SCProof[?] = {    
+  def modifyOrSteps(scproof: SCProof[?]): SCProof[?] = {
+
+    def modifyOrStepsForm(f: Formula): Seq[Formula] = {
+      f match {
+        case ConnectorFormula(label, args) => 
+            label match { 
+              case Or => toFlatternOr(f).asInstanceOf[ConnectorFormula].args
+              case _ => Seq(f)
+            }
+        case _ => Seq(f)
+      }
+    }
+
+    def modifyOrStepsFormList(seq: Seq[Formula]): Seq[Formula] = {
+      seq.foldLeft(Seq[Formula]())((acc, e) => {acc ++ modifyOrStepsForm(e)})
+    }
+
+    def modifyOrStepsSequent(seq: Sequent): Sequent = {
+      Sequent(modifyOrStepsFormList(seq.left), modifyOrStepsFormList(seq.right))
+    }
+
     val new_steps = scproof.steps.map(x => {
+      x match {
+        case Axiom(name: String, bot: Sequent) => Axiom(name, modifyOrStepsSequent(bot))
+        case Hyp(name: String, bot: Sequent, i: Int) => Hyp(name, modifyOrStepsSequent(bot), i)
+        case LeftFalse(name: String, bot: Sequent) =>  LeftFalse(name, modifyOrStepsSequent(bot))
+        case LeftWeaken(name: String, bot: Sequent, i: Int, t1: String) => LeftWeaken(name, modifyOrStepsSequent(bot), i, t1)
+        case LeftWeakenRes(name: String, bot: Sequent, i: Int, t1: String) => LeftWeakenRes(name, modifyOrStepsSequent(bot), i, t1)
+        case RightWeaken(name: String, bot: Sequent, i: Int, t1: String) => RightWeaken(name, modifyOrStepsSequent(bot), i, t1)
+        case ElimIffRefl(name: String, bot: Sequent, i: Int, t1: String) => ElimIffRefl(name, modifyOrStepsSequent(bot), i, t1)
+        case Cut(name: String, bot: Sequent, i: Int, j: Int, t1: String, t2: String) => Cut(name, modifyOrStepsSequent(bot), i, j, t1, t2)
+        case LeftAnd(name: String, bot: Sequent, i: Int, t1: String) => LeftAnd(name, modifyOrStepsSequent(bot), i, t1)
+        case LeftOr(name: String, bot: Sequent, i: Int, t1: String, t2: String) =>  LeftOr(name, modifyOrStepsSequent(bot), i, t1, t2)
+        case LeftImplies(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftImplies(name, modifyOrStepsSequent(bot), i, t1, t2)
+        case LeftIff(name: String, bot: Sequent, i: Int, t1: String) => LeftIff(name, modifyOrStepsSequent(bot), i, t1)
+        case LeftNot(name: String, bot: Sequent, i: Int, t1: String) => LeftNot(name, modifyOrStepsSequent(bot), i, t1)
+        case LeftExists(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => LeftExists(name, modifyOrStepsSequent(bot), i, y, t1)
+        case LeftForall(name: String, bot: Sequent, i: Int, t: Term, t1: String) => LeftForall(name, modifyOrStepsSequent(bot), i, t, t1)
+        case RightAnd(name: String, bot: Sequent, i: Int, t1: String, t2: String) => RightAnd(name, modifyOrStepsSequent(bot), i, t1, t2)
+        case RightOr(name: String, bot: Sequent, i: Int, t1: String) => RightOr(name, modifyOrStepsSequent(bot), i, t1)
+        case RightImplies(name: String, bot: Sequent, i: Int, t1: String) => RightImplies(name, modifyOrStepsSequent(bot), i, t1)
+        case RightIff(name: String, bot: Sequent, i: Int, t1: String, t2: String) => RightIff(name, modifyOrStepsSequent(bot), i, t1, t2)
+        case RightNot(name: String, bot: Sequent, i: Int, t1: String) => RightNot(name, modifyOrStepsSequent(bot), i, t1)
+        case RightExists(name: String, bot: Sequent, i: Int, t: Term, t1: String) => RightExists(name, modifyOrStepsSequent(bot), i, t, t1)
+        case RightForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => RightForall(name, modifyOrStepsSequent(bot), i, y, t1)
+        case RightRefl(name: String, bot: Sequent, i: Int) => RightRefl(name, modifyOrStepsSequent(bot), i)
+        case LeftSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(name, modifyOrStepsSequent(bot), i,  p, x, t1)
+        case RightSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => RightSubst(name, modifyOrStepsSequent(bot), i,  p, x, t1)
+        case LeftSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(name, modifyOrStepsSequent(bot), i,  r, a, t1) // TODO : check that
+        case RightSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => RightSubstIff(name, modifyOrStepsSequent(bot), i,  r, a, t1) // TODO : check that
+        case InstFun(name: String, bot: Sequent, f: FunctionSymbol, t: (Term, Seq[VariableSymbol]), t1: String) => InstFun(name, modifyOrStepsSequent(bot), f, t, t1)
+        case InstPred(name: String, bot: Sequent, p: AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), t1: String) => InstPred(name, modifyOrStepsSequent(bot), p, phi, t1)
+        case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>  LeftHyp(name, modifyOrStepsSequent(bot), i, j)
+        case LeftImp2(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftImp2(name, modifyOrStepsSequent(bot), i, t1, t2)
+        case LeftNotAnd(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftNotAnd(name, modifyOrStepsSequent(bot), i, t1, t2)
+        case LeftNotOr(name: String, bot: Sequent, i: Int, t1: String) => LeftNotOr(name, modifyOrStepsSequent(bot), i, t1)
+        case LeftNotImp(name: String, bot: Sequent, i: Int, t1: String) => LeftNotImp(name, modifyOrStepsSequent(bot), i, t1)
+        case LeftNotIff(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftNotIff(name, modifyOrStepsSequent(bot), i, t1, t2)
+        case LeftNotNot(name: String, bot: Sequent, i: Int, t1: String) => LeftNotNot(name, modifyOrStepsSequent(bot), i, t1)
+        case LeftNotEx(name: String, bot: Sequent, i: Int, t: Term, t1: String) => LeftNotEx(name, modifyOrStepsSequent(bot), i, t, t1)
+        case LeftNotAll(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => LeftNotAll(name, modifyOrStepsSequent(bot), i, y, t1)
+        case RightSubstMulti(name: String, bot: Sequent, is: List[Int], p: Formula, xs: List[VariableSymbol], t1: String) => RightSubstMulti(name, modifyOrStepsSequent(bot), is: List[Int],  p, xs, t1)
+        case LeftSubstMulti(name: String, bot: Sequent, is: List[Int], p: Formula, xs: List[VariableSymbol], t1: String) => LeftSubstMulti(name, modifyOrStepsSequent(bot), is: List[Int],  p, xs, t1)
+        case Congruence(name: String, bot: Sequent) => Congruence(name, modifyOrStepsSequent(bot))
+        case Res(name: String, bot: Sequent, i1: Int, i2: Int, t1: String, t2: String) => Res(name, modifyOrStepsSequent(bot), i1, i2, t1, t2)
+        case NegatedConjecture(name: String, bot: Sequent, t1: String) => NegatedConjecture(name, modifyOrStepsSequent(bot), t1)
+        case Clausify(name: String, bot: Sequent, i: Int, t1: String) => Clausify(name, modifyOrStepsSequent(bot), i, t1)
+        case NNF(name: String, bot: Sequent, i:Int, j: Int, t1: String) => NNF(name, modifyOrStepsSequent(bot), i, j,t1)
+        case Instantiate_L(name: String, bot: Sequent, i: Int, x: VariableSymbol, t: Term, parent: String) =>  Instantiate_L(name, modifyOrStepsSequent(bot), i, x, t, parent)
+        case InstantiateMult(name: String, bot: Sequent, i: Int, terms: Seq[(VariableSymbol, Term)], parent: String) => InstantiateMult(name, modifyOrStepsSequent(bot), i, terms, parent)
+        case Prenex(name: String, bot: Sequent, t1: String) => Prenex(name, modifyOrStepsSequent(bot), t1)
+        case Let(name: String, bot: Sequent) => Let(name, modifyOrStepsSequent(bot))
+        case TseitinStep(name: String, bot: Sequent, t1: String) => TseitinStep(name, modifyOrStepsSequent(bot), t1)
+        case _ => throw Exception("Proof step not found")
+      }
+    })
+
+    if new_steps.forall(_.isInstanceOf[LVL1ProofStep]) then LVL1Proof(new_steps.toIndexedSeq.asInstanceOf[IndexedSeq[LVL1ProofStep]], scproof.thmName)
+    if new_steps.forall(_.isInstanceOf[LVL2ProofStep]) then LVL2Proof(new_steps.toIndexedSeq.asInstanceOf[IndexedSeq[LVL2ProofStep]], scproof.thmName)
+    else throw new Exception("Some proof steps could not be unrenamed")
+  }
+
+  // Add context 
+
+  def addContextStep(x: SCProofStep, context: Seq[Formula]): SCProofStep = {
       x match {
         case Axiom(name: String, bot: Sequent) => Axiom(name, Sequent(bot.left ++ context, bot.right))
         case Hyp(name: String, bot: Sequent, i: Int) => Hyp(name, Sequent(bot.left ++ context, bot.right), i)
+        case LeftFalse(name: String, bot: Sequent) =>  LeftFalse(name, Sequent(bot.left ++ context, bot.right))
         case LeftWeaken(name: String, bot: Sequent, i: Int, t1: String) => LeftWeaken(name, Sequent(bot.left ++ context, bot.right), i, t1)
         case LeftWeakenRes(name: String, bot: Sequent, i: Int, t1: String) => LeftWeakenRes(name, Sequent(bot.left ++ context, bot.right), i, t1)
         case RightWeaken(name: String, bot: Sequent, i: Int, t1: String) => RightWeaken(name, Sequent(bot.left ++ context, bot.right), i, t1)
+        case ElimIffRefl(name: String, bot: Sequent, i: Int, t1: String) => ElimIffRefl(name, Sequent(bot.left ++ context, bot.right), i, t1)
         case Cut(name: String, bot: Sequent, i: Int, j: Int, t1: String, t2: String) => Cut(name, Sequent(bot.left ++ context, bot.right), i, j, t1, t2)
         case LeftAnd(name: String, bot: Sequent, i: Int, t1: String) => LeftAnd(name, Sequent(bot.left ++ context, bot.right), i, t1)
         case LeftOr(name: String, bot: Sequent, i: Int, t1: String, t2: String) =>  LeftOr(name, Sequent(bot.left ++ context, bot.right), i, t1, t2)
@@ -736,20 +1113,78 @@ class Tseitin {
         case Congruence(name: String, bot: Sequent) => Congruence(name, Sequent(bot.left ++ context, bot.right))
         case Res(name: String, bot: Sequent, i1: Int, i2: Int, t1: String, t2: String) => Res(name, Sequent(bot.left ++ context, bot.right), i1, i2, t1, t2)
         case NegatedConjecture(name: String, bot: Sequent, t1: String) => NegatedConjecture(name, Sequent(bot.left ++ context, bot.right), t1)
-        case Clausify(name: String, bot: Sequent, t1: String) => Clausify(name, Sequent(bot.left ++ context, bot.right), t1)
-        case NNF(name: String, bot: Sequent, t1: String) => NNF(name, Sequent(bot.left ++ context, bot.right), t1)
+        case Clausify(name: String, bot: Sequent, i: Int, t1: String) => Clausify(name, Sequent(bot.left ++ context, bot.right), i, t1)
+        case NNF(name: String, bot: Sequent, i:Int, j: Int, t1: String) => NNF(name, Sequent(bot.left ++ context, bot.right), i, j, t1)
         case Instantiate_L(name: String, bot: Sequent, i: Int, x: VariableSymbol, t: Term, parent: String) =>  Instantiate_L(name, Sequent(bot.left ++ context, bot.right), i, x, t, parent)
         case InstantiateMult(name: String, bot: Sequent, i: Int, terms: Seq[(VariableSymbol, Term)], parent: String) => InstantiateMult(name, Sequent(bot.left ++ context, bot.right), i, terms, parent)
         case _ => throw Exception("Proof step not found")
       }
+  }
 
-    })
-
+  def addContextProof(scproof: SCProof[?], context: Seq[Formula]): SCProof[?] = {    
+    val new_steps = scproof.steps.map(x => addContextStep(x, context))
     if new_steps.forall(_.isInstanceOf[LVL1ProofStep]) then LVL1Proof(new_steps.toIndexedSeq.asInstanceOf[IndexedSeq[LVL1ProofStep]], scproof.thmName)
     if new_steps.forall(_.isInstanceOf[LVL2ProofStep]) then LVL2Proof(new_steps.toIndexedSeq.asInstanceOf[IndexedSeq[LVL2ProofStep]], scproof.thmName)
     else throw new Exception("Some proof steps could not be unrenamed")
 
     
+  }
+
+    // Add context 
+  def removeContextProof(steps: Seq[SCProofStep]): Seq[SCProofStep] = {    
+    steps.map(x => {
+      x match {
+        case Axiom(name: String, bot: Sequent) => Axiom(name, Sequent(Seq(), bot.right))
+        case Hyp(name: String, bot: Sequent, i: Int) => Hyp(name, Sequent(Seq(), bot.right), i)
+        case LeftFalse(name: String, bot: Sequent) =>  LeftFalse(name, Sequent(Seq(), bot.right))
+        case LeftWeaken(name: String, bot: Sequent, i: Int, t1: String) => LeftWeaken(name, Sequent(Seq(), bot.right), i, t1)
+        case LeftWeakenRes(name: String, bot: Sequent, i: Int, t1: String) => LeftWeakenRes(name, Sequent(Seq(), bot.right), i, t1)
+        case RightWeaken(name: String, bot: Sequent, i: Int, t1: String) => RightWeaken(name, Sequent(Seq(), bot.right), i, t1)
+        case ElimIffRefl(name: String, bot: Sequent, i: Int, t1: String) => ElimIffRefl(name, Sequent(Seq(), bot.right), i, t1)
+        case Cut(name: String, bot: Sequent, i: Int, j: Int, t1: String, t2: String) => Cut(name, Sequent(Seq(), bot.right), i, j, t1, t2)
+        case LeftAnd(name: String, bot: Sequent, i: Int, t1: String) => LeftAnd(name, Sequent(Seq(), bot.right), i, t1)
+        case LeftOr(name: String, bot: Sequent, i: Int, t1: String, t2: String) =>  LeftOr(name, Sequent(Seq(), bot.right), i, t1, t2)
+        case LeftImplies(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftImplies(name, Sequent(Seq(), bot.right), i, t1, t2)
+        case LeftIff(name: String, bot: Sequent, i: Int, t1: String) => LeftIff(name, Sequent(Seq(), bot.right), i, t1)
+        case LeftNot(name: String, bot: Sequent, i: Int, t1: String) => LeftNot(name, Sequent(Seq(), bot.right), i, t1)
+        case LeftExists(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => LeftExists(name, Sequent(Seq(), bot.right), i, y, t1)
+        case LeftForall(name: String, bot: Sequent, i: Int, t: Term, t1: String) => LeftForall(name, Sequent(Seq(), bot.right), i, t, t1)
+        case RightAnd(name: String, bot: Sequent, i: Int, t1: String, t2: String) => RightAnd(name, Sequent(Seq(), bot.right), i, t1, t2)
+        case RightOr(name: String, bot: Sequent, i: Int, t1: String) => RightOr(name, Sequent(Seq(), bot.right), i, t1)
+        case RightImplies(name: String, bot: Sequent, i: Int, t1: String) => RightImplies(name, Sequent(Seq(), bot.right), i, t1)
+        case RightIff(name: String, bot: Sequent, i: Int, t1: String, t2: String) => RightIff(name, Sequent(Seq(), bot.right), i, t1, t2)
+        case RightNot(name: String, bot: Sequent, i: Int, t1: String) => RightNot(name, Sequent(Seq(), bot.right), i, t1)
+        case RightExists(name: String, bot: Sequent, i: Int, t: Term, t1: String) => RightExists(name, Sequent(Seq(), bot.right), i, t, t1)
+        case RightForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => RightForall(name, Sequent(Seq(), bot.right), i, y, t1)
+        case RightRefl(name: String, bot: Sequent, i: Int) => RightRefl(name, Sequent(Seq(), bot.right), i)
+        case LeftSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(name, Sequent(Seq(), bot.right), i, p, x, t1)
+        case RightSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => RightSubst(name, Sequent(Seq(), bot.right), i, p, x, t1)
+        case LeftSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(name, Sequent(Seq(), bot.right), i, r, a, t1) // TODO : check that
+        case RightSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => RightSubstIff(name, Sequent(Seq(), bot.right), i, r, a, t1) // TODO : check that
+        case InstFun(name: String, bot: Sequent, f: FunctionSymbol, t: (Term, Seq[VariableSymbol]), t1: String) => InstFun(name, Sequent(Seq(), bot.right), f, t, t1)
+        case InstPred(name: String, bot: Sequent, p: AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), t1: String) => InstPred(name, Sequent(Seq(), bot.right), p, phi, t1)
+        case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>  LeftHyp(name, Sequent(Seq(), bot.right), i, j)
+        case LeftImp2(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftImp2(name, Sequent(Seq(), bot.right), i, t1, t2)
+        case LeftNotAnd(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftNotAnd(name, Sequent(Seq(), bot.right), i, t1, t2)
+        case LeftNotOr(name: String, bot: Sequent, i: Int, t1: String) => LeftNotOr(name, Sequent(Seq(), bot.right), i, t1)
+        case LeftNotImp(name: String, bot: Sequent, i: Int, t1: String) => LeftNotImp(name, Sequent(Seq(), bot.right), i, t1)
+        case LeftNotIff(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftNotIff(name, Sequent(Seq(), bot.right), i, t1, t2)
+        case LeftNotNot(name: String, bot: Sequent, i: Int, t1: String) => LeftNotNot(name, Sequent(Seq(), bot.right), i, t1)
+        case LeftNotEx(name: String, bot: Sequent, i: Int, t: Term, t1: String) => LeftNotEx(name, Sequent(Seq(), bot.right), i, t, t1)
+        case LeftNotAll(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => LeftNotAll(name, Sequent(Seq(), bot.right), i, y, t1)
+        case RightSubstMulti(name: String, bot: Sequent, is: List[Int], p: Formula, xs: List[VariableSymbol], t1: String) => RightSubstMulti(name, Sequent(Seq(), bot.right), is: List[Int], p, xs, t1)
+        case LeftSubstMulti(name: String, bot: Sequent, is: List[Int], p: Formula, xs: List[VariableSymbol], t1: String) => LeftSubstMulti(name, Sequent(Seq(), bot.right), is: List[Int], p, xs, t1)
+        case Congruence(name: String, bot: Sequent) => Congruence(name, Sequent(Seq(), bot.right))
+        case Res(name: String, bot: Sequent, i1: Int, i2: Int, t1: String, t2: String) => Res(name, Sequent(Seq(), bot.right), i1, i2, t1, t2)
+        case NegatedConjecture(name: String, bot: Sequent, t1: String) => NegatedConjecture(name, Sequent(Seq(), bot.right), t1)
+        case Clausify(name: String, bot: Sequent, i: Int, t1: String) => Clausify(name, Sequent(Seq(), bot.right), i, t1)
+        case NNF(name: String, bot: Sequent, i:Int, j: Int, t1: String) => NNF(name, Sequent(Seq(), bot.right), i, j, t1)
+        case Instantiate_L(name: String, bot: Sequent, i: Int, x: VariableSymbol, t: Term, parent: String) =>  Instantiate_L(name, Sequent(Seq(), bot.right), i, x, t, parent)
+        case InstantiateMult(name: String, bot: Sequent, i: Int, terms: Seq[(VariableSymbol, Term)], parent: String) => InstantiateMult(name, Sequent(Seq(), bot.right), i, terms, parent)
+        case _ => throw Exception("Proof step not found")
+      }
+
+    })
   }
 
   // Remove $false
@@ -760,14 +1195,84 @@ class Tseitin {
     )
   }
 
+    // Remove $false
+  def removeFalse2(scproof: SCProof[?]): SCProof[?] = {
+
+    def removeFalse2Aux(l:  Seq[Formula]): Seq[Formula] = {
+      l.filter(x => {
+        !(x.isInstanceOf[AtomicFormula]) || x.asInstanceOf[AtomicFormula].label.id.name != "$false"
+      })
+    }
+
+    val new_steps = scproof.steps.map(x => {
+      x match {
+        case Axiom(name: String, bot: Sequent) => Axiom(name, Sequent(bot.left, removeFalse2Aux(bot.right)))
+        case Hyp(name: String, bot: Sequent, i: Int) => Hyp(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i)
+        case LeftFalse(name: String, bot: Sequent) =>  LeftFalse(name, Sequent(bot.left, removeFalse2Aux(bot.right)))
+        case LeftWeaken(name: String, bot: Sequent, i: Int, t1: String) => LeftWeaken(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case LeftWeakenRes(name: String, bot: Sequent, i: Int, t1: String) => LeftWeakenRes(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case RightWeaken(name: String, bot: Sequent, i: Int, t1: String) => RightWeaken(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case ElimIffRefl(name: String, bot: Sequent, i: Int, t1: String) => ElimIffRefl(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case Cut(name: String, bot: Sequent, i: Int, j: Int, t1: String, t2: String) => Cut(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, j, t1, t2)
+        case LeftAnd(name: String, bot: Sequent, i: Int, t1: String) => LeftAnd(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case LeftOr(name: String, bot: Sequent, i: Int, t1: String, t2: String) =>  LeftOr(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1, t2)
+        case LeftImplies(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftImplies(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1, t2)
+        case LeftIff(name: String, bot: Sequent, i: Int, t1: String) => LeftIff(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case LeftNot(name: String, bot: Sequent, i: Int, t1: String) => LeftNot(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case LeftExists(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => LeftExists(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, y, t1)
+        case LeftForall(name: String, bot: Sequent, i: Int, t: Term, t1: String) => LeftForall(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t, t1)
+        case RightAnd(name: String, bot: Sequent, i: Int, t1: String, t2: String) => RightAnd(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1, t2)
+        case RightOr(name: String, bot: Sequent, i: Int, t1: String) => RightOr(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case RightImplies(name: String, bot: Sequent, i: Int, t1: String) => RightImplies(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case RightIff(name: String, bot: Sequent, i: Int, t1: String, t2: String) => RightIff(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1, t2)
+        case RightNot(name: String, bot: Sequent, i: Int, t1: String) => RightNot(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case RightExists(name: String, bot: Sequent, i: Int, t: Term, t1: String) => RightExists(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t, t1)
+        case RightForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => RightForall(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, y, t1)
+        case RightRefl(name: String, bot: Sequent, i: Int) => RightRefl(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i)
+        case LeftSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => LeftSubst(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, p, x, t1)
+        case RightSubst(name: String, bot: Sequent, i: Int, p: Formula, x: VariableSymbol, t1: String) => RightSubst(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, p, x, t1)
+        case LeftSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => LeftSubstIff(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, r, a, t1) // TODO : check that
+        case RightSubstIff(name: String, bot: Sequent, i: Int, r: Formula, a: AtomicSymbol, t1: String) => RightSubstIff(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, r, a, t1) // TODO : check that
+        case InstFun(name: String, bot: Sequent, f: FunctionSymbol, t: (Term, Seq[VariableSymbol]), t1: String) => InstFun(name, Sequent(bot.left, removeFalse2Aux(bot.right)), f, t, t1)
+        case InstPred(name: String, bot: Sequent, p: AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), t1: String) => InstPred(name, Sequent(bot.left, removeFalse2Aux(bot.right)), p, phi, t1)
+        case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>  LeftHyp(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, j)
+        case LeftImp2(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftImp2(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1, t2)
+        case LeftNotAnd(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftNotAnd(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1, t2)
+        case LeftNotOr(name: String, bot: Sequent, i: Int, t1: String) => LeftNotOr(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case LeftNotImp(name: String, bot: Sequent, i: Int, t1: String) => LeftNotImp(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case LeftNotIff(name: String, bot: Sequent, i: Int, t1: String, t2: String) => LeftNotIff(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1, t2)
+        case LeftNotNot(name: String, bot: Sequent, i: Int, t1: String) => LeftNotNot(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case LeftNotEx(name: String, bot: Sequent, i: Int, t: Term, t1: String) => LeftNotEx(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t, t1)
+        case LeftNotAll(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => LeftNotAll(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, y, t1)
+        case RightSubstMulti(name: String, bot: Sequent, is: List[Int], p: Formula, xs: List[VariableSymbol], t1: String) => RightSubstMulti(name, Sequent(bot.left, removeFalse2Aux(bot.right)), is: List[Int], p, xs, t1)
+        case LeftSubstMulti(name: String, bot: Sequent, is: List[Int], p: Formula, xs: List[VariableSymbol], t1: String) => LeftSubstMulti(name, Sequent(bot.left, removeFalse2Aux(bot.right)), is: List[Int], p, xs, t1)
+        case Congruence(name: String, bot: Sequent) => Congruence(name, Sequent(bot.left, removeFalse2Aux(bot.right)))
+        case Res(name: String, bot: Sequent, i1: Int, i2: Int, t1: String, t2: String) => Res(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i1, i2, t1, t2)
+        case NegatedConjecture(name: String, bot: Sequent, t1: String) => NegatedConjecture(name, Sequent(bot.left, removeFalse2Aux(bot.right)), t1)
+        case Clausify(name: String, bot: Sequent, i: Int, t1: String) => Clausify(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, t1)
+        case NNF(name: String, bot: Sequent, i:Int, j: Int, t1: String) => NNF(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, j, t1)
+        case Instantiate_L(name: String, bot: Sequent, i: Int, x: VariableSymbol, t: Term, parent: String) =>  Instantiate_L(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, x, t, parent)
+        case InstantiateMult(name: String, bot: Sequent, i: Int, terms: Seq[(VariableSymbol, Term)], parent: String) => InstantiateMult(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, terms, parent)
+        case Let(name: String, bot: Sequent) => Let(name, Sequent(bot.left, removeFalse2Aux(bot.right)))
+        case Prenex(name: String, bot: Sequent, t1: String) => Prenex(name, Sequent(bot.left, removeFalse2Aux(bot.right)), t1)
+        case InstForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => InstForall(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, y, t1)
+        case _ => throw Exception("Proof step not found")
+      }
+
+    })
+
+    if new_steps.forall(_.isInstanceOf[LVL1ProofStep]) then LVL1Proof(new_steps.toIndexedSeq.asInstanceOf[IndexedSeq[LVL1ProofStep]], scproof.thmName)
+    if new_steps.forall(_.isInstanceOf[LVL2ProofStep]) then LVL2Proof(new_steps.toIndexedSeq.asInstanceOf[IndexedSeq[LVL2ProofStep]], scproof.thmName)
+    else throw new Exception("Some proof steps could not be unrenamed")
+  }
+
   // Add psi
-  def addPsi(context: Seq[AtomicFormula]): Seq[LVL2ProofStep] = {
-    val psi = AtomicFormula(AtomicSymbol("psi", 0), Seq())
+  def addPsi(context: Seq[AtomicFormula], parent: String): Seq[LVL2ProofStep] = {
     Seq(
       Let("psi", Sequent(Seq(psi), Seq(originalFormula))),
       Hyp("addPsi0", Sequent(Seq(psi), Seq(psi)), 0),
-      RightNot("addPsi1", Sequent(Seq(), Seq(psi, phi)), 0, "addPsi1"),
-      Cut("addPsi2", Sequent(context.drop(1), Seq(psi)), 1, 0, "addPsi1", "stepFalse1")
+      RightNot("addPsi1", Sequent(Seq(), Seq(psi, phi)), 0, "addPsi0"),
+      Cut("addPsi2", Sequent(context.drop(1), Seq(psi)), 1, 0, "addPsi1", parent)
     )
   }
 
@@ -787,23 +1292,26 @@ class Tseitin {
       val f2 = f.freeVariables.foldLeft(ConnectorFormula(Iff, Seq(f, f)).asInstanceOf[Formula])((acc, x) => BinderFormula(Forall, x, acc))
       
       (acc._1 ++ Seq(
-      ElimIffRefl(
-        "removeTseitin"+acc._2, 
-        Sequent(new_context :+ f1, Seq(phi)), 
-        new_context.size, 
-        parent),
-      InstPred(
-        "removeTseitin"+(acc._2+1), 
-        Sequent(new_context :+ f2, Seq(phi)), 
+        InstPred(
+        "removeTseitin"+(acc._2), 
+        Sequent(new_context :+ f2, Seq(psi)), 
         map(x).label, 
-        (f, f.freeVariables.toSeq), parent2)), 
+        (f, f.freeVariables.toSeq), 
+        parent
+        ),
+        ElimIffRefl(
+          "removeTseitin"+(acc._2+1), 
+          Sequent(new_context, Seq(psi)), 
+          new_context.size, 
+          parent2
+        )), 
         acc._2+2, acc._3+1)
     }
     )
 
     val last_parent = if (steps._2 == 0) then "addPsi2" else "removeTseitin"+(steps._2-1) 
 
-    steps._1 :+ ElimIffRefl("removeTseitin"+steps._2, Sequent(Seq(), Seq(phi)), 0, last_parent)
+    steps._1 // :+ ElimIffRefl("removeTseitin"+steps._2, Sequent(Seq(), Seq(phi)), 0, last_parent)
 
   }
 
@@ -811,42 +1319,4 @@ class Tseitin {
   // But what about the prover? How will the epsilon term will be managed?
   // Reconstruct at the end --- wrapper?
   def addEpsilonTerms(f: sctptp.FOL.Formula): sctptp.FOL.Formula = ??? 
-
-  /** Schéma global de la preuve :
-  * Formule f en entrée, fof
-  * [x] Mise en NFF
-  * [x] Mise sous forme prénexe
-  * [x] Renommer variable forall
-  * [x] Instanciation forall
-  * [x] récupération des variable schématiques
-  * [x] Ajout des variable tseitin level 0 (pour avoir une formule en CNF) et de leur traduction en forme étendue (i.e., j'introduis X <=> (a /\ b), et je rajoute dans la formule (¬X ∨ a), (¬X ∨ b), (X ∨ ¬a ∨ ¬b)) -> Faire ça récursivement (si la subformula n'est pas atomic)
-  * [x] To flatterm
-  * [x] schematique : `X`autour de variables sans param
-  * [x] donner la formule finale P9 (sous forme axiom et sans quantifier universel)
-  * [x] Derenommer les variables dans la preuve 
-  * [x] Ajouter les let
-  * 
-  * TODO : 
-  * [x] Exemple plus simple   
-  * [x] FOrmule sprécédentes à garder ?
-  * [ ] Que faire des forall ?
-  * 
-  * [ ] Instantiate à droite ?
-  * [ ] Status des steps
-  * [ ] Ex sans exists
-  * [ ] Ex avec exists
-  * [ ] Tseitin 
-  * [ ] Pipeline + executable
-  * [ ] Post traitement epsilon-Term
-  * 
-  * TODO++:
-  * unfold resolution --- leftnot et cut
-  * unfold inst multi
-  * neg à droite, pos à gauche + tracking des listes -> relou ?
-  * unfold nnf
-  * 
-  * TODO : reprendre unraname variable
-  * Later : 
-  * Update gogo sans param + status thm
-  **/
 }

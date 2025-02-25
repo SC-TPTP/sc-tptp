@@ -32,3 +32,11 @@ lazy val root = project
     libraryDependencies += "io.github.leoprover" % "scala-tptp-parser_2.13" % "1.4"
   )
   .dependsOn(customTstpParser)
+
+name := "Utils"
+
+version := "0.1"
+
+enablePlugins(AssemblyPlugin)  
+
+mainClass in assembly := Some("sctptp.Main") 

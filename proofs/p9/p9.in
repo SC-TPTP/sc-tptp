@@ -1,7 +1,7 @@
 ============================== Prover9 ===============================
 Prover9 (64) version 2009-11A, November 2009.
-Process 51828 was started by julie on pc-loria,
-Wed Feb 19 16:07:19 2025
+Process 32781 was started by julie on pc-loria,
+Mon Feb 24 14:31:28 2025
 The command was "./../p9-sc-tptp/prover9".
 ============================== end of head ===========================
 
@@ -125,4 +125,4 @@ THEOREM PROVED
 
 Exiting with 1 proof.
 
-Process 51828 exit (max_proofs) Wed Feb 19 16:07:19 2025
+Process 32781 exit (max_proofs) Mon Feb 24 14:31:28 2025

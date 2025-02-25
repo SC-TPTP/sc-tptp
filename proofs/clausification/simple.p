@@ -1,3 +1,3 @@
-fof(test_minimaliste, axiom,
+fof(test_minimaliste, conjecture,
     (! [X] : p(X)) => (p(a) & (p(b)))    
 ).

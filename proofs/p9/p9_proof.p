@@ -9,8 +9,8 @@ fof('10', plain, [] --> [p(V0)], inference(instantiateMult, [status(thm), 0, [[$
 fof('18', plain, [] --> [~(Ts1(V100)) | ts3], inference(instantiateMult, [status(thm), 0, [[$fot(V0), $fot(V100)]]], ['6'])).
 fof('19', plain, [] --> [Ts1(V100)], inference(instantiateMult, [status(thm), 0, [[$fot(V0), $fot(V100)]]], ['4'])).
 fof('11', plain, [] --> [ts3], inference(res, [status(thm), 0, 0], ['18', '19'])).
-fof('A012', plain, [] --> [~(p(a)) | ~(p(b))], inference(res, [status(thm), 0, 0], ['11', '7'])).
+fof('a012', plain, [] --> [~(p(a)) | ~(p(b))], inference(res, [status(thm), 0, 0], ['11', '7'])).
 fof('20', plain, [] --> [p(a)], inference(instantiateMult, [status(thm), 0, [[$fot(V0), $fot(a)]]], ['10'])).
-fof('A112', plain, [] --> [~(p(b))], inference(res, [status(thm), 0, 0], ['20', 'A012'])).
+fof('a112', plain, [] --> [~(p(b))], inference(res, [status(thm), 0, 0], ['20', 'a012'])).
 fof('21', plain, [] --> [p(b)], inference(instantiateMult, [status(thm), 0, [[$fot(V0), $fot(b)]]], ['10'])).
-fof('12', plain, [] --> [$false], inference(res, [status(thm), 0, 0], ['21', 'A112'])).
+fof('12', plain, [] --> [$false], inference(res, [status(thm), 0, 0], ['21', 'a112'])).

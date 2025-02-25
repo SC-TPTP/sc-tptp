@@ -166,8 +166,8 @@ pub enum SCTPTPRule {
   RightTrue {name: String, bot: fol::Sequent},
   RightRefl {name: String, bot: fol::Sequent, i: i32},
   RightReflIff {name: String, bot: fol::Sequent, i: i32},
-  //format!("fof(f{i}, plain, [{newleft}] --> [{base} = {res}], inference(rightSubstEq, [status(thm), 0, $fof({base} = {with_hole}), $fot(HOLE)), [f{}])).\n", *i-1) 
-  RightSubstEq {name: String, bot: fol::Sequent, premise: String, i: i32, phi: fol::Formula, v: String},
+  //format!("fof(f{i}, plain, [{newleft}] --> [{base} = {res}], inference(rightSubst, [status(thm), 0, $fof({base} = {with_hole}), $fot(HOLE)), [f{}])).\n", *i-1) 
+  RightSubst {name: String, bot: fol::Sequent, premise: String, i: i32, phi: fol::Formula, v: String},
   RightSubstIff {name: String, bot: fol::Sequent, premise: String, i: i32, phi: fol::Formula, v: String},
   LeftForall {name: String, bot: fol::Sequent, premise: String, i: i32, t: fol::Term},
   Cut {name: String, bot: fol::Sequent, premise1: String, premise2: String, i1: i32, i2: i32},
@@ -191,8 +191,8 @@ impl std::fmt::Display for SCTPTPRule {
         write!(f, "fof({}, plain, {}, inference(rightRefl, [status(thm), {}], [])).", name, bot, i),
       SCTPTPRule::RightReflIff {name, bot, i} => 
         write!(f, "fof({}, plain, {}, inference(rightReflIff, [status(thm), {}], [])).", name, bot, i),
-      SCTPTPRule::RightSubstEq {name, bot, premise, i, phi, v} => 
-        write!(f, "fof({}, plain, {}, inference(rightSubstEq, [status(thm), {}, $fof({}), '{}'], [{}])).", name, bot, i, phi, v, premise),
+      SCTPTPRule::RightSubst {name, bot, premise, i, phi, v} => 
+        write!(f, "fof({}, plain, {}, inference(rightSubst, [status(thm), {}, $fof({}), '{}'], [{}])).", name, bot, i, phi, v, premise),
       SCTPTPRule::RightSubstIff {name, bot, premise, i, phi, v} => 
         write!(f, "fof({}, plain, {}, inference(rightSubstIff, [status(thm), {}, $fof({}), '{}'], [{}])).", name, bot, i, phi, v, premise),
       SCTPTPRule::LeftForall {name, bot, premise, i, t} => 
@@ -302,7 +302,7 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
       let mut newleft = vec![subst_form];
       newleft.append(&mut left.clone());
       use SCTPTPRule::*;
-      let subst_step = RightSubstEq {
+      let subst_step = RightSubst {
         name: format!("f{i}"),
         bot: fol::Sequent {left: newleft, right: vec![res.clone()]},
         premise: format!("f{}", *i-1),

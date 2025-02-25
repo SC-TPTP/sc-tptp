@@ -91,7 +91,7 @@ object CoqOutput {
     case LeftWeaken(name, bot, i, t1) => (s"(* [${name}] *) " + s"clear H${i}.", 0)
     case RightWeaken(name, bot, i, t1) => (s"(* [${name}] *) " + s"clear ${bot.right(i).toString()}.", 0)
     //case LeftWeaken(name, bot, t1) => ???
-    case Cut(name, bot, i, j, t1, t2) => ("", 1)
+    case Cut(name, bot, i, t1, t2) => ("", 1)
     case LVL2.Congruence(name, bot) => (s"(* [${name}] *) congruence.", 0)
 
     case LeftAnd(name, bot, i, t1) => (s"(* [${name}] *) " + makeAlphaStep(LeftAndRuleName, i, indexNextIntro, 2), 2)

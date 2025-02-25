@@ -308,8 +308,8 @@ object Parser {
     object Cut {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("cut", Seq(_, StrOrNum(n), StrOrNum(m)), Seq(t1, t2)), _) =>
-            Some(SC.Cut(name, convertSequentToFol(sequent), n.toInt, m.toInt, t1, t2))
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("cut", Seq(_, StrOrNum(n)), Seq(t1, t2)), _) =>
+            Some(SC.Cut(name, convertSequentToFol(sequent), n.toInt, t1, t2))
           case _ =>
             None
         }

@@ -192,9 +192,9 @@ impl std::fmt::Display for SCTPTPRule {
       SCTPTPRule::RightReflIff {name, bot, i} => 
         write!(f, "fof({}, plain, {}, inference(rightReflIff, [status(thm), {}], [])).", name, bot, i),
       SCTPTPRule::RightSubst {name, bot, premise, i, flip, phi, v} => 
-        write!(f, "fof({}, plain, {}, inference(rightSubst, [status(thm), {}, {}, $fof({}), '{}'], [{}])).", name, bot, i, if *flip {true} else {false}, phi, v, premise),
+        write!(f, "fof({}, plain, {}, inference(rightSubst, [status(thm), {}, {}, $fof({}), '{}'], [{}])).", name, bot, i, if *flip {1} else {0}, phi, v, premise),
       SCTPTPRule::RightSubstIff {name, bot, premise, i, flip, phi, v} => 
-        write!(f, "fof({}, plain, {}, inference(rightSubstIff, [status(thm), {}, {}, $fof({}), '{}'], [{}])).", name, bot, i, if *flip {true} else {false}, phi, v, premise),
+        write!(f, "fof({}, plain, {}, inference(rightSubstIff, [status(thm), {}, {}, $fof({}), '{}'], [{}])).", name, bot, i, if *flip {1} else {0}, phi, v, premise),
       SCTPTPRule::LeftForall {name, bot, premise, i, t} => 
         write!(f, "fof({}, plain, {}, inference(leftForall, [status(thm), {}, $fot({})], [{}])).", name, bot, i, t, premise),
       SCTPTPRule::Cut {name, bot, premise1, premise2, i1, i2} => 

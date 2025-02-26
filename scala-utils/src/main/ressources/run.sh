@@ -1,1 +1,0 @@
-sh -c "./p9-sc-tptp/tptp_to_ladr < ./p9proof/p9.p | ./../p9-sc-tptp/prover9 >  ./p9proof/p9.in && ./../p9-sc-tptp/prooftrans ivy -f  ./p9proof/p9.in > ./p9proof/p9.out"

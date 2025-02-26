@@ -26,6 +26,8 @@ import java.io.File
 import sctptp.SequentCalculus.RulesName.LeftFalseRuleName
 import java.io.InputStream
 import java.nio.file.StandardCopyOption
+import java.net.URL
+import java.util.Enumeration
 
 
 
@@ -157,7 +159,7 @@ class Tseitin {
 
   // Transform a formula in Prenex Normal form (move quantifier to the top)
   def retrieveQT(f2 : sctptp.FOL.Formula): (List[(BinderSymbol, VariableSymbol)], sctptp.FOL.Formula) = {
-    f2 match 
+    f2 match {
       case AtomicFormula(label, args) => (List(), f2) 
       case BinderFormula(label, bound, inner) => {
         val (accQT2, accF2) = retrieveQT(inner)
@@ -170,13 +172,15 @@ class Tseitin {
         })
         (accQT2, ConnectorFormula(label, accF2))
       }
+    }
   }
 
   def reInsertQT(accQT: List[(BinderSymbol, VariableSymbol)], accF2 : sctptp.FOL.Formula) : sctptp.FOL.Formula = {
     accQT.foldLeft(accF2)((acc, x) => {
-      x match 
+      x match {
         case (Forall, x2) => sctptp.FOL.BinderFormula(Forall, x2, acc)
         case (Exists, x2) => sctptp.FOL.BinderFormula(Exists, x2, acc)
+      }
     })
   }
 
@@ -190,9 +194,9 @@ class Tseitin {
   // 0 = forall, 1 = exists
   def toInstantiated(f: sctptp.FOL.Formula): (sctptp.FOL.Formula, Map[VariableSymbol, VariableSymbol], Seq[LVL2ProofStep]) = {
       def toInstantiatedAux(f2: sctptp.FOL.Formula, accVS: Map[VariableSymbol, VariableSymbol], accT: Map[VariableSymbol, Term], accProof: Seq[LVL2ProofStep], cpt: Int): (sctptp.FOL.Formula, Map[VariableSymbol, VariableSymbol], Seq[LVL2ProofStep]) = {
-        f2 match 
+        f2 match {
           case BinderFormula(label, bound, inner) => {
-            label match
+            label match {
               case Forall => {
                 val new_symbol = VariableSymbol(varName+varCpt)
                 val new_accVS = accVS + (bound -> new_symbol)
@@ -200,7 +204,7 @@ class Tseitin {
                 val new_accT = accT + (bound -> new_term)
                 varCpt = varCpt+1
                 val new_form = substituteVariablesInFormula(inner, new_accT)
-                val ps = InstForall(instantiateName+cpt, Sequent(Seq(phi), Seq(new_form)), 0, new_symbol, if cpt > 0 then s"${instantiateName}${cpt-1}" else "prenex_step")
+                val ps = InstForall(instantiateName+cpt, Sequent(Seq(phi), Seq(new_form)), 0, new_symbol, if (cpt > 0) then (s"${instantiateName}${cpt-1}") else "prenex_step")
                 val (new_f, new_acc_next_steps, new_accProof) = toInstantiatedAux(new_form, new_accVS, new_accT, ps +: accProof , cpt+1)
                 (new_f, new_acc_next_steps, new_accProof)
               }
@@ -211,12 +215,14 @@ class Tseitin {
                 val new_accT = accT + (bound -> new_term)
                 skoCpt = skoCpt+1
                 val new_form = substituteVariablesInFormula(inner, new_accT)
-                val ps = RightExists(instantiateName+cpt, Sequent(Seq(phi),Seq(new_form)), 0, new_term, if cpt > 0 then s"${instantiateName}${cpt-1}" else "prenex_step")
+                val ps = RightExists(instantiateName+cpt, Sequent(Seq(phi),Seq(new_form)), 0, new_term, if (cpt > 0) then (s"${instantiateName}${cpt-1}") else "prenex_step")
                 val (new_f, new_acc_next_steps, new_accProof) = toInstantiatedAux(new_form, accVS, new_accT, ps +: accProof , cpt+1)
                 (new_f, new_acc_next_steps, new_accProof)
               }
+            }
           }
           case _ => (f2, accVS, accProof)
+        }
       }
 
       toInstantiatedAux(f,  Map[VariableSymbol, VariableSymbol](), Map[VariableSymbol, Term](), Seq[LVL1ProofStep](), 0)
@@ -229,13 +235,13 @@ class Tseitin {
     // println("f = " + f.toString())
     // println("Contains : " + acc.contains(f))
     // println("------------------------------")
-    f match
+    f match {
       case AtomicFormula(label, args) => (acc, next_index)
       case ConnectorFormula(label, args) => {
         if (acc.contains(f)) {
           args.foldLeft((acc, next_index))((acc2, c) => (createTseitinVariables(c, acc2._1, next_index)._1, acc2._2))
         } else {
-          label match
+          label match {
             case Neg => (acc, next_index)
             case _ => {
               args.foldLeft((acc, next_index))((acc2, c) => {
@@ -244,8 +250,8 @@ class Tseitin {
                 (newAcc, newCpt)
                 })    
               }
+            }
         }
-
       }
       case BinderFormula(label, bound, inner) => {
         if (acc.contains(f)) {
@@ -255,18 +261,19 @@ class Tseitin {
           createTseitinVariables(inner, acc + (f -> AtomicFormula(AtomicSymbol((if (f.freeVariables.size == 0) then Identifier(ladrName + ladrCpt, next_index) else Identifier(tseitinName + next_index, next_index)), f.freeVariables.size), f.getFreeVariables())), next_index + 1)
         }
       }
+    }
   }
 
   // Take tseitinTermVar et return tseitinTermVar updated
   def updateTseitinVariables(map: Map[sctptp.FOL.Formula, sctptp.FOL.Formula]) : Map[sctptp.FOL.Formula, sctptp.FOL.Formula] = {
-    map.foldLeft(Map[sctptp.FOL.Formula, sctptp.FOL.Formula]())((acc, x) =>
+    map.foldLeft(Map[sctptp.FOL.Formula, sctptp.FOL.Formula]())((acc, x) => {
       val (termForm, varTseitin) = x
       termForm match {
         case AtomicFormula(label, args) => acc + (termForm -> varTseitin)
         case ConnectorFormula(label, args) => acc + (ConnectorFormula(label, args.map(x => if (map contains x) then map(x) else x)) -> varTseitin)
         case  BinderFormula(label, bound, inner) => acc + (BinderFormula(label, bound, map(inner)) -> varTseitin)
       }
-    )
+    })
   }
 
   // Transform a formula in Prenex Negatted Normal form into Tseitin Normal Form with variable stored in tseitinVarTerm
@@ -665,35 +672,68 @@ class Tseitin {
 
     println(s"Content written to: ${pathfilep.toAbsolutePath}")
 
-    val pathfileinname = pathname+"/p9.in"
-    val pathfileout = pathname+"/p9.out"
-    
-    println(System.getProperty("user.dir"))
+    // Executable 
 
-    // Prepare the executable by reading it from the JAR and setting executable permissions
-    val executableName = "sh -c \"../../src/main/ressources/tptp_to_ladr < " + pathfilepname + " | ../../src/main/ressources/prover9 > " + pathfileinname + " && ../../src/main/ressources/prooftrans ivy -f " + pathfileinname + " >  " + pathfileout + "\""
-    val command = executableName // This would be a command that can execute on the system
 
-    try {
-      // Launch the executable directly (assuming it's a script or a binary)
-      val result = command.!
-      if (result == 0) {
-        println("Executable ran successfully!")
-      } else {
-        println(s"Executable failed with exit code $result")
-      }
-    } catch {
-      case e: Exception =>
-        println(s"Error executing the resource: ${e.getMessage}")
+
+
+    // val ladr2TPTPPath = Paths.get("classes/tptp_to_ladr"
+    // val p9Path =  Paths.get("classes/prover9")
+    // val prooftrans =  Paths.get("classes/prooftrans")
+
+
+    val ladr2TPTPPathName = "tptp_to_ladr"
+    val p9PathName =  "prover9"
+    val prooftransName =  "prooftrans"
+
+    val ladr2TPTPPath: InputStream = Option(getClass.getClassLoader.getResourceAsStream(ladr2TPTPPathName)) match {
+      case Some(stream) => stream
+      case None => throw new RuntimeException(s"Executable '$ladr2TPTPPathName' not found in the JAR")
     }
 
+    val p9PathPath: InputStream = Option(getClass.getClassLoader.getResourceAsStream(p9PathName)) match {
+      case Some(stream) => stream
+      case None => throw new RuntimeException(s"Executable '$p9PathName' not found in the JAR")
+    }
 
-    // Command to execute with shell
-    // val command = "sh -c \"./../p9-sc-tptp/tptp_to_ladr < " + pathfilepname + " | ./../p9-sc-tptp/prover9 > " + pathfileinname + " && ./../p9-sc-tptp/prooftrans ivy -f " + pathfileinname + " >  " + pathfileout + "\""
+    val prooftransPath: InputStream = Option(getClass.getClassLoader.getResourceAsStream(prooftransName)) match {
+      case Some(stream) => stream
+      case None => throw new RuntimeException(s"Executable '$prooftransName' not found in the JAR")
+    }
 
-    // Run the command and redirect both stdout and stderr to /dev/null
-    // val exitCode = command.!
+    // Create the file if it doesn't exist
+    val pathname2 = "./tmp/"
+    val pathdir2 = Paths.get(pathname2)
+    if(!(Files.exists(pathdir2) && Files.isDirectory(pathdir2)))
+      Files.createDirectory(pathdir2)
 
+    val ladr2TPTPTempExecutablePath = "/tmp/tptp_to_ladr"
+    val p9TempExecutablePath = "/tmp/prouver9"
+    val prooftransTempExecutablePath = "/tmp/prooftrans"
+
+    Files.copy(ladr2TPTPPath, Paths.get(ladr2TPTPTempExecutablePath), StandardCopyOption.REPLACE_EXISTING)
+    Files.copy(p9PathPath, Paths.get(p9TempExecutablePath), StandardCopyOption.REPLACE_EXISTING)
+    Files.copy(prooftransPath, Paths.get(prooftransTempExecutablePath), StandardCopyOption.REPLACE_EXISTING)
+
+    s"sh -c \" chmod +x $ladr2TPTPTempExecutablePath && chmod +x $p9TempExecutablePath && chmod +x $prooftransTempExecutablePath\"".!
+
+    // Launch 
+
+    val pathfileinname = pathname+"/p9.in"
+    val pathfileout = pathname+"/p9.out"
+
+    val command = s"sh -c \"${ladr2TPTPTempExecutablePath} < ${pathfilepname} | ${p9TempExecutablePath} > ${pathfileinname} && ${prooftransTempExecutablePath} ivy -f ${pathfileinname} >  ${pathfileout}\""
+
+    try {
+      val exitCode = command.!
+      if (exitCode == 0) {
+        println("Executable ran successfully.")
+      } else {
+        println(s"Executable failed with exit code: $exitCode")
+      }
+    } catch {
+      case e: Exception => println(s"Error running the executable: ${e.getMessage}")
+    }
 
     val fileContent = Source.fromFile(pathfileout).getLines().mkString("\n")
 
@@ -703,10 +743,6 @@ class Tseitin {
 
     // Extract content between the markers
     val proofContent = fileContent.substring(startPos + ";; BEGINNING OF PROOF OBJECT".length, endPos).trim
-
-    // Print the extracted proof content
-    // println("Extracted Proof Content:")
-    // println(proofContent)
 
     val pathfileoutname = pathname+"/p9proof.p"
     val pathproof = Paths.get(pathfileoutname)

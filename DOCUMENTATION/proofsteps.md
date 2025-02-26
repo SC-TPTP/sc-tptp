@@ -8,7 +8,7 @@
 | `hyp`    | 0         | $$\frac{}{\Gamma, A \vdash A, \Delta}$$ | `i:Int`: Index of $A$ on the left | |
 | `leftWeaken` | 1     | $$\frac{\Gamma \vdash \Delta}{\Gamma, A \vdash \Delta}$$ | `i:Int`: Index of $A$ on the left | |
 | `rightWeaken` | 1    | $$\frac{\Gamma \vdash \Delta}{\Gamma \vdash A, \Delta}$$ | `i:Int`: Index of $A$ on the right | |
-| `cut` | 2            | $$\frac{\Gamma \vdash A, \Delta \quad \Sigma, A \vdash \Pi}{\Gamma, \Sigma \vdash \Delta, \Pi}$$ |`i:Int`: Index of the cut formula on the right of the first premise <br> `j:Int`: Index of the cut formula on the left of the second premise | |
+| `cut` | 2            | $$\frac{\Gamma \vdash A, \Delta \quad \Sigma, A \vdash \Pi}{\Gamma, \Sigma \vdash \Delta, \Pi}$$ |`i:Int`: Index of the cut formula on the right of the first premise <br> | |
 | `leftAnd` | 1        | $$\frac{\Gamma, A, B \vdash \Delta}{\Gamma, A \land B \vdash \Delta}$$ | `i:Int`: Index of $A \land B$ on the left | |
 | `leftOr` | 2         | $$\frac{\Gamma, A \vdash \Delta \quad \Sigma, B \vdash \Pi}{\Gamma, \Sigma, A \lor B \vdash \Delta, \Pi}$$ | `i:Int`: Index of $A \lor B$ on the left | |
 | `leftImplies` | 2    | $$\frac{\Gamma \vdash A, \Delta \quad \Sigma, B \vdash \Pi}{\Gamma, \Sigma, A \Rightarrow B \vdash \Delta, \Pi}$$ | `i:Int`: Index of $A \Rightarrow B$ on the left | |

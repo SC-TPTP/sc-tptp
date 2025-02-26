@@ -448,7 +448,14 @@ pub fn proof_to_tptp(header: &String, proof: &Vec<FlatTerm<FOLLang>>, problem: &
     },
     _ if problem.simplify => {
       let first_seq = fol::Sequent {left: problem.left.clone(), right: vec![fol::Formula::Iff(Box::new(init_formula.clone()), Box::new(init_formula.clone()))]};
-      vec![SCTPTPRule::RightReflIff {name: "f0".to_owned(), bot: first_seq, i: 0}]
+      if level1 {vec![
+        SCTPTPRule::Hypothesis { name: "e0".to_owned(), bot: fol::Sequent {left: vec![init_formula.clone()], right: vec![init_formula.clone()]}, i: 0},
+        SCTPTPRule::RightImplies { name: "e1".to_owned(), bot: fol::Sequent {left:vec![], right: vec![fol::Formula::Implies(Box::new(init_formula.clone()), Box::new(init_formula.clone()))]}, premise: "e0".to_owned(), i: 0 },
+        SCTPTPRule::RightIff { name: "f0".to_owned(), bot: first_seq, premise1: "e1".to_owned(), premise2: "e1".to_owned(), i: 0 },
+      ]
+      } else {
+        vec![SCTPTPRule::RightReflIff {name: "f0".to_owned(), bot: first_seq, i: 0}]
+      }
     }
     _ => panic!("unexpected starting expression")
   };

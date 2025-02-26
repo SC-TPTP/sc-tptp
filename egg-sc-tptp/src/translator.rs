@@ -338,15 +338,20 @@ pub fn solve_tptp_problem(problem: &TPTPProblem) -> Explanation<FOLLang> {
   
   let (start, end, mut runner) = if problem.simplify == true {
     let mut expr_start: RecExpr<fol::FOLLang> = RecExpr::default();
-    fol::formula_to_recexpr(&problem.conjecture.1, &mut expr_start);
+    let start_id = fol::formula_to_recexpr(&problem.conjecture.1, &mut expr_start);
     runner = runner.with_expr(&expr_start);
     runner = runner.run(&rules);
     let root = *runner.roots.last().unwrap();
     let extractor = Extractor::new(&runner.egraph, AstSize);
     let (_, best) = extractor.find_best(root);
-    println!("best: {}", best);
+    let mut start_iff_expr = expr_start.clone();
+    start_iff_expr.add(fol::FOLLang::Iff([start_id, start_id]));
+    let iff_enode = fol::FOLLang::Iff([Id::from(0), Id::from(1)]);
+    let start_best_expr = iff_enode.join_recexprs(|_id| if _id == Id::from(0) { &expr_start } else { &best });
+    
     println!("start: {}", expr_start);
-    (expr_start, best, runner)
+    println!("best: {}", best);
+    (start_iff_expr, start_best_expr, runner)
   } else { 
     let (start, end) = 
     match &problem.conjecture.1 {
@@ -371,6 +376,8 @@ pub fn solve_tptp_problem(problem: &TPTPProblem) -> Explanation<FOLLang> {
     (start, end, runner)
 
   };
+  println!("start: {}", start);
+  println!("end: {}", end);
   let e = runner.explain_equivalence(&start, &end);
   e
 }

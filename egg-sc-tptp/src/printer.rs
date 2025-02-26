@@ -170,7 +170,7 @@ pub enum SCTPTPRule {
   RightSubst {name: String, bot: fol::Sequent, premise: String, i: i32, flip:bool, phi: fol::Formula, v: String},
   RightSubstIff {name: String, bot: fol::Sequent, premise: String, i: i32, flip:bool, phi: fol::Formula, v: String},
   LeftForall {name: String, bot: fol::Sequent, premise: String, i: i32, t: fol::Term},
-  Cut {name: String, bot: fol::Sequent, premise1: String, premise2: String, i1: i32, i2: i32},
+  Cut {name: String, bot: fol::Sequent, premise1: String, premise2: String, i: i32},
   RightSubstEqForallLocal {name: String, bot: fol::Sequent, premise: String, i: i32, phi: fol::Formula, v: String},
   RightSubstEqForall {name: String, bot: fol::Sequent, premise1: String, premise2: String, phi: fol::Formula, v: String},
   RightSubstIffForallLocal {name: String, bot: fol::Sequent, premise: String, i: i32, phi: fol::Formula, v: String},
@@ -197,8 +197,8 @@ impl std::fmt::Display for SCTPTPRule {
         write!(f, "fof({}, plain, {}, inference(rightSubstIff, [status(thm), {}, {}, $fof({}), '{}'], [{}])).", name, bot, i, if *flip {1} else {0}, phi, v, premise),
       SCTPTPRule::LeftForall {name, bot, premise, i, t} => 
         write!(f, "fof({}, plain, {}, inference(leftForall, [status(thm), {}, $fot({})], [{}])).", name, bot, i, t, premise),
-      SCTPTPRule::Cut {name, bot, premise1, premise2, i1, i2} => 
-        write!(f, "fof({}, plain, {}, inference(cut, [status(thm), {}, {}], [{}, {}])).", name, bot, i1, i2, premise1, premise2),
+      SCTPTPRule::Cut {name, bot, premise1, premise2, i, } => 
+        write!(f, "fof({}, plain, {}, inference(cut, [status(thm), {}], [{}, {}])).", name, bot, i, premise1, premise2),
       SCTPTPRule::RightSubstEqForallLocal {name, bot, premise, i, phi, v} =>
         write!(f, "fof({}, plain, {}, inference(rightSubstEqForallLocal, [status(thm), {}, $fof({}), '{}'], [{}])).", name, bot, i, phi, v, premise),
       SCTPTPRule::RightSubstEqForall {name, bot, premise1, premise2, phi, v} =>
@@ -290,8 +290,7 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
           bot: fol::Sequent {left: left.clone(), right: vec![res.clone()]},
           premise1: rule_name,
           premise2: format!("f{}", *i-1),
-          i1: 0,
-          i2: 0
+          i: 0
         };
         proof.push(cut_rule);
       } else {}
@@ -346,8 +345,7 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
           bot: fol::Sequent {left: left.clone(), right: vec![res]},
           premise1: rule_name,
           premise2: format!("f{}", *i-1),
-          i1: 0,
-          i2: 0
+          i: 0
         };
         proof.push(cut_rule);
       } else {}

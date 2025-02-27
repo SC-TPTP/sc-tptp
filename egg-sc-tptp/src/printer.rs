@@ -170,7 +170,7 @@ pub enum SCTPTPRule {
   RightSubst {name: String, bot: fol::Sequent, premise: String, i: i32, flip:bool, phi: fol::Formula, v: String},
   RightSubstIff {name: String, bot: fol::Sequent, premise: String, i: i32, flip:bool, phi: fol::Formula, v: String},
   LeftForall {name: String, bot: fol::Sequent, premise: String, i: i32, t: fol::Term},
-  Cut {name: String, bot: fol::Sequent, premise1: String, premise2: String, i1: i32, i2: i32},
+  Cut {name: String, bot: fol::Sequent, premise1: String, premise2: String, i: i32},
   RightSubstEqForallLocal {name: String, bot: fol::Sequent, premise: String, i: i32, phi: fol::Formula, v: String},
   RightSubstEqForall {name: String, bot: fol::Sequent, premise1: String, premise2: String, phi: fol::Formula, v: String},
   RightSubstIffForallLocal {name: String, bot: fol::Sequent, premise: String, i: i32, phi: fol::Formula, v: String},
@@ -197,8 +197,8 @@ impl std::fmt::Display for SCTPTPRule {
         write!(f, "fof({}, plain, {}, inference(rightSubstIff, [status(thm), {}, {}, $fof({}), '{}'], [{}])).", name, bot, i, if *flip {1} else {0}, phi, v, premise),
       SCTPTPRule::LeftForall {name, bot, premise, i, t} => 
         write!(f, "fof({}, plain, {}, inference(leftForall, [status(thm), {}, $fot({})], [{}])).", name, bot, i, t, premise),
-      SCTPTPRule::Cut {name, bot, premise1, premise2, i1, i2} => 
-        write!(f, "fof({}, plain, {}, inference(cut, [status(thm), {}, {}], [{}, {}])).", name, bot, i1, i2, premise1, premise2),
+      SCTPTPRule::Cut {name, bot, premise1, premise2, i, } => 
+        write!(f, "fof({}, plain, {}, inference(cut, [status(thm), {}], [{}, {}])).", name, bot, i, premise1, premise2),
       SCTPTPRule::RightSubstEqForallLocal {name, bot, premise, i, phi, v} =>
         write!(f, "fof({}, plain, {}, inference(rightSubstEqForallLocal, [status(thm), {}, $fof({}), '{}'], [{}])).", name, bot, i, phi, v, premise),
       SCTPTPRule::RightSubstEqForall {name, bot, premise1, premise2, phi, v} =>
@@ -271,7 +271,7 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
           no.remove(0);
           no.parse().expect(&format!("Error: rule name is not a number: {}", rule_name))
         } else {0};
-        let mut newleft = vec![new_quant_formula];
+        let mut newleft = if nth == 0 {vec![]} else {vec![new_quant_formula]};
         newleft.append(&mut left.clone());
         let forall_rule = LeftForall {
           name: format!("f{}", *i),
@@ -290,8 +290,7 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
           bot: fol::Sequent {left: left.clone(), right: vec![res.clone()]},
           premise1: rule_name,
           premise2: format!("f{}", *i-1),
-          i1: 0,
-          i2: 0
+          i: 0
         };
         proof.push(cut_rule);
       } else {}
@@ -327,7 +326,7 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
           no.remove(0);
           no.parse().expect(&format!("Error: rule name is not a number: {}", rule_name))
         } else {0};
-        let mut newleft = vec![new_quant_formula];
+        let mut newleft = if nth == 0 {vec![]} else {vec![new_quant_formula]};
         newleft.append(&mut left.clone());
         let forall_rule = LeftForall {
           name: format!("f{}", *i),
@@ -346,8 +345,7 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
           bot: fol::Sequent {left: left.clone(), right: vec![res]},
           premise1: rule_name,
           premise2: format!("f{}", *i-1),
-          i1: 0,
-          i2: 0
+          i: 0
         };
         proof.push(cut_rule);
       } else {}
@@ -450,7 +448,14 @@ pub fn proof_to_tptp(header: &String, proof: &Vec<FlatTerm<FOLLang>>, problem: &
     },
     _ if problem.simplify => {
       let first_seq = fol::Sequent {left: problem.left.clone(), right: vec![fol::Formula::Iff(Box::new(init_formula.clone()), Box::new(init_formula.clone()))]};
-      vec![SCTPTPRule::RightReflIff {name: "f0".to_owned(), bot: first_seq, i: 0}]
+      if level1 {vec![
+        SCTPTPRule::Hypothesis { name: "e0".to_owned(), bot: fol::Sequent {left: vec![init_formula.clone()], right: vec![init_formula.clone()]}, i: 0},
+        SCTPTPRule::RightImplies { name: "e1".to_owned(), bot: fol::Sequent {left:vec![], right: vec![fol::Formula::Implies(Box::new(init_formula.clone()), Box::new(init_formula.clone()))]}, premise: "e0".to_owned(), i: 0 },
+        SCTPTPRule::RightIff { name: "f0".to_owned(), bot: first_seq, premise1: "e1".to_owned(), premise2: "e1".to_owned(), i: 0 },
+      ]
+      } else {
+        vec![SCTPTPRule::RightReflIff {name: "f0".to_owned(), bot: first_seq, i: 0}]
+      }
     }
     _ => panic!("unexpected starting expression")
   };

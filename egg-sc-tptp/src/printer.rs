@@ -271,7 +271,7 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
           no.remove(0);
           no.parse().expect(&format!("Error: rule name is not a number: {}", rule_name))
         } else {0};
-        let mut newleft = vec![new_quant_formula];
+        let mut newleft = if nth == 0 {vec![]} else {vec![new_quant_formula]};
         newleft.append(&mut left.clone());
         let forall_rule = LeftForall {
           name: format!("f{}", *i),
@@ -326,7 +326,7 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
           no.remove(0);
           no.parse().expect(&format!("Error: rule name is not a number: {}", rule_name))
         } else {0};
-        let mut newleft = vec![new_quant_formula];
+        let mut newleft = if nth == 0 {vec![]} else {vec![new_quant_formula]};
         newleft.append(&mut left.clone());
         let forall_rule = LeftForall {
           name: format!("f{}", *i),

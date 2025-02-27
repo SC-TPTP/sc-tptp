@@ -348,9 +348,6 @@ pub fn solve_tptp_problem(problem: &TPTPProblem) -> Explanation<FOLLang> {
     start_iff_expr.add(fol::FOLLang::Iff([start_id, start_id]));
     let iff_enode = fol::FOLLang::Iff([Id::from(0), Id::from(1)]);
     let start_best_expr = iff_enode.join_recexprs(|_id| if _id == Id::from(0) { &expr_start } else { &best });
-    
-    println!("start: {}", expr_start);
-    println!("best: {}", best);
     (start_iff_expr, start_best_expr, runner)
   } else { 
     let (start, end) = 
@@ -376,8 +373,6 @@ pub fn solve_tptp_problem(problem: &TPTPProblem) -> Explanation<FOLLang> {
     (start, end, runner)
 
   };
-  println!("start: {}", start);
-  println!("end: {}", end);
   let e = runner.explain_equivalence(&start, &end);
   e
 }

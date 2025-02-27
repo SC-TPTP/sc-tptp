@@ -115,42 +115,46 @@ pub fn instantiate_term(expr: &Term, map: &HashMap<String, Term>) -> Term {
   }
 }
 
-pub fn instantiate_formula(formula: &Formula, map: &HashMap<String, Term>) -> Formula {
+pub fn instantiate_formula(formula: &Formula, map_t: &HashMap<String, Term>, map_f: &HashMap<String, Formula>) -> Formula {
   match formula {
     
     Formula::True => Formula::True,
     Formula::False => Formula::False,
     Formula::Predicate(name, args) => {
-      let new_args = args.iter().map(|x| Box::new(instantiate_term(x, map))).collect();
-      Formula::Predicate(name.clone(), new_args)
+      if args.len() == 0 && map_f.contains_key(name.as_str()) {
+        map_f[name.as_str()].clone()
+      } else {
+        let new_args = args.iter().map(|x| Box::new(instantiate_term(x, map_t))).collect();
+        Formula::Predicate(name.clone(), new_args)
+      }
     },
-    Formula::Not(formula) => Formula::Not(Box::new(instantiate_formula(formula, map))),
+    Formula::Not(formula) => Formula::Not(Box::new(instantiate_formula(formula, map_t, map_f))),
     Formula::And(formulas) => {
-      let new_formulas = formulas.iter().map(|x| Box::new(instantiate_formula(x, map))).collect();
+      let new_formulas = formulas.iter().map(|x| Box::new(instantiate_formula(x, map_t, map_f))).collect();
       Formula::And(new_formulas)
     },
     Formula::Or(formulas) => {
-      let new_formulas = formulas.iter().map(|x| Box::new(instantiate_formula(x, map))).collect();
+      let new_formulas = formulas.iter().map(|x| Box::new(instantiate_formula(x, map_t, map_f))).collect();
       Formula::Or(new_formulas)
     },
     Formula::Implies(formula1, formula2) => {
-      let new_formula1 = instantiate_formula(formula1, map);
-      let new_formula2 = instantiate_formula(formula2, map);
+      let new_formula1 = instantiate_formula(formula1, map_t, map_f);
+      let new_formula2 = instantiate_formula(formula2, map_t, map_f);
       Formula::Implies(Box::new(new_formula1), Box::new(new_formula2))
     },
     Formula::Iff(formula1, formula2) => {
-      let new_formula1 = instantiate_formula(formula1, map);
-      let new_formula2 = instantiate_formula(formula2, map);
+      let new_formula1 = instantiate_formula(formula1, map_t, map_f);
+      let new_formula2 = instantiate_formula(formula2, map_t, map_f);
       Formula::Iff(Box::new(new_formula1), Box::new(new_formula2))
     },
     Formula::Forall(vars, formula) => {
       let new_map = vars.iter().map(|x| (x.clone(), Term::Function(x.clone(), Vec::new()))).collect();
-      let new_formula = instantiate_formula(formula, &new_map);
+      let new_formula = instantiate_formula(formula, &new_map, map_f);
       Formula::Forall(vars.clone(), Box::new(new_formula))
     },
     Formula::Exists(vars, formula) => {
       let new_map = vars.iter().map(|x| (x.clone(), Term::Function(x.clone(), Vec::new()))).collect();
-      let new_formula = instantiate_formula(formula, &new_map);
+      let new_formula = instantiate_formula(formula, &new_map, map_f);
       Formula::Exists(vars.clone(), Box::new(new_formula))
     },
   }

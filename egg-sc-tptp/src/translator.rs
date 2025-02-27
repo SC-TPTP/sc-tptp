@@ -384,6 +384,10 @@ pub fn tptp_problem_to_tptp_solution(path: &std::path::PathBuf, output: &std::pa
     HeaderLine::Comment(tag, _) => tag == "Solver",
     _ => false,
   });
+  let contains_logic = problem.header.comments.iter().any(|l| match l {
+    HeaderLine::Comment(tag, _) => tag == "Logic",
+    _ => false,
+  });
   problem.header.comments.iter().for_each(|l| match l {
     HeaderLine::Comment(tag, value) => {
       if tag == "EggOptions" {
@@ -392,17 +396,22 @@ pub fn tptp_problem_to_tptp_solution(path: &std::path::PathBuf, output: &std::pa
           problem.options.append(&mut opts);
       } else if tag == "Status" {
         newcomments.push(HeaderLine::Comment(tag.clone(), vec!["Theorem".to_string()]));
-      } else if tag == "Comments" && !contains_solver {
-        newcomments.push(l.clone());
-        newcomments.push(HeaderLine::Comment("Solver".to_string(), vec![format!("egg v0.9.5",), format!("egg-sc-tptp v{}", env!("CARGO_PKG_VERSION"))]));
       } else if tag == "Solver" {
         newcomments.push(HeaderLine::Comment("Solver".to_string(), vec![format!("egg v0.9.5",), format!("egg-sc-tptp v{}", env!("CARGO_PKG_VERSION"))]));
+      } else if tag == "Logic" {
+        newcomments.push(HeaderLine::Comment("Logic".to_string(), vec![format!("schem")]));
       } else {
         newcomments.push(HeaderLine::Comment(tag.clone(), value.clone()));
       }
     },
     _ => newcomments.push(l.clone()),
   });
+  if !contains_solver {
+    newcomments.push(HeaderLine::Comment("Solver".to_string(), vec![format!("egg v0.9.5",), format!("egg-sc-tptp v{}", env!("CARGO_PKG_VERSION"))]));
+  }
+  if !contains_logic {
+    newcomments.push(HeaderLine::Comment("Logic".to_string(), vec![format!("schem",)]));
+  }
   let newheader = Header { comments: newcomments };
 
   let init = format!("{}", newheader);

@@ -90,7 +90,6 @@ pub enum TermOrFormula {
 }
 
 pub fn flat_term_to_formula_hole(expr: &FlatTerm<FOLLang>, hole: &String) -> (fol::Formula, Option<(TermOrFormula, bool, String)>) {
-  println!("expr: {}", expr.to_string());
   if expr.backward_rule.is_some() {
     (fol::Formula::Predicate(hole.to_owned(), vec![]), 
      Some((TermOrFormula::Formula(flat_term_to_formula(&expr.remove_rewrites())), true, expr.backward_rule.unwrap().to_string().to_owned()))
@@ -289,7 +288,7 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
           no.remove(0);
           no.parse().expect(&format!("Error: rule name is not a number: {}", rule_name))
         } else {0};
-        let mut newleft = if nth == 0 {vec![]} else {vec![new_quant_formula]};
+        let mut newleft = if is_local_rule && nth == 0 {vec![]} else {vec![new_quant_formula]};
         newleft.append(&mut left.clone());
         let forall_rule = LeftForall {
           name: format!("f{}", *i),
@@ -314,9 +313,8 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
       } else {};
       res
     },
-    (RewriteRule::TermRule(variables, rule_left, rule_right), TermOrFormula::Term(inner)) => {
+    (RewriteRule::TermRule(variables, rule_left, rule_right), TermOrFormula::Term(_inner)) => {
       let emptymap_f = HashMap::new();
-      println!("rule_left: {}, rule_right: {}, inner: {}, backward: {}", rule_left, rule_right, inner, backward);
       if backward { 
         let mut holemap = HashMap::new();
         holemap.insert("HOLE".to_owned(), rule_right.clone());
@@ -330,7 +328,6 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
         let has_matched = fol::matching_formula(&subst_form_1, &prev, &mut match_map);
         if !has_matched {panic!("Error: forward {} did not match {}", subst_form_1, &prev);}
       };
-      println!("match_map: {:?}", match_map);
       let subst_form = equals(&fol::instantiate_term(&rule_left, &match_map), &fol::instantiate_term(&rule_right, &match_map));
       let mut newleft = vec![subst_form];
       newleft.append(&mut left.clone());
@@ -359,7 +356,7 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
           no.remove(0);
           no.parse().expect(&format!("Error: rule name is not a number: {}", rule_name))
         } else {0};
-        let mut newleft = if nth == 0 {vec![]} else {vec![new_quant_formula]};
+        let mut newleft = if is_local_rule && nth == 0 {vec![]} else {vec![new_quant_formula]};
         newleft.append(&mut left.clone());
         let forall_rule = LeftForall {
           name: format!("f{}", *i),

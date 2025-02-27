@@ -17,5 +17,9 @@
 
 % Comments : This problem, was printed from a statement in a proof of a theorem by the Lisa theorem prover for submission to proof-producing ATPs.
 %--------------------------------------------------------------------------
-fof(c1, conjecture, [(! [Xx]: ((! [Xy]: ((smult(sdiv(Xx,Xy),Xy) = Xx))))),(! [Xx]: ((! [Xy]: ((sdiv(Xx,Xy) = sdiv(ct1,sdiv(Xy,Xx))))))),(! [Xx]: ((sdiv(Xx,ct1) = Xx)))] --> [(sdiv(smult(sdiv(ct2,ct3),sdiv(ct3,ct2)),ct1) = ct1)]).
+fof(div_one, axiom, ! [X]: d(X, t1) = X).
+fof(cancel_denominator, axiom, ! [X, Y]: (m(d(X, Y), Y) = X)).
+fof(invert_div, axiom, ! [X, Y]: d(X, Y) = d(t1, d(Y, X))).
+
+fof(c, conjecture, d(m(d(t2, t3), d(t3, t2)), t1) = t1).
 

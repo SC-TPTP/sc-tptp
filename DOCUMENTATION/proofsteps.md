@@ -33,13 +33,15 @@
 | `rightEpsilon` | 1   | $$\frac{\Gamma \vdash A[x := t], \Delta}{\Gamma \vdash A[x := \epsilon x. A], \Delta}$$ | `A:Formula`: Formula defining the epsilon-term <br> `X:String`: Name of the variable being substituted in $A$.  <br> `t:Term`: Term in place of $x$ in the premise  | |
 | `leftEpsilon` | 1     | $$\frac{\Gamma, A[x := y] \vdash \Delta}{\Gamma, A[x := \epsilon x. A] \vdash \Delta}$$ | `i:Int`: Index of $A[x := y]$ on the left of the premise<br> `y:String`: Name of the variable in place of $x$ in the premise | $y$ should not be free in the resulting sequent. |
 
+
+
 # Level 2 Proof Steps
 Proof steps for which there is an available elimination algorithm implemented in the library.
 
 
 | Rule Name | Premises | Rule       | Parameters   | Comments  |
 | :--       | :--      | :--        | :--          | :--       |
-| `congruence` | 0    | $$\frac{}{\Gamma, P \vdash Q, \Delta}$$ $$\frac{}{\Gamma, P, \neg Q \vdash \Delta}$$ | No parameter <br> $\Gamma$ contains a set of ground equalities such that P and Q are congruents | |
+| `congruence` | 0    | $$\frac{}{\Gamma, \Delta}$$  | No parameters <br> $\Gamma$ contains a set of ground equalities such that P and Q are congruents | |
 | `leftHyp` | 0        | $$\frac{}{\Gamma, A, \neg A \vdash \Delta}$$ | `i:Int`: Index of $A$ on the left | |
 | `leftNotAnd` | 2    | $$\frac{\Gamma, \neg A \vdash \Delta \quad \Sigma, \neg B \vdash \Pi}{\Gamma, \Sigma, \neg(A \land B) \vdash \Delta, \Pi}$$ | `i:Int`: Index of $\neg(A \land B)$ on the left | |
 | `leftNotOr` | 1     | $$\frac{\Gamma, \neg A, \neg B \vdash \Delta}{\Gamma, \neg(A \lor B) \vdash \Delta}$$ | `i:Int`: Index of $\neg(A \lor B)$ on the left | |
@@ -48,6 +50,7 @@ Proof steps for which there is an available elimination algorithm implemented in
 | `leftNotNot` | 1    | $$\frac{\Gamma, A \vdash \Delta}{\Gamma, \neg \neg A \vdash \Delta}$$ | `i:Int`: Index of $\neg \neg A$ on the left | |
 | `leftNotEx` | 1     | $$\frac{\Gamma, \neg A[x := t] \vdash \Delta}{\Gamma, \neg\exists x. A  \vdash \Delta}$$ | `i:Int`: Index of $\neg \exists x. A$ on the left <br> `t:Term`: Term in place of $x$ in the premise | |
 | `leftNotAll` | 1    | $$\frac{\Gamma, \neg A \vdash \Delta}{\Gamma, \neg \forall x. A \vdash \Delta}$$ | `i:Int`: Index of $\neg \forall x. A$ on the left <br> `y:String`: Variable in place of $x$ in the premise | |
+
 
 
 # Level 3 Proof Steps

@@ -6,9 +6,9 @@ fof(prenex_step, plain, [$phi] --> [! [X]: (p(X) & (~p(a) | ~p(b)))], inference(
 fof(i0, plain, [$phi] --> [(p(V0) & (~p(a) | ~p(b)))], inference(instForall, [status(thm), 0, $fot(V0)], [prenex_step])).
 fof(tsStep0, let, (Ts3 <=> (~p(a) | ~p(b)))).
 fof(tsStep1, let, ! [V0]: (Ts1(V0) <=> (p(V0) & Ts3))).
-fof(tsStepExpl1, plain, [$phi,$tsStep0] --> [(p(V0) & Ts3)], inference(rightSubstIff, [status(thm), 1, 1, $fof((p(V0) & A)), 'A'], [i0])).
-fof(tsStepExpl2, plain, [$phi,$tsStep0,(Ts1(V0) <=> (p(V0) & Ts3))] --> [Ts1(V0)], inference(rightSubstIff, [status(thm), 2, 1, $fof(A), 'A'], [tsStepExpl1])).
-fof(4, plain, [$phi,$tsStep0,$tsStep1] --> [Ts1(V0)], inference(leftForall, [status(thm), 2, $fot(V0)], [tsStepExpl2])).
+fof(tsStepExpl0, plain, [$phi,$tsStep0] --> [(p(V0) & Ts3)], inference(rightSubstIff, [status(thm), 1, 1, $fof((p(V0) & A)), 'A'], [i0])).
+fof(tsStepExpl1, plain, [$phi,$tsStep0,(Ts1(V0) <=> (p(V0) & Ts3))] --> [Ts1(V0)], inference(rightSubstIff, [status(thm), 2, 1, $fof(A), 'A'], [tsStepExpl0])).
+fof(4, plain, [$phi,$tsStep0,$tsStep1] --> [Ts1(V0)], inference(leftForall, [status(thm), 2, $fot(V0)], [tsStepExpl1])).
 fof(a3, plain, [$phi,$tsStep0,(Ts1(V0) <=> (p(V0) & Ts3))] --> [~Ts1(V0),p(V0)], inference(clausify, [status(thm), 2], [])).
 fof(3, plain, [$phi,$tsStep0,$tsStep1] --> [~Ts1(V0),p(V0)], inference(leftForall, [status(thm), 2, $fot(V0)], [a3])).
 fof(a6, plain, [$phi,$tsStep0,(Ts1(V0) <=> (p(V0) & Ts3))] --> [~Ts1(V0),Ts3], inference(clausify, [status(thm), 2], [])).

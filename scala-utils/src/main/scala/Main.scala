@@ -19,20 +19,22 @@ object Main {
 
   def main(args: Array[String]): Unit = {
 
-    if (args.size < 1){
-      println("You need to provide a file")
-      System.exit(0)
-    }
+    // if (args.size < 1){
+    //   println("You need to provide a file")
+    //   System.exit(0)
+    // }
 
     // Problem
-    val problem_file = args(0)
+    val problem_file = "../proofs/clausification/simple2.p"
     val problem = reconstructProof(new File(problem_file))
 
+    // parse conjecture
     val conjecture = problem.steps(0).asInstanceOf[LVL2ProofStep]
     val parsedProblem = problem.getSequent(0).right(0)
     val parsedProblemName = problem.thmName
     val myTseitin = new Tseitin()
-    val (parsedProblem1, originalFormula, stepNC) = myTseitin.toNegatedFormula(parsedProblem)
+    val (parsedProblem1, originalFormula, stepNC) =
+      myTseitin.toNegatedFormula(parsedProblem)
 
     // NNF
     val (parsedProblem2, stepNNF) = myTseitin.toNNF(parsedProblem1)
@@ -41,16 +43,19 @@ object Main {
     val (parsedProblem3, stepPrenex) = myTseitin.toPrenex(parsedProblem2)
 
     // Instantiated and renamed
-    val (parsedProblem4, mapVar, stepInst) = myTseitin.toInstantiated(parsedProblem3)
+    val (parsedProblem4, mapVar, stepInst) =
+      myTseitin.toInstantiated(parsedProblem3)
     val reverseMap = for ((k, v) <- mapVar) yield (v, k)
-    
+
     // Unrenamed formula
     val parsedProblem5 = myTseitin.UnRenameVariables(parsedProblem4, reverseMap)
 
     // Creation of tseitin terms beforme renaming
     val premap = myTseitin.createTseitinVariables(parsedProblem4)
     myTseitin.makeTseitinMaps(premap._1)
-    myTseitin.makeTseitinMapsUp(myTseitin.updateTseitinVariables(myTseitin.getTseitinTermVar()))
+    myTseitin.makeTseitinMapsUp(
+      myTseitin.updateTseitinVariables(myTseitin.getTseitinTermVar())
+    )
 
     // Tseitin Normal Form
     val parsedProblem6 = myTseitin.toTseitin(parsedProblem4)
@@ -59,7 +64,8 @@ object Main {
     val parsedProblem7 = myTseitin.toFlatternAnd(parsedProblem6)
 
     // Create let steps
-    val (tseitinForms, tseitinStepMap, tseitinStepNames) = myTseitin.generateTseitin()
+    val (tseitinForms, tseitinStepMap, tseitinStepNames) =
+      myTseitin.generateTseitin()
 
     // Generate tseistin replacement
     val lastInstForm = stepInst.last
@@ -67,7 +73,7 @@ object Main {
       lastInstForm,
       tseitinStepNames.reverse,
       tseitinStepMap,
-      tseitinForms,
+      tseitinForms.reverse,
       "i" + (stepInst.size - 1)
     )
 
@@ -78,7 +84,7 @@ object Main {
     val (problem9, last_step) = myTseitin.generateTseitinStep(
       parsedProblem7,
       tseitinStepNames.reverse,
-      tseitinReplacementStep,
+      tseitinReplacementStep.reverse,
       problem8,
       tseitinStepMap,
       tseitinForms
@@ -86,34 +92,42 @@ object Main {
     val problem9_flat = myTseitin.modifyOrSteps(problem9)
 
     // Update ID
-    val tseitinReplacementStep_up = myTseitin.updateId(tseitinReplacementStep, last_step)
+
+    val tseitinReplacementStep_up =
+      myTseitin.updateId(tseitinReplacementStep.reverse, last_step)
 
     // Compute Context
     val context = originalFormula +: tseitinStepNames.reverse
 
     // Add step to the proof
     val newProof = problem9_flat
-    val newProof3 = newProof.addStepsLVL2Before(tseitinReplacementStep_up)
+    val newProof3 =
+      newProof.addStepsLVL2Before(tseitinReplacementStep_up)
     val newProof4 = newProof3.addStepsLVL2Before(tseitinForms)
     val newProof5 = newProof4.addStepsLVL2Before(stepInst)
     val newProof6 = newProof5.addStepLVL2Before(stepPrenex)
     val newProof7 = newProof6.addStepLVL2Before(stepNNF)
     val newProof8 = newProof7.addStepsLVL2Before(stepNC)
     val newProof9 = myTseitin.removeFalse2(newProof8)
-    val newProof10 = newProof9.addStepsLVL2After(myTseitin.addPsi(context, newProof9.steps.last.name))
-    val newProof11 = newProof10.addStepsLVL2After(myTseitin.removeTseitin(tseitinStepNames, tseitinStepMap))
+    val newProof10 = newProof9.addStepsLVL2After(
+      myTseitin.addPsi(context, newProof9.steps.last.name)
+    )
+    val newProof11 = newProof10.addStepsLVL2After(
+      myTseitin.removeTseitin(tseitinStepNames, tseitinStepMap)
+    )
     val newProof12 = myTseitin.renameTseitinConstant(newProof11)
     val newProof13 = newProof12.addStepLVL2Before(conjecture)
 
-    // println("\nProof :")
-    // printProof(newProof13)
-    // println("\n")
+    println("\nProof :")
+    printProof(newProof13)
+    // newProof13.steps.drop(5).dropRight(25).map(x => println(x))
+    println("\n")
 
     val final_proof = ProofToString(newProof13)
 
     // Write in a file
     val output_file = {
-    if (args.size == 2) 
+      if (args.size == 2)
       then args(1)
       else problem_file.dropRight(2).+("_output.p")
     }

@@ -43,11 +43,11 @@ class Tseitin {
   val instantiateName = "i"
   val tseitinStepName = "$tsStep"
   val tseitinStepNameExpl = "tsStepExpl"
-  val NoneFormula : Formula = AtomicFormula(AtomicSymbol("None", 0), Seq())
+  val NoneSymbol : AtomicSymbol = AtomicSymbol("None", 0)
+  val NoneFormula : Formula = AtomicFormula(NoneSymbol, Seq())
   var phi = NoneFormula
   val psi = AtomicFormula(AtomicSymbol("$psi", 0), Seq())
   var originalFormula = NoneFormula
-  var cptTSExpSteps = -1
 
   // Var = Tseitin Var, Term = Original formula Term
   var tseitinVarTerm: Map[sctptp.FOL.Formula, sctptp.FOL.Formula] = Map[sctptp.FOL.Formula, sctptp.FOL.Formula]()
@@ -378,174 +378,77 @@ class Tseitin {
   // Compute tsStep steps, that replace a tseitin formula
   def computeTseitinReplacementSteps(s: SCProofStep, tsNames: Seq[AtomicFormula], map: Map[AtomicFormula, AtomicFormula], tsSteps: Seq[LVL2ProofStep], original_parent: String): Seq[LVL2ProofStep] = {
 
-      // if there is a forall in the corresponding axiom, first instantiate it 
-      def computeTseitinReplacementStepsAux(
-        f: Formula, 
-        f_right: Formula,
-        previousForms: Seq[Formula],
-        fSubstituted: Formula,
-        fSubstituted2: Formula,
-        new_var: AtomicSymbol,
-        parent: String,
-        ): Seq[LVL2ProofStep] = {
-        val f_with_qt = f
+    // println("---------------------")
+    // println("tsName: "+tsNames)
+    // println("tsSteps: ")
+    // tsSteps.map(x => println(x))
+    // println("map: "+map)
+    // println("original parent: "+original_parent)
+    // println("TseitinVarTermUp :"+tseitinVarTermUp)
+    // println("TseitinTermVapUp :"+tseitinTermVarUp)
 
-        f_with_qt match
-          case AtomicFormula(_, _) |  ConnectorFormula(_, _) => {
-              cptTSExpSteps = cptTSExpSteps + 1
-              val final_f = RightSubstIff(tseitinStepNameExpl+cptTSExpSteps,
-              Sequent( 
-              previousForms, // les formules d'avant, avec un acc
-              Seq(fSubstituted)), 
-              previousForms.size-1,
-              true, 
-              fSubstituted2,
-              new_var, 
-              parent)
-              Seq(final_f)
-          }
-          case BinderFormula(label, bound, inner) => {
-            label match
-              case Forall => {
-                cptTSExpSteps = cptTSExpSteps+1
-                val f_next_step = LeftForall(tseitinStepNameExpl+cptTSExpSteps, Sequent(phi +: tsNames.take(previousForms.size+1), Seq(f_right)), previousForms.size, Variable(bound), tseitinStepNameExpl+(cptTSExpSteps+2))
-                computeTseitinReplacementStepsAux(inner, f_right, previousForms, fSubstituted, fSubstituted2, new_var, parent) :+ f_next_step// same with inner
-              }
-              case Exists => throw Exception("Compute Tseitin replacement step: existential quantifier not allowed")
-          }
+    tsSteps.foldLeft((Seq[LVL2ProofStep](), 0, s.bot.right(0), 0)){(acc, x) => 
+      val currentStep = x
+      val index = acc._2
+      val cptStep = acc._4
+      val currentFormula = acc._3
+      val parent = if (acc._2 == 0) then original_parent else tseitinStepNameExpl+(cptStep-1)
+
+      // Compute new Formula
+      val currentFormulaSubstituted = substituteFormulaInFormula(
+        currentFormula, 
+        tseitinTermVarUp
+      )
+        
+      // Compute Scheme
+      val new_var = AtomicSymbol(Identifier("A"), 0)
+      val formulaScheme = substituteFormulaInFormula(
+        currentFormula, 
+        tseitinTermVarUp + (tseitinVarTermUp(map(tsNames(acc._2))) -> AtomicFormula(new_var, Seq())) 
+      )
+
+
+      // Compute the last hypothesis
+      val lastHyp = 
+        if (currentStep.bot.right(0).isInstanceOf[BinderFormula] && (currentStep.bot.right(0).asInstanceOf[BinderFormula].label == Forall))
+          then retrieveQT(currentStep.bot.right(0))._2
+          else tsNames(index)
+
+      // Annex function to compute the forall chain
+      def computeTseitinReplacementStepsAux(hyp: Formula, f: Formula, old_parent: String, cpt: Int) : (Seq[LVL2ProofStep], String, Int) = {
+        val hypName = if areAlphaEquivalent(hyp, currentStep.bot.right(0)) 
+          then tsNames(index)
+          else hyp 
+
+        if (hyp.isInstanceOf[BinderFormula] && hyp.asInstanceOf[BinderFormula].label == Forall)
+          then (LeftForall(tseitinStepNameExpl+cpt, Sequent((phi +: tsNames.take(index)) :+ hypName, Seq(f)), index+1, Variable(hyp.asInstanceOf[BinderFormula].bound), tseitinStepNameExpl+(cpt-1)) 
+                +: computeTseitinReplacementStepsAux(hyp.asInstanceOf[BinderFormula].inner, f, tseitinStepNameExpl+(cpt-1), index+1)._1, tseitinStepNameExpl+cpt, index+1)
+          else (Seq(), old_parent, cpt)
       }
-      
-      def computeInnerFromStep(s: LVL2ProofStep): Formula = {
-        def computeInnerFromStepAux(f: Formula): Formula = {
-          f match 
-            case AtomicFormula(label, args) => f
-            case ConnectorFormula(label, args) => f 
-            case BinderFormula(label, bound, inner) => computeInnerFromStepAux(inner)
-        }
-
-        s.bot.right(0) match 
-          case AtomicFormula(label, args) => AtomicFormula(AtomicSymbol("$"+s.name, 0), Seq())
-          case ConnectorFormula(label, args) => AtomicFormula(AtomicSymbol("$"+s.name, 0), Seq())
-          case BinderFormula(label, bound, inner) => computeInnerFromStepAux(inner)
-      }
-      // fof(i0, plain, [$phi] --> [(p(V0) & (~p(a) | ~p(b)))], inference(instForall, [status(thm), 0, $fot(V0)], [prenex_step])).
-      // fof(tsStep0, let, (Ts3 <=> (~p(a) | ~p(b)))).
-      // fof(tsStep1, let, ! [V0]: (Ts1(V0) <=> (p(V0) & Ts3))).
-
-      // TS1
-      // fof(tsStepExpl0, plain, [$phi,$tsStep0] --> [(p(V0) & Ts3)], inference(rightSubstIff, [status(thm), 1, $fof(p(V0) & A), 'A'], [i0])).
-      
-      
-      // fof(tsStepExpl1, plain, [$phi,$tsStep0,(Ts1(V0) <=> (p(V0) & Ts3))] --> [Ts1(V0)], inference(rightSubstIff, [status(thm), 2, $fof(A), 'A'], [tsStepExpl0])).
-      
-      // TS0
-      // fof(4, plain, [$phi,$tsStep0,$tsStep1] --> [Ts1(V0)], inference(leftForall, [status(thm), 2, $fot(V0)], [tsStepExpl1])).
 
 
-      // println("#####################")
-      // tsSteps.map(x => println(x))
-      // println("-------------------")
-      // println(tsNames)
-      // println("-------------------")
-      // println(map)
-      // println("-------------------")
-      // println(tseitinTermVarUp)
-      // println("#####################")
 
-
-      val final_res = tsSteps.foldLeft(
-        (Seq[LVL2ProofStep](), 0, Map[Formula, Formula](), s.bot.right(0), Seq[LVL2ProofStep]()))(
-          (acc, x) => {
-
-            val new_acc3 = acc._3 + (tseitinVarTermUp(map(tsNames(acc._2))) -> map(tsNames(acc._2)))
-            val previousForms = tsNames.take(acc._2+1) // acc + courant
-            val fSubstituted = substituteFormulaInFormula(
-              acc._4, 
-              new_acc3 
-              )
-
-            val new_var = AtomicSymbol(Identifier("A"), 0)
-            val fSubstituted2 = substituteFormulaInFormula(
-              acc._4, 
-              acc._3 + (tseitinVarTermUp(map(tsNames(acc._2))) -> AtomicFormula(new_var, Seq())) 
-            )
-            val parent = if (acc._2 == 0) then original_parent else tseitinStepNameExpl+cptTSExpSteps
-            
-
-            // Compute the formula with free variables
-            val aux_steps = computeTseitinReplacementStepsAux(
-              x.bot.right(0), 
-              substituteFormulaInFormula(
-                fSubstituted, 
-                if (acc._2 < tsSteps.size -1) 
-                  then new_acc3 + (tseitinVarTermUp(map(tsNames(acc._2 + 1))) -> map(tsNames(acc._2 + 1)))
-                  else new_acc3
-              ), 
-              phi +: previousForms,
-              fSubstituted,
-              fSubstituted2,
-              new_var,
-              parent
-              ).reverse
-
-            // cptTSExpSteps = cptTSExpSteps + 1
-            val final_f = aux_steps.last
-
-            val old_x = if (acc._5.size == 0) then Seq() else (Seq(computeInnerFromStep(acc._5(0))))
-
-            val final_f2 = RightSubstIff(tseitinStepNameExpl+cptTSExpSteps,
+      val finalStep = RightSubstIff(tseitinStepNameExpl+cptStep,
             Sequent( 
-            phi +: (previousForms.dropRight(1) ++old_x), // les formules d'avant, avec un acc
-            Seq(fSubstituted)), 
-            previousForms.size, 
+            phi +: (tsNames.take(index)) :+ lastHyp, // les formules d'avant, avec un acc
+            Seq(currentFormulaSubstituted)), 
+            index+1, 
             true,
-            fSubstituted2,
+            formulaScheme,
             new_var, 
             parent)
 
-            
-            val final_f3 = if aux_steps.size > 1 then final_f else final_f2
-            val final_aux = aux_steps.dropRight(1) // if aux_steps.size == 0 then Seq() else aux_steps.dropRight(1)
 
-            // println(s"Je traite : ${x.name}")
-            // println(s"fSubst = " + fSubstituted)
-            // println(s"final_f = " + final_f)
-            // println(s"fSubst2 = " + fSubstituted)
-            // println(AtomicFormula(AtomicSymbol("$"+x.name, 0), Seq()))
-            // println(map(AtomicFormula(AtomicSymbol("$"+x.name, 0), Seq())))
-            // println(substituteFormulaInFormula(fSubstituted, 
-            // Map[Formula, Formula]() + (AtomicFormula(AtomicSymbol(map(tsNames(acc._2)).toString(), 0), Seq()) -> AtomicFormula(new_var, Seq()))))
-            // println(s"Aux steps = ")
-            // aux_steps.map(x => println(x))
-            // println(s"acc._1 steps = ")
-            // acc._1.map(x => println(x))
-            // println(s"final_aux = ")
-            // final_aux.map(x => println(x))
-            // println(s"final_2 = " + final_f2)
-            // println(s"final_3 = " + final_f3)
+      val res = computeTseitinReplacementStepsAux(currentStep.bot.right(0), currentFormulaSubstituted, tseitinStepNameExpl+cptStep, cptStep+1)
 
-            // println("----------------------")
+      val finalList = acc._1 ++ (finalStep +: res._1.reverse)
 
+      // println("#####################################")
+      // finalList.map(x => println(x))
+      // println("#####################################")
 
-
-            (
-            (final_f3 +: final_aux).reverse ++ acc._1, 
-            acc._2+1, 
-            new_acc3, 
-            fSubstituted,
-            Seq(x)
-        )})._1
-
-      // TS1
-      // fof(tsStepExpl0, plain, [$phi,$tsStep0] --> [(p(V0) & Ts3)], inference(rightSubstIff, [status(thm), 1, $fof(p(V0) & A), 'A'], [i0])).
-      
-      
-      // fof(tsStepExpl1, plain, [$phi,$tsStep0,(Ts1(V0) <=> (p(V0) & Ts3))] --> [Ts1(V0)], inference(rightSubstIff, [status(thm), 2, $fof(A), 'A'], [tsStepExpl0])).
-      
-      // TS0
-      // fof(4, plain, [$phi,$tsStep0,$tsStep1] --> [Ts1(V0)], inference(leftForall, [status(thm), 2, $fot(V0)], [tsStepExpl1])).
-
-        final_res(1) +: final_res(0) +: final_res(2) +: Seq()
+      (finalList, acc._2 + 1, currentFormulaSubstituted, res._3)
+    }._1
   }
   
   // Generate Tseitin Step

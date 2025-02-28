@@ -19,13 +19,13 @@ object Main {
 
   def main(args: Array[String]): Unit = {
 
-    // if (args.size < 1){
-    //   println("You need to provide a file")
-    //   System.exit(0)
-    // }
+    if (args.size < 1) {
+      println("You need to provide a file")
+      System.exit(0)
+    }
 
     // Problem
-    val problem_file = "../proofs/clausification/simple2.p"
+    val problem_file = "../proofs/clausification/simple.p"
     val problem = reconstructProof(new File(problem_file))
 
     // parse conjecture
@@ -68,7 +68,8 @@ object Main {
       myTseitin.generateTseitin()
 
     // Generate tseistin replacement
-    val lastInstForm = stepInst.last
+    val lastInstForm = stepInst(0)
+    println("lastinstfom : " + lastInstForm)
     val tseitinReplacementStep = myTseitin.computeTseitinReplacementSteps(
       lastInstForm,
       tseitinStepNames.reverse,
@@ -118,10 +119,10 @@ object Main {
     val newProof12 = myTseitin.renameTseitinConstant(newProof11)
     val newProof13 = newProof12.addStepLVL2Before(conjecture)
 
-    println("\nProof :")
-    printProof(newProof13)
-    // newProof13.steps.drop(5).dropRight(25).map(x => println(x))
-    println("\n")
+    // println("\nProof :")
+    // printProof(newProof13)
+    // newProof13.steps.drop(5).dropRight(36).map(x => println(x))
+    // println("\n")
 
     val final_proof = ProofToString(newProof13)
 

@@ -378,33 +378,45 @@ class Tseitin {
   // Compute tsStep steps, that replace a tseitin formula
   def computeTseitinReplacementSteps(s: SCProofStep, tsNames: Seq[AtomicFormula], map: Map[AtomicFormula, AtomicFormula], tsSteps: Seq[LVL2ProofStep], original_parent: String): Seq[LVL2ProofStep] = {
 
-    // println("---------------------")
-    // println("tsName: "+tsNames)
-    // println("tsSteps: ")
-    // tsSteps.map(x => println(x))
-    // println("map: "+map)
-    // println("original parent: "+original_parent)
-    // println("TseitinVarTermUp :"+tseitinVarTermUp)
-    // println("TseitinTermVapUp :"+tseitinTermVarUp)
+    println("---------------------")
+    println("tsName: "+tsNames)
+    println("tsSteps: ")
+    tsSteps.map(x => println(x))
+    println("map: "+map)
+    println("original parent: "+original_parent)
+    println("TseitinVarTermUp :"+tseitinVarTermUp)
+    println("TseitinTermVapUp :"+tseitinTermVarUp)
 
-    tsSteps.foldLeft((Seq[LVL2ProofStep](), 0, s.bot.right(0), 0)){(acc, x) => 
+    tsSteps.foldLeft((Seq[LVL2ProofStep](), 0, s.bot.right(0), 0, Map[Formula, Formula]())){(acc, x) => 
       val currentStep = x
       val index = acc._2
       val cptStep = acc._4
+      // val currentFormula = x.bot.right(0)
       val currentFormula = acc._3
       val parent = if (acc._2 == 0) then original_parent else tseitinStepNameExpl+(cptStep-1)
+      val stepNameIntoForm = AtomicFormula(AtomicSymbol(Identifier("$"+x.name), 0), Seq())
+      val stepNameCorrespondingSymbol = map(stepNameIntoForm)
+      val allowedSubsts = acc._5 + (tseitinVarTermUp(stepNameCorrespondingSymbol) -> stepNameCorrespondingSymbol)
 
       // Compute new Formula
       val currentFormulaSubstituted = substituteFormulaInFormula(
         currentFormula, 
-        tseitinTermVarUp
+        allowedSubsts
       )
+
+      println("---------------------")
+      println("Step = "+ x.name)
+      println("AllowedSubst ="+ allowedSubsts)
+      println("CurrentFormula = "+ currentFormula)
+      println("CurrentFormulaSubst = "+ currentFormulaSubstituted)
+      println("Index ="+index)
+      println("cptStep Before  ="+cptStep)
         
       // Compute Scheme
       val new_var = AtomicSymbol(Identifier("A"), 0)
       val formulaScheme = substituteFormulaInFormula(
         currentFormula, 
-        tseitinTermVarUp + (tseitinVarTermUp(map(tsNames(acc._2))) -> AtomicFormula(new_var, Seq())) 
+        allowedSubsts + (tseitinVarTermUp(map(tsNames(acc._2))) -> AtomicFormula(new_var, Seq())) 
       )
 
 
@@ -415,15 +427,15 @@ class Tseitin {
           else tsNames(index)
 
       // Annex function to compute the forall chain
-      def computeTseitinReplacementStepsAux(hyp: Formula, f: Formula, old_parent: String, cpt: Int) : (Seq[LVL2ProofStep], String, Int) = {
+      def computeTseitinReplacementStepsAux(hyp: Formula, f: Formula, old_parent: String, cpt: Int) : (Seq[LVL2ProofStep], String) = {
         val hypName = if areAlphaEquivalent(hyp, currentStep.bot.right(0)) 
           then tsNames(index)
           else hyp 
 
         if (hyp.isInstanceOf[BinderFormula] && hyp.asInstanceOf[BinderFormula].label == Forall)
           then (LeftForall(tseitinStepNameExpl+cpt, Sequent((phi +: tsNames.take(index)) :+ hypName, Seq(f)), index+1, Variable(hyp.asInstanceOf[BinderFormula].bound), tseitinStepNameExpl+(cpt-1)) 
-                +: computeTseitinReplacementStepsAux(hyp.asInstanceOf[BinderFormula].inner, f, tseitinStepNameExpl+(cpt-1), index+1)._1, tseitinStepNameExpl+cpt, index+1)
-          else (Seq(), old_parent, cpt)
+                +: computeTseitinReplacementStepsAux(hyp.asInstanceOf[BinderFormula].inner, f, tseitinStepNameExpl+(cpt-1), cpt-1)._1, tseitinStepNameExpl+cpt)
+          else (Seq(), old_parent)
       }
 
 
@@ -439,15 +451,18 @@ class Tseitin {
             parent)
 
 
-      val res = computeTseitinReplacementStepsAux(currentStep.bot.right(0), currentFormulaSubstituted, tseitinStepNameExpl+cptStep, cptStep+1)
+      val step_max = retrieveQT(currentStep.bot.right(0))._1.size + cptStep
+      val res = computeTseitinReplacementStepsAux(currentStep.bot.right(0), currentFormulaSubstituted, tseitinStepNameExpl+cptStep, step_max)
 
       val finalList = acc._1 ++ (finalStep +: res._1.reverse)
+
+      println("cptStep After  ="+step_max)
 
       // println("#####################################")
       // finalList.map(x => println(x))
       // println("#####################################")
 
-      (finalList, acc._2 + 1, currentFormulaSubstituted, res._3)
+      (finalList, index+1, currentFormulaSubstituted, step_max+1, allowedSubsts)
     }._1
   }
   

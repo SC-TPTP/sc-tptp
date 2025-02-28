@@ -19,10 +19,10 @@ object Main {
 
   def main(args: Array[String]): Unit = {
 
-    if (args.size < 1) {
-      println("You need to provide a file")
-      System.exit(0)
-    }
+    // if (args.size < 1) {
+    //   println("You need to provide a file")
+    //   System.exit(0)
+    // }
 
     // Problem
     val problem_file = "../proofs/clausification/simple.p"
@@ -119,10 +119,10 @@ object Main {
     val newProof12 = myTseitin.renameTseitinConstant(newProof11)
     val newProof13 = newProof12.addStepLVL2Before(conjecture)
 
-    // println("\nProof :")
-    // printProof(newProof13)
+    println("\nProof :")
+    printProof(newProof13)
     // newProof13.steps.drop(5).dropRight(36).map(x => println(x))
-    // println("\n")
+    println("\n")
 
     val final_proof = ProofToString(newProof13)
 

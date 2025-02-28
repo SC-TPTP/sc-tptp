@@ -1,7 +1,7 @@
 ============================== Prover9 ===============================
 Prover9 (64) version 2009-11A, November 2009.
-Process 54544 was started by julie on pc-loria,
-Fri Feb 28 16:41:46 2025
+Process 55715 was started by julie on pc-loria,
+Fri Feb 28 16:50:12 2025
 The command was "/tmp/prouver9".
 ============================== end of head ===========================
 
@@ -9,13 +9,16 @@ The command was "/tmp/prouver9".
 set(prolog_style_variables).
 
 formulas(assumptions).
-Ts1(V0) # label(0) # label(axiom).
--ts3 | -p(a) | -p(b) # label(1) # label(axiom).
-ts3 | --p(a) # label(2) # label(axiom).
-ts3 | --p(b) # label(3) # label(axiom).
-Ts1(V0) | -p(V0) | -ts3 # label(4) # label(axiom).
--Ts1(V0) | p(V0) # label(5) # label(axiom).
--Ts1(V0) | ts3 # label(6) # label(axiom).
+Ts3(V0,V1) # label(0) # label(axiom).
+-Ts2(V0,V1) | p(V0) | q(V1) # label(1) # label(axiom).
+Ts2(V0,V1) | -p(V0) # label(2) # label(axiom).
+Ts2(V0,V1) | -q(V1) # label(3) # label(axiom).
+ts5 | --p(c) | --q(c) # label(4) # label(axiom).
+-ts5 | -p(c) # label(5) # label(axiom).
+-ts5 | -q(c) # label(6) # label(axiom).
+Ts3(V0,V1) | -Ts2(V0,V1) | -ts5 # label(7) # label(axiom).
+-Ts3(V0,V1) | Ts2(V0,V1) # label(8) # label(axiom).
+-Ts3(V0,V1) | ts5 # label(9) # label(axiom).
 end_of_list.
 
 formulas(goals).
@@ -26,8 +29,7 @@ end_of_list.
 ============================== PROCESS NON-CLAUSAL FORMULAS ==========
 
 % Formulas that are not ordinary clauses:
-1 ts3 | --p(a) # label(2) # label(axiom) # label(non_clause).  [assumption].
-2 ts3 | --p(b) # label(3) # label(axiom) # label(non_clause).  [assumption].
+1 ts5 | --p(c) | --q(c) # label(4) # label(axiom) # label(non_clause).  [assumption].
 
 ============================== end of process non-clausal formulas ===
 
@@ -39,13 +41,16 @@ formulas(usable).
 end_of_list.
 
 formulas(sos).
-Ts1(A) # label(0) # label(axiom).  [assumption].
--ts3 | -p(a) | -p(b) # label(1) # label(axiom).  [assumption].
-ts3 | p(a) # label(2) # label(axiom).  [clausify(1)].
-ts3 | p(b) # label(3) # label(axiom).  [clausify(2)].
-Ts1(A) | -p(A) | -ts3 # label(4) # label(axiom).  [assumption].
--Ts1(A) | p(A) # label(5) # label(axiom).  [assumption].
--Ts1(A) | ts3 # label(6) # label(axiom).  [assumption].
+Ts3(A,B) # label(0) # label(axiom).  [assumption].
+-Ts2(A,B) | p(A) | q(B) # label(1) # label(axiom).  [assumption].
+Ts2(A,B) | -p(A) # label(2) # label(axiom).  [assumption].
+Ts2(A,B) | -q(B) # label(3) # label(axiom).  [assumption].
+ts5 | p(c) | q(c) # label(4) # label(axiom).  [clausify(1)].
+-ts5 | -p(c) # label(5) # label(axiom).  [assumption].
+-ts5 | -q(c) # label(6) # label(axiom).  [assumption].
+Ts3(A,B) | -Ts2(A,B) | -ts5 # label(7) # label(axiom).  [assumption].
+-Ts3(A,B) | Ts2(A,B) # label(8) # label(axiom).  [assumption].
+-Ts3(A,B) | ts5 # label(9) # label(axiom).  [assumption].
 end_of_list.
 
 formulas(demodulators).
@@ -53,67 +58,89 @@ end_of_list.
 
 ============================== PREDICATE ELIMINATION =================
 
-Eliminating Ts1/1
-3 -Ts1(A) | p(A) # label(5) # label(axiom).  [assumption].
-4 Ts1(A) # label(0) # label(axiom).  [assumption].
-5 Ts1(A) | -p(A) | -ts3 # label(4) # label(axiom).  [assumption].
-Derived: p(A).  [resolve(3,a,4,a)].
-6 -Ts1(A) | ts3 # label(6) # label(axiom).  [assumption].
-Derived: ts3.  [resolve(6,a,4,a)].
+Eliminating Ts3/2
+2 -Ts3(A,B) | Ts2(A,B) # label(8) # label(axiom).  [assumption].
+3 Ts3(A,B) # label(0) # label(axiom).  [assumption].
+4 Ts3(A,B) | -Ts2(A,B) | -ts5 # label(7) # label(axiom).  [assumption].
+Derived: Ts2(A,B).  [resolve(2,a,3,a)].
+5 -Ts3(A,B) | ts5 # label(9) # label(axiom).  [assumption].
+Derived: ts5.  [resolve(5,a,3,a)].
+
+Eliminating Ts2/2
+6 Ts2(A,B) | -p(A) # label(2) # label(axiom).  [assumption].
+7 -Ts2(A,B) | p(A) | q(B) # label(1) # label(axiom).  [assumption].
+8 Ts2(A,B) | -q(B) # label(3) # label(axiom).  [assumption].
+9 Ts2(A,B).  [resolve(2,a,3,a)].
+Derived: p(A) | q(B).  [resolve(9,a,7,a)].
+
+Eliminating p/1
+10 -ts5 | -p(c) # label(5) # label(axiom).  [assumption].
+11 ts5 | p(c) | q(c) # label(4) # label(axiom).  [clausify(1)].
+12 p(A) | q(B).  [resolve(9,a,7,a)].
+Derived: q(A) | -ts5.  [resolve(12,a,10,b)].
+
+Eliminating q/1
+13 q(A) | -ts5.  [resolve(12,a,10,b)].
+14 -ts5 | -q(c) # label(6) # label(axiom).  [assumption].
+Derived: -ts5 | -ts5.  [resolve(13,a,14,b)].
 
 ============================== end predicate elimination =============
 
-Auto_denials:  (non-Horn, no changes).
+Auto_denials:  (no changes).
 
 Term ordering decisions:
-Predicate symbol precedence:  predicate_order([ ts3, p ]).
-Function symbol precedence:  function_order([ a, b ]).
+Predicate symbol precedence:  predicate_order([ ts5 ]).
+Function symbol precedence:  function_order([ ]).
 After inverse_order:  (no changes).
 Unfolding symbols: (none).
 
 Auto_inference settings:
-  % set(binary_resolution).  % (non-Horn)
-  % set(neg_ur_resolution).  % (non-Horn, less than 100 clauses)
+  % set(neg_binary_resolution).  % (HNE depth_diff=0)
+  % clear(ordered_res).  % (HNE depth_diff=0)
+  % set(ur_resolution).  % (HNE depth_diff=0)
+    % set(ur_resolution) -> set(pos_ur_resolution).
+    % set(ur_resolution) -> set(neg_ur_resolution).
 
 Auto_process settings:
-  % set(factor).  % (non-Horn)
-  % set(unit_deletion).  % (non-Horn)
+  % set(unit_deletion).  % (Horn set with negative nonunits)
 
-kept:      7 -ts3 | -p(a) | -p(b) # label(1) # label(axiom).  [assumption].
-kept:      8 ts3 | p(a) # label(2) # label(axiom).  [clausify(1)].
-kept:      9 ts3 | p(b) # label(3) # label(axiom).  [clausify(2)].
-kept:      10 p(A).  [resolve(3,a,4,a)].
-kept:      11 ts3.  [resolve(6,a,4,a)].
+kept:      15 ts5.  [resolve(5,a,3,a)].
+           16 -ts5 | -ts5.  [resolve(13,a,14,b)].
 
 ============================== PROOF =================================
 
 % Proof 1 at 0.00 (+ 0.00) seconds.
-% Length of proof is 7.
-% Level of proof is 2.
-% Maximum clause weight is 5.000.
+% Length of proof is 12.
+% Level of proof is 5.
+% Maximum clause weight is 1.000.
 % Given clauses 0.
 
-3 -Ts1(A) | p(A) # label(5) # label(axiom).  [assumption].
-4 Ts1(A) # label(0) # label(axiom).  [assumption].
-6 -Ts1(A) | ts3 # label(6) # label(axiom).  [assumption].
-7 -ts3 | -p(a) | -p(b) # label(1) # label(axiom).  [assumption].
-10 p(A).  [resolve(3,a,4,a)].
-11 ts3.  [resolve(6,a,4,a)].
-12 $F.  [back_unit_del(7),unit_del(a,11),unit_del(b,10),unit_del(c,10)].
+2 -Ts3(A,B) | Ts2(A,B) # label(8) # label(axiom).  [assumption].
+3 Ts3(A,B) # label(0) # label(axiom).  [assumption].
+5 -Ts3(A,B) | ts5 # label(9) # label(axiom).  [assumption].
+7 -Ts2(A,B) | p(A) | q(B) # label(1) # label(axiom).  [assumption].
+9 Ts2(A,B).  [resolve(2,a,3,a)].
+10 -ts5 | -p(c) # label(5) # label(axiom).  [assumption].
+12 p(A) | q(B).  [resolve(9,a,7,a)].
+13 q(A) | -ts5.  [resolve(12,a,10,b)].
+14 -ts5 | -q(c) # label(6) # label(axiom).  [assumption].
+15 ts5.  [resolve(5,a,3,a)].
+16 -ts5 | -ts5.  [resolve(13,a,14,b)].
+17 $F.  [copy(16),merge(b),unit_del(a,15)].
 
 ============================== end of proof ==========================
 
 ============================== STATISTICS ============================
 
-Given=0. Generated=6. Kept=5. proofs=1.
-Usable=0. Sos=0. Demods=0. Limbo=2, Disabled=12. Hints=0.
+Given=0. Generated=2. Kept=1. proofs=1.
+Usable=0. Sos=0. Demods=0. Limbo=1, Disabled=15. Hints=0.
 Kept_by_rule=0, Deleted_by_rule=0.
-Forward_subsumed=0. Back_subsumed=2.
+Forward_subsumed=0. Back_subsumed=0.
 Sos_limit_deleted=0. Sos_displaced=0. Sos_removed=0.
-New_demodulators=0 (0 lex), Back_demodulated=0. Back_unit_deleted=1.
+New_demodulators=0 (0 lex), Back_demodulated=0. Back_unit_deleted=0.
 Demod_attempts=0. Demod_rewrites=0.
 Res_instance_prunes=0. Para_instance_prunes=0. Basic_paramod_prunes=0.
-Nonunit_fsub_feature_tests=0. Nonunit_bsub_feature_tests=5.
+Nonunit_fsub_feature_tests=0. Nonunit_bsub_feature_tests=0.
 Megabytes=0.03.
 User_CPU=0.00, System_CPU=0.00, Wall_clock=0.
 
@@ -125,4 +152,4 @@ THEOREM PROVED
 
 Exiting with 1 proof.
 
-Process 54544 exit (max_proofs) Fri Feb 28 16:41:46 2025
+Process 55715 exit (max_proofs) Fri Feb 28 16:50:12 2025

@@ -25,7 +25,7 @@ object Main {
     // }
 
     // Problem
-    val problem_file = "../proofs/clausification/simple.p"
+    val problem_file = "../proofs/clausification/simple2.p"
     val problem = reconstructProof(new File(problem_file))
 
     // parse conjecture

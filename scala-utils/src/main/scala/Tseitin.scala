@@ -892,7 +892,7 @@ class Tseitin {
 
                 if (hypForm.isInstanceOf[BinderFormula] && hypForm.asInstanceOf[BinderFormula].label == Forall)
                   then (
-                      LeftForall(id, Sequent(bot.left.dropRight(1) :+ hypName, right), i, Variable(hypForm.asInstanceOf[BinderFormula].bound), parent)
+                      LeftForall(id, Sequent(bot.left.dropRight(1) :+ hypName, right), bot.left.size-1, Variable(hypForm.asInstanceOf[BinderFormula].bound), parent)
                         +: generateTseitinStepAux(hypForm.asInstanceOf[BinderFormula].inner, hypOri, right, id, cpt - 1)
                     )
                   else Seq()

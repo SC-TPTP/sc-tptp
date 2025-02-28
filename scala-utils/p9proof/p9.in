@@ -1,7 +1,7 @@
 ============================== Prover9 ===============================
 Prover9 (64) version 2009-11A, November 2009.
-Process 55715 was started by julie on pc-loria,
-Fri Feb 28 16:50:12 2025
+Process 15782 was started by julie on pc-loria,
+Fri Feb 28 18:35:51 2025
 The command was "/tmp/prouver9".
 ============================== end of head ===========================
 
@@ -152,4 +152,4 @@ THEOREM PROVED
 
 Exiting with 1 proof.
 
-Process 55715 exit (max_proofs) Fri Feb 28 16:50:12 2025
+Process 15782 exit (max_proofs) Fri Feb 28 18:35:51 2025

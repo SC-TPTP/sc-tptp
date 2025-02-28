@@ -42,8 +42,7 @@ fof(28, plain, [$phi,$tsStep0,$tsStep1,$tsStep2] --> [Ts3(V100,V101)], inference
 fof(15, plain, [$phi,$tsStep0,$tsStep1,$tsStep2] --> [Ts5], inference(res, [status(thm), 0], [28, 27])).
 fof(29, plain, [$phi,$tsStep0,$tsStep1,$tsStep2] --> [q(c),~Ts5], inference(instMult, [status(thm), [tuple3('V0', $fot(c), [])]], [13])).
 fof(16, plain, [$phi,$tsStep0,$tsStep1,$tsStep2] --> [~Ts5,~Ts5], inference(res, [status(thm), 0], [29, 14])).
-fof(a017, plain, [$phi,$tsStep0,$tsStep1,$tsStep2] --> [~Ts5], inference(leftWeakenRes, [status(thm), 0], [16])).
-fof(17, plain, [$phi,$tsStep0,$tsStep1,$tsStep2] --> [], inference(res, [status(thm), 0], [15, a017])).
+fof(a017, plain, [$phi,$tsStep0,$tsStep1,$tsStep2] --> [], inference(res, [status(thm), 0], [15, 16])).
 fof(psi, let, ((! [X]: p(X) | ! [Y]: q(Y)) => (p(c) | q(c)))).
 fof(addPsi0, assumption, [$psi] --> [$psi], inference(hyp, [status(thm), 0], [])).
 fof(addPsi1, plain, [] --> [$psi,$phi], inference(rightNot, [status(thm), 0], [addPsi0])).

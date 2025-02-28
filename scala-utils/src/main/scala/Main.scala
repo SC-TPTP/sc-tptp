@@ -116,15 +116,16 @@ object Main {
     val newProof11 = newProof10.addStepsLVL2After(
       myTseitin.removeTseitin(tseitinStepNames, tseitinStepMap)
     )
-    val newProof12 = myTseitin.renameTseitinConstant(newProof11)
-    val newProof13 = newProof12.addStepLVL2Before(conjecture)
+    val newProof12 = myTseitin.removeLeftWeakenRes(newProof11)
+    val newProof13 = myTseitin.renameTseitinConstant(newProof12)
+    val newProof14 = newProof13.addStepLVL2Before(conjecture)
 
     println("\nProof :")
-    printProof(newProof13)
+    printProof(newProof14)
     // newProof13.steps.drop(5).dropRight(36).map(x => println(x))
     println("\n")
 
-    val final_proof = ProofToString(newProof13)
+    val final_proof = ProofToString(newProof14)
 
     // Write in a file
     val output_file = {

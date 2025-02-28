@@ -1066,9 +1066,7 @@ class Tseitin {
     Parser.reconstructProof(new File(pathfileoutname))
   }
 
-  def updateId(proof: Seq[LVL2ProofStep], s: String): Seq[LVL2ProofStep] = {
-
-    def updateIdStep(step: LVL2ProofStep, s: String): LVL2ProofStep = {
+  def updateIdStep(step: LVL2ProofStep, s: String): LVL2ProofStep = {
       step match {
         case Axiom(name: String, bot: Sequent)       => Axiom(s, bot)
         case Hyp(name: String, bot: Sequent, i: Int) => Hyp(s, bot, i)
@@ -1323,9 +1321,267 @@ class Tseitin {
           TseitinStep(s, bot, t1)
         case _ => throw Exception("Proof step not found")
       }
-    }
+  }
 
+  def updateId(proof: Seq[LVL2ProofStep], s: String): Seq[LVL2ProofStep] = {
     updateIdStep(proof(0), s) +: proof.drop(1)
+  }
+
+  def updateParentStep(step: LVL2ProofStep, old_parent: String, new_parent: String): LVL2ProofStep = {
+      step match {
+        case Axiom(name: String, bot: Sequent)       => Axiom(name, bot)
+        case Hyp(name: String, bot: Sequent, i: Int) => Hyp(name, bot, i)
+        case LeftFalse(name: String, bot: Sequent)   => LeftFalse(name, bot)
+        case LeftWeaken(name: String, bot: Sequent, i: Int, t1: String) =>
+          LeftWeaken(name, bot, i, if (old_parent == t1) then new_parent else t1)
+        case LeftWeakenRes(name: String, bot: Sequent, i: Int, t1: String) =>
+          LeftWeakenRes(name, bot, i, if (old_parent == t1) then new_parent else t1)
+        case RightWeaken(name: String, bot: Sequent, i: Int, t1: String) =>
+          RightWeaken(name, bot, i, if (old_parent == t1) then new_parent else t1)
+        case ElimIffRefl(name: String, bot: Sequent, i: Int, t1: String) =>
+          ElimIffRefl(name, bot, i, if (old_parent == t1) then new_parent else t1)
+        case Cut(name: String, bot: Sequent, i: Int, t1: String, t2: String) =>
+          Cut(name, bot, i, if (old_parent == t1) then new_parent else t1, if (old_parent == t2) then new_parent else t2)
+        case LeftAnd(name: String, bot: Sequent, i: Int, t1: String) =>
+          LeftAnd(name, bot, i, if (old_parent == t1) then new_parent else t1)
+        case LeftOr(
+              name: String,
+              bot: Sequent,
+              i: Int,
+              t1: String,
+              t2: String
+            ) =>
+          LeftOr(name, bot, i, t1, t2)
+        case LeftImplies(
+              name: String,
+              bot: Sequent,
+              i: Int,
+              t1: String,
+              t2: String
+            ) =>
+          LeftImplies(name, bot, i, if (old_parent == t1) then new_parent else t1, if (old_parent == t2) then new_parent else t2)
+        case LeftIff(name: String, bot: Sequent, i: Int, t1: String) =>
+          LeftIff(name, bot, i, if (old_parent == t1) then new_parent else t1)
+        case LeftNot(name: String, bot: Sequent, i: Int, t1: String) =>
+          LeftNot(name, bot, i, if (old_parent == t1) then new_parent else t1)
+        case LeftExists(
+              name: String,
+              bot: Sequent,
+              i: Int,
+              y: VariableSymbol,
+              t1: String
+            ) =>
+          LeftExists(name, bot, i, y, if (old_parent == t1) then new_parent else t1)
+        case LeftForall(
+              name: String,
+              bot: Sequent,
+              i: Int,
+              t: Term,
+              t1: String
+            ) =>
+          LeftForall(name, bot, i, t, if (old_parent == t1) then new_parent else t1)
+        case RightAnd(
+              name: String,
+              bot: Sequent,
+              i: Int,
+              t1: String,
+              t2: String
+            ) =>
+          RightAnd(name, bot, i, if (old_parent == t1) then new_parent else t1, if (old_parent == t2) then new_parent else t2)
+        case RightOr(name: String, bot: Sequent, i: Int, t1: String) =>
+          RightOr(name, bot, i, if (old_parent == t1) then new_parent else t1)
+        case RightImplies(name: String, bot: Sequent, i: Int, t1: String) =>
+          RightImplies(name, bot, i, if (old_parent == t1) then new_parent else t1)
+        case RightIff(
+              name: String,
+              bot: Sequent,
+              i: Int,
+              t1: String,
+              t2: String
+            ) =>
+          RightIff(name, bot, i, if (old_parent == t1) then new_parent else t1, if (old_parent == t2) then new_parent else t2)
+        case RightNot(name: String, bot: Sequent, i: Int, t1: String) =>
+          RightNot(name, bot, i, if (old_parent == t1) then new_parent else t1)
+        case RightExists(
+              name: String,
+              bot: Sequent,
+              i: Int,
+              t: Term,
+              t1: String
+            ) =>
+          RightExists(name, bot, i, t, if (old_parent == t1) then new_parent else t1)
+        case RightForall(
+              name: String,
+              bot: Sequent,
+              i: Int,
+              y: VariableSymbol,
+              t1: String
+            ) =>
+          RightForall(name, bot, i, y, if (old_parent == t1) then new_parent else t1)
+        case RightRefl(name: String, bot: Sequent, i: Int) =>
+          RightRefl(name, bot, i)
+        case LeftSubst(
+              name: String,
+              bot: Sequent,
+              i: Int,
+              flip,
+              p: Formula,
+              x: VariableSymbol,
+              t1: String
+            ) =>
+          LeftSubst(name, bot, i, flip, p, x, if (old_parent == t1) then new_parent else t1)
+        case RightSubst(
+              name: String,
+              bot: Sequent,
+              i: Int,
+              flip,
+              p: Formula,
+              x: VariableSymbol,
+              t1: String
+            ) =>
+          RightSubst(name, bot, i, flip, p, x, if (old_parent == t1) then new_parent else t1)
+        case LeftSubstIff(
+              name: String,
+              bot: Sequent,
+              i: Int,
+              flip,
+              r: Formula,
+              a: AtomicSymbol,
+              t1: String
+            ) =>
+          LeftSubstIff(name, bot, i, flip, r, a, if (old_parent == t1) then new_parent else t1) // TODO : check that
+        case RightSubstIff(
+              name: String,
+              bot: Sequent,
+              i: Int,
+              flip,
+              r: Formula,
+              a: AtomicSymbol,
+              t1: String
+            ) =>
+          RightSubstIff(name, bot, i, flip, r, a, if (old_parent == t1) then new_parent else t1) // TODO : check that
+        case InstFun(
+              name: String,
+              bot: Sequent,
+              f: FunctionSymbol,
+              t: (Term, Seq[VariableSymbol]),
+              t1: String
+            ) =>
+          InstFun(name, bot, f, t, if (old_parent == t1) then new_parent else t1)
+        case InstPred(
+              name: String,
+              bot: Sequent,
+              p: AtomicSymbol,
+              phi: (Formula, Seq[VariableSymbol]),
+              t1: String
+            ) =>
+          InstPred(name, bot, p, phi, if (old_parent == t1) then new_parent else t1)
+        case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>
+          LeftHyp(name, bot, i, j)
+        case LeftImp2(
+              name: String,
+              bot: Sequent,
+              i: Int,
+              t1: String,
+              t2: String
+            ) =>
+          LeftImp2(name, bot, i, if (old_parent == t1) then new_parent else t1, if (old_parent == t2) then new_parent else t2)
+        case LeftNotAnd(
+              name: String,
+              bot: Sequent,
+              i: Int,
+              t1: String,
+              t2: String
+            ) =>
+          LeftNotAnd(name, bot, i, if (old_parent == t1) then new_parent else t1, if (old_parent == t2) then new_parent else t2)
+        case LeftNotOr(name: String, bot: Sequent, i: Int, t1: String) =>
+          LeftNotOr(name, bot, i, if (old_parent == t1) then new_parent else t1)
+        case LeftNotImp(name: String, bot: Sequent, i: Int, t1: String) =>
+          LeftNotImp(name, bot, i, if (old_parent == t1) then new_parent else t1)
+        case LeftNotIff(
+              name: String,
+              bot: Sequent,
+              i: Int,
+              t1: String,
+              t2: String
+            ) =>
+          LeftNotIff(name, bot, i, if (old_parent == t1) then new_parent else t1, if (old_parent == t2) then new_parent else t2)
+        case LeftNotNot(name: String, bot: Sequent, i: Int, t1: String) =>
+          LeftNotNot(name, bot, i, if (old_parent == t1) then new_parent else t1)
+        case LeftNotEx(
+              name: String,
+              bot: Sequent,
+              i: Int,
+              t: Term,
+              t1: String
+            ) =>
+          LeftNotEx(name, bot, i, t, if (old_parent == t1) then new_parent else t1)
+        case LeftNotAll(
+              name: String,
+              bot: Sequent,
+              i: Int,
+              y: VariableSymbol,
+              t1: String
+            ) =>
+          LeftNotAll(name, bot, i, y, if (old_parent == t1) then new_parent else t1)
+        case RightSubstMulti(
+              name: String,
+              bot: Sequent,
+              is: List[Int],
+              p: Formula,
+              xs: List[VariableSymbol],
+              t1: String
+            ) =>
+          RightSubstMulti(name, bot, is: List[Int], p, xs, if (old_parent == t1) then new_parent else t1)
+        case LeftSubstMulti(
+              name: String,
+              bot: Sequent,
+              is: List[Int],
+              p: Formula,
+              xs: List[VariableSymbol],
+              t1: String
+            ) =>
+          LeftSubstMulti(name, bot, is: List[Int], p, xs, if (old_parent == t1) then new_parent else t1)
+        case Congruence(name: String, bot: Sequent) => Congruence(name, bot)
+        case Res(
+              name: String,
+              bot: Sequent,
+              i1: Int,
+              i2: Int,
+              t1: String,
+              t2: String
+            ) =>
+          Res(name, bot, i1, i2, if (old_parent == t1) then new_parent else t1, if (old_parent == t2) then new_parent else t2)
+        case NegatedConjecture(name: String, bot: Sequent, t1: String) =>
+          NegatedConjecture(name, bot, if (old_parent == t1) then new_parent else t1)
+        case Clausify(name: String, bot: Sequent, i: Int, t1: String) =>
+          Clausify(name, bot, i, if (old_parent == t1) then new_parent else t1)
+        case NNF(name: String, bot: Sequent, i: Int, j: Int, t1: String) =>
+          NNF(name, bot, i, j, if (old_parent == t1) then new_parent else t1)
+        case Instantiate_L(
+              name: String,
+              bot: Sequent,
+              i: Int,
+              x: VariableSymbol,
+              t: Term,
+              parent: String
+            ) =>
+          Instantiate_L(name, bot, i, x, t, parent)
+        case InstantiateMult(
+              name: String,
+              bot: Sequent,
+              i: Int,
+              terms: Seq[(VariableSymbol, Term)],
+              parent: String
+            ) =>
+          InstantiateMult(name, bot, i, terms, parent)
+        case Prenex(name: String, bot: Sequent, t1: String) =>
+          Prenex(name, bot, if (old_parent == t1) then new_parent else t1)
+        case Let(name: String, bot: Sequent) => Let(name, bot)
+        case TseitinStep(name: String, bot: Sequent, t1: String) =>
+          TseitinStep(name, bot, if (old_parent == t1) then new_parent else t1)
+        case _ => throw Exception("Proof step not found")
+      }
   }
 
   // -----------------------------------------------------
@@ -3567,6 +3823,34 @@ class Tseitin {
       )
     else throw new Exception("Some proof steps could not be unrenamed")
   }
+
+    // Remove leftWeakenRes
+  def removeLeftWeakenRes(scproof: SCProof[?]): SCProof[?] = {
+
+
+    val steps = scproof.steps.foldLeft((Seq[SCProofStep](), false, "", ""))
+      ((acc, x) => {
+        if x.isInstanceOf[LeftWeakenRes]
+          then (acc._1, true, x.name, x.premises(0))
+          else if acc._2
+            then (acc._1 :+ updateIdStep((updateParentStep(x.asInstanceOf[LVL2ProofStep], acc._3, acc._4)).asInstanceOf[LVL2ProofStep], acc._3), false, "", "")
+            else (acc._1 :+ x, false, "", "")
+      })
+   
+
+    if steps._1.forall(_.isInstanceOf[LVL1ProofStep]) then
+      LVL1Proof(
+        steps._1.toIndexedSeq.asInstanceOf[IndexedSeq[LVL1ProofStep]],
+        scproof.thmName
+      )
+    if steps._1.forall(_.isInstanceOf[LVL2ProofStep]) then
+      LVL2Proof(
+        steps._1.toIndexedSeq.asInstanceOf[IndexedSeq[LVL2ProofStep]],
+        scproof.thmName
+      )
+    else throw new Exception("Some proof steps could not be unrenamed")
+  }
+
 
   // Add psi
   def addPsi(

@@ -120,10 +120,10 @@ object Main {
     val newProof13 = myTseitin.renameTseitinConstant(newProof12)
     val newProof14 = newProof13.addStepLVL2Before(conjecture)
 
-    println("\nProof :")
-    printProof(newProof14)
+    // println("\nProof :")
+    // printProof(newProof14)
     // newProof13.steps.drop(5).dropRight(36).map(x => println(x))
-    println("\n")
+    // println("\n")
 
     val final_proof = ProofToString(newProof14)
 

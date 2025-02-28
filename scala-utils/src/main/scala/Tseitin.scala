@@ -871,7 +871,6 @@ class Tseitin {
       x match
         case Clausify(name, bot, i, t1) =>
           acc ++ {
-            println(x)
             val linked_formula = new_tsSteps(
               bot.left(i).asInstanceOf[AtomicFormula].label.id.name.drop(1)
             )
@@ -881,7 +880,8 @@ class Tseitin {
               // modify x --- last step
               val rtq = retrieveQT(linked_formula)
               val indexMax = rtq._1.size
-              val new_x = Clausify("a"+name+"s"+indexMax, Sequent(bot.left.dropRight(1) :+ rtq._2, bot.right), i, t1)
+              val newHyp = bot.left.zipWithIndex.map{case (f, fi) => if (fi == i) then rtq._2 else f} 
+              val new_x = Clausify("a"+name+"s"+indexMax, Sequent(newHyp, bot.right), i, t1)
 
               // Annex function to compute the forall chain
               def generateTseitinStepAux(hypForm: Formula, hypOri: Formula, right: Seq[Formula], old_parent: String, cpt: Int): Seq[LVL2ProofStep] = {
@@ -889,16 +889,18 @@ class Tseitin {
                 val id = if (cpt == indexMax) then name else "a"+name+"s"+cpt
                 val hypName = if (cpt == indexMax) then hypOri else hypForm
                 val parent = if (cpt == 1) then "a"+name+"s"+(indexMax) else "a"+name+"s"+(cpt-1)
+                val hypTotal = bot.left.zipWithIndex.map{case (f, fi) => if (fi == i) then hypName else f} 
+
 
                 if (hypForm.isInstanceOf[BinderFormula] && hypForm.asInstanceOf[BinderFormula].label == Forall)
                   then (
-                      LeftForall(id, Sequent(bot.left.dropRight(1) :+ hypName, right), bot.left.size-1, Variable(hypForm.asInstanceOf[BinderFormula].bound), parent)
+                      LeftForall(id, Sequent(hypTotal, right), i, Variable(hypForm.asInstanceOf[BinderFormula].bound), parent)
                         +: generateTseitinStepAux(hypForm.asInstanceOf[BinderFormula].inner, hypOri, right, id, cpt - 1)
                     )
                   else Seq()
               }
 
-              val forallstep = generateTseitinStepAux(linked_formula, bot.left.last, bot.right, "a" + name, indexMax)
+              val forallstep = generateTseitinStepAux(linked_formula, bot.left(i), bot.right, "a" + name, indexMax)
               new_x +: forallstep.reverse
 
             } else Seq(x)
@@ -1580,6 +1582,7 @@ class Tseitin {
         case Let(name: String, bot: Sequent) => Let(name, bot)
         case TseitinStep(name: String, bot: Sequent, t1: String) =>
           TseitinStep(name, bot, if (old_parent == t1) then new_parent else t1)
+        case InstForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) => InstForall(name, bot, i, y, if (old_parent == t1) then new_parent else t1)
         case _ => throw Exception("Proof step not found")
       }
   }
@@ -3826,14 +3829,12 @@ class Tseitin {
 
     // Remove leftWeakenRes
   def removeLeftWeakenRes(scproof: SCProof[?]): SCProof[?] = {
-
-
     val steps = scproof.steps.foldLeft((Seq[SCProofStep](), false, "", ""))
       ((acc, x) => {
         if x.isInstanceOf[LeftWeakenRes]
           then (acc._1, true, x.name, x.premises(0))
           else if acc._2
-            then (acc._1 :+ updateIdStep((updateParentStep(x.asInstanceOf[LVL2ProofStep], acc._3, acc._4)).asInstanceOf[LVL2ProofStep], acc._3), false, "", "")
+            then (acc._1 :+ (updateParentStep(x.asInstanceOf[LVL2ProofStep], acc._3, acc._4)), false, "", "")
             else (acc._1 :+ x, false, "", "")
       })
    

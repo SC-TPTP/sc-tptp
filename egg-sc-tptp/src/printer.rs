@@ -227,7 +227,7 @@ pub fn equals(a: &fol::Term, b: &fol::Term) -> fol::Formula {
   fol::Formula::Predicate("=".to_owned(), vec![Box::new(a.clone()), Box::new(b.clone())])
 }
 
-pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<fol::Formula>, map_rule: F, proof: &mut Vec<SCTPTPRule>) -> () where F: Fn(String) -> RewriteRule {
+pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<fol::Formula>, map_rule: F, proof: &mut Vec<SCTPTPRule>, prev: fol::Formula) -> fol::Formula where F: Fn(String) -> RewriteRule {
   let line_to_holes = flat_term_to_formula_hole(line, &"HOLE".into());
   let with_hole = line_to_holes.0;
   let _rule = line_to_holes.1;
@@ -240,10 +240,26 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
   let mut match_map = HashMap::new();
   *i+=1;
   match (rew_rule, inner) {
-    (RewriteRule::FormulaRule(variables, rule_left, rule_right), TermOrFormula::Formula(inner)) => {
-      let has_matched: bool = if backward { fol::matching_formula(&rule_left, &inner, &mut match_map) } else { fol::matching_formula(&rule_right, &inner, &mut match_map) };
-      if !has_matched {panic!("Error: neither {} nor {} does not match {}", rule_left, rule_right, &res);}
-      let subst_form = fol::Formula::Iff(Box::new(instantiate_formula(&rule_left, &match_map)), Box::new(instantiate_formula(&rule_right, &match_map)));
+    (RewriteRule::FormulaRule(variables, rule_left, rule_right), TermOrFormula::Formula(_inner)) => {
+      let emptymap_t = HashMap::new();
+      let emptymap_f = HashMap::new();
+      if backward {
+        let mut holemap = HashMap::new();
+        holemap.insert("HOLE".to_owned(), rule_right.clone());
+        let subst_form_1 = &fol::instantiate_formula(&with_hole, &emptymap_t, &holemap);
+        let has_matched = fol::matching_formula(&subst_form_1, &prev, &mut match_map);
+        if !has_matched {panic!("Error: backward {} did not match {}", subst_form_1,  &prev);}
+      } else {
+        let mut holemap = HashMap::new();
+        holemap.insert("HOLE".to_owned(), rule_left.clone());
+        let subst_form_1 = &fol::instantiate_formula(&with_hole, &emptymap_t, &holemap);
+        let has_matched = fol::matching_formula(&subst_form_1, &prev, &mut match_map);
+        if !has_matched {panic!("Error: forward {} did not match {}", subst_form_1, &prev);}
+
+      };
+      //let has_matched: bool = if backward { fol::matching_formula(&rule_left, &inner, &mut match_map) } else { fol::matching_formula(&rule_right, &inner, &mut match_map) };
+      let subst_form = fol::Formula::Iff(Box::new(instantiate_formula(&rule_left, &match_map, &emptymap_f)), 
+                                                  Box::new(instantiate_formula(&rule_right, &match_map, &emptymap_f)));
       let mut newleft = vec![subst_form];
       newleft.append(&mut left.clone());
       use SCTPTPRule::*;
@@ -263,7 +279,8 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
         let inst_term: fol::Term = match_map.get(v as &str).unwrap_or(&v_var).clone();
         match_map.remove(&v as &str);
         vars.insert(0, v.to_owned());
-        let new_inner = fol::Formula::Iff(Box::new(instantiate_formula(&rule_left, &match_map)), Box::new(instantiate_formula(&rule_right, &match_map)));
+        let new_inner = fol::Formula::Iff(Box::new(instantiate_formula(&rule_left, &match_map, &emptymap_f)), 
+                                                   Box::new(instantiate_formula(&rule_right, &match_map, &emptymap_f)));
         *i+=1; 
         let new_quant_formula = fol::Formula::Forall(vars.clone(), Box::new(new_inner));
         let forall_no = if is_local_rule && nth == 0 {
@@ -271,7 +288,7 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
           no.remove(0);
           no.parse().expect(&format!("Error: rule name is not a number: {}", rule_name))
         } else {0};
-        let mut newleft = if nth == 0 {vec![]} else {vec![new_quant_formula]};
+        let mut newleft = if is_local_rule && nth == 0 {vec![]} else {vec![new_quant_formula]};
         newleft.append(&mut left.clone());
         let forall_rule = LeftForall {
           name: format!("f{}", *i),
@@ -293,11 +310,24 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
           i: 0
         };
         proof.push(cut_rule);
-      } else {}
+      } else {};
+      res
     },
-    (RewriteRule::TermRule(variables, rule_left, rule_right), TermOrFormula::Term(inner)) => {
-      let has_matched: bool = if backward { fol::matching_term(&rule_left, &inner, &mut match_map) } else { fol::matching_term(&rule_right, &inner, &mut match_map) };
-      if !has_matched {panic!("Error: neither {} nor {} does not match {}", rule_left, rule_right, &res);}
+    (RewriteRule::TermRule(variables, rule_left, rule_right), TermOrFormula::Term(_inner)) => {
+      let emptymap_f = HashMap::new();
+      if backward { 
+        let mut holemap = HashMap::new();
+        holemap.insert("HOLE".to_owned(), rule_right.clone());
+        let subst_form_1 = &fol::instantiate_formula(&with_hole, &holemap, &emptymap_f);
+        let has_matched = fol::matching_formula(&subst_form_1, &prev, &mut match_map);
+        if !has_matched {panic!("Error: backward {} did not match {}", subst_form_1, &prev);}
+      } else { 
+        let mut holemap = HashMap::new();
+        holemap.insert("HOLE".to_owned(), rule_left.clone());
+        let subst_form_1 = &fol::instantiate_formula(&with_hole, &holemap, &emptymap_f);
+        let has_matched = fol::matching_formula(&subst_form_1, &prev, &mut match_map);
+        if !has_matched {panic!("Error: forward {} did not match {}", subst_form_1, &prev);}
+      };
       let subst_form = equals(&fol::instantiate_term(&rule_left, &match_map), &fol::instantiate_term(&rule_right, &match_map));
       let mut newleft = vec![subst_form];
       newleft.append(&mut left.clone());
@@ -326,7 +356,7 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
           no.remove(0);
           no.parse().expect(&format!("Error: rule name is not a number: {}", rule_name))
         } else {0};
-        let mut newleft = if nth == 0 {vec![]} else {vec![new_quant_formula]};
+        let mut newleft = if is_local_rule && nth == 0 {vec![]} else {vec![new_quant_formula]};
         newleft.append(&mut left.clone());
         let forall_rule = LeftForall {
           name: format!("f{}", *i),
@@ -342,16 +372,17 @@ pub fn line_to_tptp_level1<F>(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<
         *i+=1;
         let cut_rule = Cut {
           name: format!("f{}", *i),
-          bot: fol::Sequent {left: left.clone(), right: vec![res]},
+          bot: fol::Sequent {left: left.clone(), right: vec![res.clone()]},
           premise1: rule_name,
           premise2: format!("f{}", *i-1),
           i: 0
         };
         proof.push(cut_rule);
-      } else {}
+      } else {};
+      res
     },
     _ => panic!("Should not happen")
-  };
+  }
 }
 
 pub fn line_to_tptp_level2(line: &FlatTerm<FOLLang>, i: &mut i32, left: &Vec<fol::Formula>, proof: &mut Vec<SCTPTPRule>) -> () {
@@ -432,6 +463,7 @@ pub fn proof_to_tptp(header: &String, proof: &Vec<FlatTerm<FOLLang>>, problem: &
   };
 
   let init_formula = flat_term_to_formula(&proof[0]);
+  let mut last_formula = init_formula.clone();
   let first_seq = fol::Sequent {left: problem.left.clone(), right: vec![init_formula.clone()]};
   let first_steps: Vec<SCTPTPRule> = match init_formula {
     fol::Formula::True => vec![SCTPTPRule::RightTrue {name: "f0".to_owned(), bot: first_seq}],
@@ -461,10 +493,11 @@ pub fn proof_to_tptp(header: &String, proof: &Vec<FlatTerm<FOLLang>>, problem: &
   };
   let mut i = 0;
 
+
   let mut proof_vec = Vec::<SCTPTPRule>::new();
   proof.iter().skip(1).for_each( |line| {
     let res = if level1 {
-      line_to_tptp_level1(line, &mut i, &problem.left, &map_rule, &mut proof_vec)
+      last_formula = line_to_tptp_level1(line, &mut i, &problem.left, &map_rule, &mut proof_vec, last_formula.clone());
     } else {
       line_to_tptp_level2(line, &mut i, &problem.left, &mut proof_vec)
     };

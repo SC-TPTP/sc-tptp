@@ -15,7 +15,10 @@ object Prover9 {
 
   def main(args: Array[String]): Unit = {
 
-    val proof = proveFile(args(0))
+    val file = args(0)
+    val problem = parseProblem(File(file))
+    val proof = proveProblem(problem)
+
     println(proof)
   }
 

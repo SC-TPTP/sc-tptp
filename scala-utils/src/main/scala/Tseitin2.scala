@@ -2,7 +2,13 @@ package sctptp
 import SequentCalculus.*
 import Helpers.{*, given}
 import LVL2.*
+import sctptp.Parser.parseProblem
 object Tseitin2 {
+
+  def main(args: Array[String]): Unit = {
+    val file = args(0)
+    val problem = parseProblem(file)
+  }
 
 
 

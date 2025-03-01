@@ -1217,8 +1217,8 @@ class Tseitin {
               t1: String
             ) =>
           InstPred(s, bot, p, phi, t1)
-        case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>
-          LeftHyp(s, bot, i, j)
+        case LeftHyp(name: String, bot: Sequent, i: Int) =>
+          LeftHyp(s, bot, i)
         case LeftImp2(
               name: String,
               bot: Sequent,
@@ -1478,8 +1478,8 @@ class Tseitin {
               t1: String
             ) =>
           InstPred(name, bot, p, phi, if (old_parent == t1) then new_parent else t1)
-        case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>
-          LeftHyp(name, bot, i, j)
+        case LeftHyp(name: String, bot: Sequent, i: Int) =>
+          LeftHyp(name, bot, i)
         case LeftImp2(
               name: String,
               bot: Sequent,
@@ -1859,8 +1859,8 @@ class Tseitin {
             ),
             t1
           )
-        case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>
-          LeftHyp(name, unrenameSequent(bot), i, j)
+        case LeftHyp(name: String, bot: Sequent, i: Int) =>
+          LeftHyp(name, unrenameSequent(bot), i)
         case LeftImp2(
               name: String,
               bot: Sequent,
@@ -2255,8 +2255,8 @@ class Tseitin {
             ),
             t1
           )
-        case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>
-          LeftHyp(name, renameTseitinConstantSequent(bot), i, j)
+        case LeftHyp(name: String, bot: Sequent, i: Int) =>
+          LeftHyp(name, renameTseitinConstantSequent(bot), i)
         case LeftImp2(
               name: String,
               bot: Sequent,
@@ -2596,8 +2596,8 @@ class Tseitin {
               t1: String
             ) =>
           InstPred(name, modifyOrStepsSequent(bot), p, phi, t1)
-        case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>
-          LeftHyp(name, modifyOrStepsSequent(bot), i, j)
+        case LeftHyp(name: String, bot: Sequent, i: Int) =>
+          LeftHyp(name, modifyOrStepsSequent(bot), i)
         case LeftImp2(
               name: String,
               bot: Sequent,
@@ -2913,8 +2913,8 @@ class Tseitin {
             t1: String
           ) =>
         InstPred(name, Sequent(bot.left ++ context, bot.right), p, phi, t1)
-      case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>
-        LeftHyp(name, Sequent(bot.left ++ context, bot.right), i, j)
+      case LeftHyp(name: String, bot: Sequent, i: Int) =>
+        LeftHyp(name, Sequent(bot.left ++ context, bot.right), i)
       case LeftImp2(
             name: String,
             bot: Sequent,
@@ -3227,8 +3227,8 @@ class Tseitin {
               t1: String
             ) =>
           InstPred(name, Sequent(Seq(), bot.right), p, phi, t1)
-        case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>
-          LeftHyp(name, Sequent(Seq(), bot.right), i, j)
+        case LeftHyp(name: String, bot: Sequent, i: Int) =>
+          LeftHyp(name, Sequent(Seq(), bot.right), i)
         case LeftImp2(
               name: String,
               bot: Sequent,
@@ -3623,8 +3623,8 @@ class Tseitin {
             phi,
             t1
           )
-        case LeftHyp(name: String, bot: Sequent, i: Int, j: Int) =>
-          LeftHyp(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i, j)
+        case LeftHyp(name: String, bot: Sequent, i: Int) =>
+          LeftHyp(name, Sequent(bot.left, removeFalse2Aux(bot.right)), i)
         case LeftImp2(
               name: String,
               bot: Sequent,

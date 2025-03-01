@@ -296,8 +296,8 @@ object Parser {
     object LeftHyp {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftHyp", Seq(_, StrOrNum(n), StrOrNum(m)), Seq()), _) =>
-            Some(LVL2.LeftHyp(name, convertSequentToFol(sequent), n.toInt, m.toInt))
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftHyp", Seq(_, StrOrNum(n)), Seq()), _) =>
+            Some(LVL2.LeftHyp(name, convertSequentToFol(sequent), n.toInt))
           case _ =>
             None
         }

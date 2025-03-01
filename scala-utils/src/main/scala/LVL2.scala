@@ -65,16 +65,14 @@ object LVL2 {
     *
     * @param bot Resulting formula
     * @param i Index of A on the left
-    * @param j Index of ¬A on the left
     */
-  case class LeftHyp(name: String, bot: Sequent, i: Int, j: Int) extends StrictLVL2ProofStep {
+  case class LeftHyp(name: String, bot: Sequent, i: Int) extends StrictLVL2ProofStep {
     val premises = Seq()
-    override def toString: String = SCProofStep.outputDoubleIndexes(name, LeftHypRuleName, "assumption", bot, i, j, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, LeftHypRuleName, "assumption", bot, i, premises)
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val fi = premises(name).left(i)
-      val fj = premises(name).left(j)
-      if isSame(fi, ~fj) then None
-      else Some(s"${fi} and ${~fj} are not the same")
+      if premises(name).left.contains(~i) then None
+      else Some(s"${fi} and ${~fi} are not the same")
   }
   
   /**
@@ -91,9 +89,9 @@ object LVL2 {
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val AB = bot.left(i)
       AB match
-        case ConnectorFormula(Or, Seq(a, b)) =>
+        case ConnectorFormula(Implies, Seq(a, b)) =>
           if (isSameSet(bot.right, premises(t1).right.concat(premises(t2).right)))
-            if (isSameSet(bot.left :+ ~a :+ b, premises(t1).left.concat(premises(t2).left) :+ AB))
+            if (isSameSet(bot.left :+ ~a, premises(t1).left :+ AB) && isSameSet(bot.left :+ b, premises(t2).left :+ AB))
               None
             else Some(s"Left-hand side of conclusion must be identical to union of left-hand sides of premisces + φ⇒ψ.")
           else Some(s"Right-hand side of conclusion + A  + B must be identical to union of right-hand sides of premisces.")
@@ -121,7 +119,7 @@ object LVL2 {
       nAB match
         case na_b @ ConnectorFormula(Neg, Seq(ConnectorFormula(And, Seq(a, b)))) => 
           if (isSameSet(bot.right, premises(t1).right `concat` premises(t2).right))
-            if (isSameSet(bot.left :+ a :+ b, premises(t1).left `concat` premises(t2).left :+ nAB))
+            if (isSameSet(bot.left :+ ~a, premises(t1).left :+ nAB) && isSameSet(bot.left :+ ~b, premises(t2).left :+ nAB))
               None
             else Some(s"Left-hand side of conclusion must be identical to union of left-hand sides of premisces + ~(A ∧ B).")
           else Some(s"Right-hand side of conclusion + A + B must be identical to union of right-hand sides of premisces.")
@@ -192,7 +190,7 @@ object LVL2 {
           val nAimpB = ~(a ==> b)
           val nBimpA = ~(b ==> a)
           if (isSameSet(bot.right, premises(t1).right `concat` premises(t2).right))
-            if (isSameSet(bot.left :+ nAimpB :+ nBimpA, premises(t1).left `concat` premises(t2).left :+ nAB))
+            if (isSameSet(bot.left :+ nAimpB, premises(t1).left :+ nAB) && isSameSet(bot.left :+ nBimpA, premises(t2).left :+ nAB))
               None
             else Some(s"Left-hand side of conclusion must be identical to union of left-hand sides of premisces + ~(A ⇔ B).")
           else Some(s"Right-hand side of conclusion + ~(A ⇒ B) + ~(B ⇒ A) must be identical to union of right-hand sides of premisces.")

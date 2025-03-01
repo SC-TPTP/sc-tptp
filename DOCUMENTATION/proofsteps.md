@@ -52,6 +52,31 @@ Proof steps for which there is an available elimination algorithm implemented in
 | `leftNotAll` | 1    | $$\frac{\Gamma, \neg A \vdash \Delta}{\Gamma, \neg \forall x. A \vdash \Delta}$$ | `i:Int`: Index of $\neg \forall x. A$ on the left <br> `y:String`: Variable in place of $x$ in the premise | |
 
 
+```latex
+
+\begin{table}[H]
+  \centering
+\resizebox{1\textwidth}{!}{%
+  \begin{tabularx}{1.2\textwidth}{|c|c|c|X|}
+\hline 
+Rule name  &  Premises & Rule & Parameters \\ \hline 
+\lstinline{congruence} & 0 & \makecell{\AxiomC{} \UnaryInfC{$\Gamma, \Delta$} \DisplayProof } & No parameters \newline $\Gamma$ contains a set of ground equalities such that P and Q are congruents \\ \hline
+\lstinline{leftHyp} & 0 & \makecell{\AxiomC{} \UnaryInfC{$\Gamma, A, \neg A \vdash \Delta$} \DisplayProof} & \lstinline{i:Int}: Index of $A$ on the left \\ \hline
+\lstinline{leftNotAnd} & 2 & \makecell{\AxiomC{$\Gamma, \neg A \vdash \Delta$} \AxiomC{$\Sigma, \neg B \vdash \Pi$} \BinaryInfC{$\Gamma, \Sigma, \neg(A \land B) \vdash \Delta, \Pi$} \DisplayProof} & \lstinline{i:Int}: Index of $\neg(A \land B)$ on the left \\ \hline
+\lstinline{leftNotOr} & 1 & \makecell{\AxiomC{$\Gamma, \neg A, \neg B \vdash \Delta$} \UnaryInfC{$\Gamma, \neg(A \lor B) \vdash \Delta$} \DisplayProof} & \lstinline{i:Int}: Index of $\neg(A \lor B)$ on the left \\ \hline
+\lstinline{leftNotImplies} & 1 & \makecell{\AxiomC{$\Gamma, A, \neg B \vdash \Delta$} \UnaryInfC{$\Gamma, \neg(A \Rightarrow B) \vdash \Delta$} \DisplayProof} & \lstinline{i:Int}: Index of $\neg(A \Rightarrow B)$ on the left \\ \hline
+\lstinline{leftNotIff} & 2 & \makecell{\AxiomC{$\Gamma, \neg (A \Rightarrow B) \vdash \Delta$} \AxiomC{$\Sigma, \neg (B \Rightarrow A) \vdash \Pi$} \BinaryInfC{$\Gamma, \Sigma, \neg(A \Leftrightarrow B) \vdash \Delta, \Pi$} \DisplayProof} & \lstinline{i:Int}: Index of $\neg(A \Leftrightarrow B)$ on the left \\ \hline
+\lstinline{leftNotNot} & 1 & \makecell{\AxiomC{$\Gamma, A \vdash \Delta$} \UnaryInfC{$\Gamma, \neg \neg A \vdash \Delta$} \DisplayProof} & \lstinline{i:Int}: Index of $\neg \neg A$ on the left \\ \hline
+\lstinline{leftNotEx} & 1 & \makecell{\AxiomC{$\Gamma, \neg A[x := t] \vdash \Delta$} \UnaryInfC{$\Gamma, \neg\exists x. A \vdash \Delta$} \DisplayProof} & \lstinline{i:Int}: Index of $\neg \exists x. A$ on the left \newline \lstinline{t:Term}: Term in place of $x$ in the premise \\ \hline
+\lstinline{leftNotAll} & 1 & \makecell{\AxiomC{$\Gamma, \neg A \vdash \Delta$} \UnaryInfC{$\Gamma, \neg \forall x. A \vdash \Delta$} \DisplayProof} & \lstinline{i:Int}: Index of $\neg \forall x. A$ on the left \newline \lstinline{y:String}: Variable in place of $x$ in the premise \\ \hline
+  \end{tabularx}
+}
+    \caption{Current Level 2 rules of \sctptp, which can be unfolded into level 1 rules with the \sctptp{} utils.}
+  \label{tab:SCTPTP_rules_lvl_2}
+\end{table}
+
+```
+
 
 # Level 3 Proof Steps
 Proof steps for which there is no elimination procedure, but which are precisely defined and checkable, and usually implemented in some way or another in proof systems.

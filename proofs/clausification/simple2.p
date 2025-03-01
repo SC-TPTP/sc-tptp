@@ -1,2 +1,2 @@
-fof(c1, conjecture, (((! [Xx]: (sP(Xx))) | (! [Xy]: (sQ(Xy)))) => (sP(cemptySet) | sQ(cemptySet)))).
+fof(c1, conjecture, (((! [X]: (p(X))) | (! [Y]: (q(Y)))) => (p(c) | q(c)))).
 

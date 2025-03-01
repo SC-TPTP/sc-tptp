@@ -1,7 +1,7 @@
 ============================== Prover9 ===============================
 Prover9 (64) version 2009-11A, November 2009.
-Process 52990 was started by julie on pc-loria,
-Thu Feb 27 18:49:41 2025
+Process 15763 was started by julie on pc-loria,
+Fri Feb 28 23:54:26 2025
 The command was "/tmp/prouver9".
 ============================== end of head ===========================
 
@@ -10,12 +10,12 @@ set(prolog_style_variables).
 
 formulas(assumptions).
 Ts3(V0,V1) # label(0) # label(axiom).
--Ts2(V0,V1) | sP(V0) | sQ(V1) # label(1) # label(axiom).
-Ts2(V0,V1) | -sP(V0) # label(2) # label(axiom).
-Ts2(V0,V1) | -sQ(V1) # label(3) # label(axiom).
-ts5 | --sP(cemptySet) | --sQ(cemptySet) # label(4) # label(axiom).
--ts5 | -sP(cemptySet) # label(5) # label(axiom).
--ts5 | -sQ(cemptySet) # label(6) # label(axiom).
+-Ts2(V0,V1) | p(V0) | q(V1) # label(1) # label(axiom).
+Ts2(V0,V1) | -p(V0) # label(2) # label(axiom).
+Ts2(V0,V1) | -q(V1) # label(3) # label(axiom).
+ts5 | --p(c) | --q(c) # label(4) # label(axiom).
+-ts5 | -p(c) # label(5) # label(axiom).
+-ts5 | -q(c) # label(6) # label(axiom).
 Ts3(V0,V1) | -Ts2(V0,V1) | -ts5 # label(7) # label(axiom).
 -Ts3(V0,V1) | Ts2(V0,V1) # label(8) # label(axiom).
 -Ts3(V0,V1) | ts5 # label(9) # label(axiom).
@@ -29,7 +29,7 @@ end_of_list.
 ============================== PROCESS NON-CLAUSAL FORMULAS ==========
 
 % Formulas that are not ordinary clauses:
-1 ts5 | --sP(cemptySet) | --sQ(cemptySet) # label(4) # label(axiom) # label(non_clause).  [assumption].
+1 ts5 | --p(c) | --q(c) # label(4) # label(axiom) # label(non_clause).  [assumption].
 
 ============================== end of process non-clausal formulas ===
 
@@ -42,12 +42,12 @@ end_of_list.
 
 formulas(sos).
 Ts3(A,B) # label(0) # label(axiom).  [assumption].
--Ts2(A,B) | sP(A) | sQ(B) # label(1) # label(axiom).  [assumption].
-Ts2(A,B) | -sP(A) # label(2) # label(axiom).  [assumption].
-Ts2(A,B) | -sQ(B) # label(3) # label(axiom).  [assumption].
-ts5 | sP(cemptySet) | sQ(cemptySet) # label(4) # label(axiom).  [clausify(1)].
--ts5 | -sP(cemptySet) # label(5) # label(axiom).  [assumption].
--ts5 | -sQ(cemptySet) # label(6) # label(axiom).  [assumption].
+-Ts2(A,B) | p(A) | q(B) # label(1) # label(axiom).  [assumption].
+Ts2(A,B) | -p(A) # label(2) # label(axiom).  [assumption].
+Ts2(A,B) | -q(B) # label(3) # label(axiom).  [assumption].
+ts5 | p(c) | q(c) # label(4) # label(axiom).  [clausify(1)].
+-ts5 | -p(c) # label(5) # label(axiom).  [assumption].
+-ts5 | -q(c) # label(6) # label(axiom).  [assumption].
 Ts3(A,B) | -Ts2(A,B) | -ts5 # label(7) # label(axiom).  [assumption].
 -Ts3(A,B) | Ts2(A,B) # label(8) # label(axiom).  [assumption].
 -Ts3(A,B) | ts5 # label(9) # label(axiom).  [assumption].
@@ -67,21 +67,21 @@ Derived: Ts2(A,B).  [resolve(2,a,3,a)].
 Derived: ts5.  [resolve(5,a,3,a)].
 
 Eliminating Ts2/2
-6 Ts2(A,B) | -sP(A) # label(2) # label(axiom).  [assumption].
-7 -Ts2(A,B) | sP(A) | sQ(B) # label(1) # label(axiom).  [assumption].
-8 Ts2(A,B) | -sQ(B) # label(3) # label(axiom).  [assumption].
+6 Ts2(A,B) | -p(A) # label(2) # label(axiom).  [assumption].
+7 -Ts2(A,B) | p(A) | q(B) # label(1) # label(axiom).  [assumption].
+8 Ts2(A,B) | -q(B) # label(3) # label(axiom).  [assumption].
 9 Ts2(A,B).  [resolve(2,a,3,a)].
-Derived: sP(A) | sQ(B).  [resolve(9,a,7,a)].
+Derived: p(A) | q(B).  [resolve(9,a,7,a)].
 
-Eliminating sP/1
-10 -ts5 | -sP(cemptySet) # label(5) # label(axiom).  [assumption].
-11 ts5 | sP(cemptySet) | sQ(cemptySet) # label(4) # label(axiom).  [clausify(1)].
-12 sP(A) | sQ(B).  [resolve(9,a,7,a)].
-Derived: sQ(A) | -ts5.  [resolve(12,a,10,b)].
+Eliminating p/1
+10 -ts5 | -p(c) # label(5) # label(axiom).  [assumption].
+11 ts5 | p(c) | q(c) # label(4) # label(axiom).  [clausify(1)].
+12 p(A) | q(B).  [resolve(9,a,7,a)].
+Derived: q(A) | -ts5.  [resolve(12,a,10,b)].
 
-Eliminating sQ/1
-13 sQ(A) | -ts5.  [resolve(12,a,10,b)].
-14 -ts5 | -sQ(cemptySet) # label(6) # label(axiom).  [assumption].
+Eliminating q/1
+13 q(A) | -ts5.  [resolve(12,a,10,b)].
+14 -ts5 | -q(c) # label(6) # label(axiom).  [assumption].
 Derived: -ts5 | -ts5.  [resolve(13,a,14,b)].
 
 ============================== end predicate elimination =============
@@ -118,12 +118,12 @@ kept:      15 ts5.  [resolve(5,a,3,a)].
 2 -Ts3(A,B) | Ts2(A,B) # label(8) # label(axiom).  [assumption].
 3 Ts3(A,B) # label(0) # label(axiom).  [assumption].
 5 -Ts3(A,B) | ts5 # label(9) # label(axiom).  [assumption].
-7 -Ts2(A,B) | sP(A) | sQ(B) # label(1) # label(axiom).  [assumption].
+7 -Ts2(A,B) | p(A) | q(B) # label(1) # label(axiom).  [assumption].
 9 Ts2(A,B).  [resolve(2,a,3,a)].
-10 -ts5 | -sP(cemptySet) # label(5) # label(axiom).  [assumption].
-12 sP(A) | sQ(B).  [resolve(9,a,7,a)].
-13 sQ(A) | -ts5.  [resolve(12,a,10,b)].
-14 -ts5 | -sQ(cemptySet) # label(6) # label(axiom).  [assumption].
+10 -ts5 | -p(c) # label(5) # label(axiom).  [assumption].
+12 p(A) | q(B).  [resolve(9,a,7,a)].
+13 q(A) | -ts5.  [resolve(12,a,10,b)].
+14 -ts5 | -q(c) # label(6) # label(axiom).  [assumption].
 15 ts5.  [resolve(5,a,3,a)].
 16 -ts5 | -ts5.  [resolve(13,a,14,b)].
 17 $F.  [copy(16),merge(b),unit_del(a,15)].
@@ -152,4 +152,4 @@ THEOREM PROVED
 
 Exiting with 1 proof.
 
-Process 52990 exit (max_proofs) Thu Feb 27 18:49:41 2025
+Process 15763 exit (max_proofs) Fri Feb 28 23:54:26 2025

@@ -1,3 +1,5 @@
+
+/*
 package sctptp
 import SequentCalculus as SC
 import LVL2.*
@@ -3925,3 +3927,4 @@ class Tseitin {
   // Reconstruct at the end --- wrapper?
   def addEpsilonTerms(f: sctptp.FOL.Formula): sctptp.FOL.Formula = ???
 }
+*/

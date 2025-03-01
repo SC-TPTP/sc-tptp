@@ -5,7 +5,7 @@ import SequentCalculus.*
 import java.text.Normalizer.Form
 
 object LVL2 {
-  sealed trait StrictLVL2ProofStep extends SCProofStep
+  trait StrictLVL2ProofStep extends SCProofStep
   type LVL2ProofStep = StrictLVL2ProofStep | LVL1ProofStep
 
   // Flattern a formula with Or connector

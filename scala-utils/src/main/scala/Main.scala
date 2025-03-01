@@ -6,7 +6,7 @@ import FOL.*
 import SequentCalculus.*
 import CoqOutput.CoqProof
 import sctptp.SequentCalculus.SCProofStep
-import sctptp.Tseitin
+//import sctptp.Tseitin
 import sctptp.FOL.iff
 import sctptp.LVL2.LVL2ProofStep
 import java.io.File
@@ -19,10 +19,7 @@ object Main {
 
   def main(args: Array[String]): Unit = {
 
-    // if (args.size < 1) {
-    //   println("You need to provide a file")
-    //   System.exit(0)
-    // }
+/*
 
     // Problem
     val problem_file = "../proofs/clausification/simple2.p"
@@ -142,5 +139,6 @@ object Main {
     }
 
     Files.write(path, final_proof.getBytes(StandardCharsets.UTF_8))
+    */
   }
 }

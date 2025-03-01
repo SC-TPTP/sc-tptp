@@ -79,6 +79,53 @@ object Parser {
     Sequent(sequent.lhs.map(convertFormulaToFol), sequent.rhs.map(convertFormulaToFol))
   }
 
+  def parseProblem(file:File): Problem = {
+    val problem = TPTPParser.problem(io.Source.fromFile(file)) 
+    val nameMap = scala.collection.mutable.Map[String, Sequent]()
+    var steps = List[Axiom]()
+    var conjecture = Option.empty[Conjecture]
+    var contextFormula = scala.collection.mutable.Map[String, Formula]()
+    var contextTerm = scala.collection.mutable.Map[String, Term]()
+    val defcontext: DefContext = (contextFormula.get, contextTerm.get)
+    problem.formulas.foreach {
+      case ft: FOTAnnotated =>
+        if ft.role == "let" then
+          val term = ft.formula
+          val defedcst = "$" + ft.name
+          contextTerm(defedcst) = convertTermToFOL(term)(using defcontext)
+       
+      case fa: FOFAnnotated =>
+        if fa.role == "conjecture" then 
+          val fofsequent = fa.formula match {
+            case FOF.Logical(formula) => FOF.Sequent(Seq(), Seq(formula))
+            case s: FOF.Sequent => s
+          }
+          val sequent = Sequent(fofsequent.lhs.map(convertFormulaToFol(_)(using defcontext)), fofsequent.rhs.map(convertFormulaToFol(_)(using defcontext)))
+            nameMap(fa.name) = sequent
+            conjecture = Some(Conjecture(fa.name, sequent))
+        else if fa.role == "let" then
+          val formula = fa.formula match {
+            case FOF.Logical(formula) => formula
+            case s: FOF.Sequent => throw new Exception("Sequent in let statement is incorrect")
+          }
+          val defedcst = "$" + fa.name
+          contextFormula(defedcst) = convertFormulaToFol(formula)(using defcontext)
+        else
+          val fofsequent = fa.formula match {
+            case FOF.Logical(formula) => FOF.Sequent(Seq(), Seq(formula))
+            case s: FOF.Sequent => s
+          }
+          if fa.role == "axiom" then
+            val sequent = Sequent(fofsequent.lhs.map(convertFormulaToFol(_)(using defcontext)), fofsequent.rhs.map(convertFormulaToFol(_)(using defcontext)))
+            nameMap(fa.name) = sequent
+            steps = Axiom(fa.name, sequent) :: steps
+          else
+            throw new Exception("the file contains roles which are not conjecture, axiom and let")
+      case _ => throw new Exception("Only FOF statements are supported")
+    }
+    Problem(steps.reverse.toSeq, conjecture.get)
+  }
+
   def reconstructProof(file: File): SCProof[?] = {
     val problem = TPTPParser.problem(io.Source.fromFile(file)) 
     val nameMap = scala.collection.mutable.Map[String, Sequent]()

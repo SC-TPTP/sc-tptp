@@ -50,7 +50,16 @@ object SequentCalculus {
   case class Sequent(left: Seq[Formula], right: Seq[Formula]) {
     override def toString: String =
       s"[${left.mkString(",")}] --> [${right.mkString(",")}]"
+
+    def +<<(f: Formula): Sequent = Sequent(left :+ f, right)
+    def -<<(f: Formula): Sequent = Sequent(left.filterNot(_ == f), right)
+    def +>>(f: Formula): Sequent = Sequent(left, right :+ f)
+    def ->>(f: Formula): Sequent = Sequent(left, right.filterNot(_ == f))
+    def ++<<(fs: Seq[Formula]): Sequent = Sequent(left ++ fs, right)
+    def ++>>(fs: Seq[Formula]): Sequent = Sequent(left, right ++ fs)
   }
+
+  
 
   trait SCProofStep {
     val name: String
@@ -92,6 +101,14 @@ object SequentCalculus {
       s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), '${P.toString()}', $$fof(${phi._1.toString()}), [${phi._2.map(st => s"'${st.toString()}'").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     }
+
+  case class Conjecture(name: String, goal: Sequent) extends LVL1ProofStep{
+    val bot = Sequent(Seq(), Seq(top()))
+    val premises = Seq()
+    def checkCorrectness(premises: String => Sequent): Option[String] = None
+    override def toString: String = s"fof($name, conjecture, ${goal})."
+
+  }
 
   trait SCProof[Steps<:SCProofStep] {
     val thmName: String
@@ -213,6 +230,7 @@ object SequentCalculus {
 
   private def contains(seq: Seq[Formula], f: Formula): Boolean = seq.contains(f)
 
+  /*
 
   /**
    * --------------
@@ -226,6 +244,8 @@ object SequentCalculus {
       s"fof(${name}, conjecture, ${bot})."
     def checkCorrectness(premises: String => Sequent): Option[String] = None
   }
+
+  */
 
   /**
    * --------------

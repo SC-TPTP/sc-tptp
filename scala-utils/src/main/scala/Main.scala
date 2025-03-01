@@ -19,13 +19,14 @@ object Main {
 
   def main(args: Array[String]): Unit = {
 
-    // if (args.size < 1) {
-    //   println("You need to provide a file")
-    //   System.exit(0)
-    // }
+    if (args.size < 1) {
+      println("You need to provide a file")
+      System.exit(0)
+    }
 
     // Problem
-    val problem_file = "../proofs/clausification/simple2.p"
+    // val problem_file = "../proofs/drinker.p"
+    val problem_file = args(0)
     val problem = reconstructProof(new File(problem_file))
 
     // parse conjecture
@@ -69,7 +70,6 @@ object Main {
 
     // Generate tseistin replacement
     val lastInstForm = stepInst(0)
-    println("lastinstfom : " + lastInstForm)
     val tseitinReplacementStep = myTseitin.computeTseitinReplacementSteps(
       lastInstForm,
       tseitinStepNames.reverse,

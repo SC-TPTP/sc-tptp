@@ -8,6 +8,11 @@ case class Subproof(name: String, proof: SCProof[?], assumptions: Seq[Formula], 
   val bot = proof.steps.last.bot ++<< assumptions
   val premises = axioms.values.toSeq
 
+  def addAssumptions(fs: Seq[Formula]) = this.copy(assumptions = assumptions ++ fs)
+  def rename(newName: String) = copy(name = newName)
+  def renamePremises(map: Map[String, String]): SCProofStep = 
+    val newax = axioms.view.mapValues(c => map.getOrElse(c, c)).toMap
+    copy(axioms = newax)
   override def toString: String = {
     val axiomsString = axioms.map { case (k, v) => s"$k: $v" }.mkString(", ")
     val assumprionsString = assumptions.mkString(", ")
@@ -24,6 +29,41 @@ case class Problem(axioms: Seq[Axiom], conjecture: Conjecture) {
     val axiomsString = axioms.map(_.toString).mkString("\n")
     s"$axiomsString\n${conjecture}"
   }
+
+  def toStringNoSeq = {
+    val axiomsString = axioms.map {
+      case Axiom(name, Sequent(Seq(), Seq(f))) => 
+        s"fof($name, axiom, $f)."
+    }.mkString("\n")
+    val conjectureString = conjecture match
+      case Conjecture(name, Sequent(Seq(), Seq(f))) => 
+        s"fof($name, conjecture, $f)."
+      case Conjecture(name, Sequent(Seq(), Seq())) => 
+        s"fof($name, conjecture, " + "$false)."
+    s"$axiomsString\n$conjectureString"
+  }
   
+}
+
+
+def flattenProof(proof: SCProof[?]): SCProof[?] = {
+  def innerFlattenProof(steps: Seq[SCProofStep], in: Boolean, assums: Seq[Formula], renamed: Map[String, String]): Seq[SCProofStep] = {
+    steps.flatMap {
+      case Subproof(name, proof, assumptions, axioms) =>
+        val newsteps = innerFlattenProof(proof.steps, true, assums ++ assumptions, renamed ++ axioms)
+        val last = newsteps.last
+        val newlast = last.rename(name)
+        newsteps.dropRight(1) :+ newlast
+
+      case ax: Axiom  =>
+        if !in then
+          Seq(ax)
+        else Seq()
+      case s => 
+        Seq(s.addAssumptions(assums).renamePremises(renamed))
+    }
+  }
+  val newsteps = innerFlattenProof(proof.steps, false, Seq(), Map())
+  LVL2Proof(newsteps.toIndexedSeq.asInstanceOf, proof.thmName)
 }
 

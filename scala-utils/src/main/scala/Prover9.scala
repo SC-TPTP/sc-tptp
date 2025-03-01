@@ -10,6 +10,8 @@ import java.io.InputStream
 import java.nio.file.StandardCopyOption
 import sys.process._
 import java.nio.charset.StandardCharsets
+import scala.collection.mutable.Map as mutMap
+import leo.modules.input.TPTPParser.problem
 
 object Prover9 {
 
@@ -38,10 +40,26 @@ object Prover9 {
       Files.createFile(pathfilep)
     }
     // Write the problem to the file
-    Files.write(pathfilep, problem.toString.getBytes(StandardCharsets.UTF_8))
+    Files.write(pathfilep, problem.toStringNoSeq.getBytes(StandardCharsets.UTF_8))
 
     val proof = proveFile(pathfilepname)
-    proof
+    val newsteps = proof.steps
+    val seqmap: Map[Sequent, String] = problem.axioms.map {
+      case Axiom(name, f) => f -> name
+    }.toMap
+    val namemap = mutMap[String, String]()
+
+    newsteps.foreach {
+      case Axiom(name, bot) => namemap += (name -> seqmap(bot))
+      case _ => ()
+    }
+    
+    val newsteps_originalnames = newsteps.map {
+      case Axiom(name, bot) => Axiom(namemap(name), bot)
+      case step => step.renamePremises(namemap.toMap)
+    }
+
+    LVL2Proof(newsteps_originalnames.asInstanceOf, proof.thmName)
   }
 
   def proveFile(filename: String): SCProof[?] = {
@@ -148,7 +166,11 @@ object Prover9 {
 
     Files.write(pathproof, proofContent.getBytes(StandardCharsets.UTF_8))
 
-    Parser.reconstructProof(new File(pathfileoutname))
+    val proof = Parser.reconstructProof(new File(pathfileoutname)).asInstanceOf[LVL2Proof]
+    val last = proof.steps.last.asInstanceOf[Res]
+    val newsteps = proof.steps.dropRight(1) :+ last.copy(bot = () |- ())
+
+    proof.copy(steps = newsteps)
     
   }
 

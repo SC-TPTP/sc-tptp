@@ -3,11 +3,19 @@ import SequentCalculus.*
 import Helpers.{*, given}
 import LVL2.*
 import sctptp.Parser.parseProblem
+import java.io.File
+
 object Tseitin2 {
 
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit = {    
     val file = args(0)
-    val problem = parseProblem(file)
+    val problem = parseProblem(File(file))
+    val proof = certify_negated(problem, Prover9.proveProblem)
+    println("proof: ")
+    println(proof)
+
+    println("flattened proof: ")
+    println(flattenProof(proof))
   }
 
 
@@ -39,7 +47,7 @@ object Tseitin2 {
         val sp_neg_conj = Subproof("sp_neg_conj", proof, Seq(neg_c), axiomsMap)
         val nc_elim_1 = Hyp("nc_elim_1", c |- c, 0)
         val nc_elim_2 = RightNot("nc_elim_2", () |- (c, neg_c), 1, nc_elim_1)
-        val nc_elim_3 = Cut("nc_elim_3", (sp_neg_conj.proof.steps.last.bot.left) |- c, sp_neg_conj.bot.left.size-1, sp_neg_conj, nc_elim_2)
+        val nc_elim_3 = Cut("nc_elim_3", (sp_neg_conj.proof.steps.last.bot.left) |- c, sp_neg_conj.bot.left.size-1, nc_elim_2, sp_neg_conj)
 
         LVL2Proof(Vector(hyp, sp_neg_conj, nc_elim_1, nc_elim_2, nc_elim_3), "test")
 

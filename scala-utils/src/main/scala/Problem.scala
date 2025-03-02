@@ -9,6 +9,8 @@ case class Subproof(name: String, proof: SCProof[?], assumptions: Seq[Formula], 
   val premises = axioms.values.toSeq
 
   def addAssumptions(fs: Seq[Formula]) = this.copy(assumptions = assumptions ++ fs)
+
+  def mapBot(f: Sequent => Sequent) = throw new Exception("can't change the bot of a subproof")
   def rename(newName: String) = copy(name = newName)
   def renamePremises(map: Map[String, String]): SCProofStep = 
     val newax = axioms.view.mapValues(c => map.getOrElse(c, c)).toMap
@@ -50,7 +52,7 @@ def flattenProof(proof: SCProof[?]): SCProof[?] = {
   def innerFlattenProof(steps: Seq[SCProofStep], in: Boolean, assums: Seq[Formula], renamed: Map[String, String]): Seq[SCProofStep] = {
     steps.flatMap {
       case Subproof(name, proof, assumptions, axioms) =>
-        val newsteps = innerFlattenProof(proof.steps, true, assums ++ assumptions, renamed ++ axioms)
+        val newsteps = innerFlattenProof(proof.steps, true, assumptions ++ assums, renamed ++ axioms)
         val last = newsteps.last
         val newlast = last.rename(name)
         newsteps.dropRight(1) :+ newlast

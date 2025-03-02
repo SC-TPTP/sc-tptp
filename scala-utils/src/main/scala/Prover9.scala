@@ -1,5 +1,6 @@
 package sctptp
 import SequentCalculus.*
+import FOL.*
 import Helpers.{*, given}
 import LVL2.*
 import scala.io.Source
@@ -15,11 +16,30 @@ import leo.modules.input.TPTPParser.problem
 
 object Prover9 {
 
+  def toSafe(f: Formula): Formula = f match {
+    case AtomicFormula(pred, sqf) => 
+      if pred.id.name(0) == '$' then f 
+      else AtomicFormula(pred.copy(id = pred.id.copy(name = "p"+pred.id.name)), sqf)
+    case ConnectorFormula(cn, seqf) => ConnectorFormula(cn, seqf.map(toSafe))
+    case _ => throw new Exception("quantifiers not supported")
+  }
+  def fromSafe(f: Formula): Formula = f match {
+    case AtomicFormula(pred, sqf) => 
+      if pred.id.name(0) == '$' then f 
+      else AtomicFormula(pred.copy(id = pred.id.copy(name = pred.id.name.tail)), sqf)
+    case ConnectorFormula(cn, seqf) => ConnectorFormula(cn, seqf.map(fromSafe))
+    case _ => throw new Exception("quantifiers not supported")
+  }
+
   def main(args: Array[String]): Unit = {
 
     val file = args(0)
     val problem = parseProblem(File(file))
     val proof = proveProblem(problem)
+
+    val target = args(1)
+    //print to file target
+    Files.write(Paths.get(target), proof.toString.getBytes(StandardCharsets.UTF_8))
 
     println(proof)
   }
@@ -29,6 +49,11 @@ object Prover9 {
   
 
   def proveProblem(problem: Problem): SCProof[?] = {
+    val problem2 = Problem(
+      problem.axioms.map(_.mapBot(bot => bot.left |- bot.right.map(toSafe))),
+      problem.conjecture
+    )
+    println(problem2)
     val pathdir = Paths.get(foldername)
     if (!(Files.exists(pathdir) && Files.isDirectory(pathdir)))
       Files.createDirectory(pathdir)
@@ -39,30 +64,67 @@ object Prover9 {
     if (!Files.exists(pathfilep)) {
       Files.createFile(pathfilep)
     }
-    // Write the problem to the file
-    Files.write(pathfilep, problem.toStringNoSeq.getBytes(StandardCharsets.UTF_8))
 
-    val proof = proveFile(pathfilepname)
-    val newsteps = proof.steps
+    val newProblemAxioms = problem2.axioms.map(_.mapBot(bot => bot.left |- (if bot.right.size == 1 then bot.right.head else Or(bot.right))))
+    val newProblem = Problem(newProblemAxioms, Conjecture("cjctr", () |- bot()))
+    // Write the problem to the file
+    Files.write(pathfilep, newProblem.toStringNoSeq.getBytes(StandardCharsets.UTF_8))
+
+    val proof = _proveFile(pathfilepname)
+    val newsteps = proof.steps.map(step =>
+      step.mapBot(bot => bot.left.map(fromSafe) |- bot.right.map(fromSafe))
+    )
+
+    def removeOr(f: Formula): Seq[Formula] = f match {
+      case AtomicFormula(`bot`, Seq()) => Seq()
+      case ConnectorFormula(Or, seqf) => seqf.flatMap(removeOr)
+      case _ => Seq(f)
+    }
+
+
     val seqmap: Map[Sequent, String] = problem.axioms.map {
       case Axiom(name, f) => f -> name
     }.toMap
     val namemap = mutMap[String, String]()
+    println(seqmap)
 
     newsteps.foreach {
-      case Axiom(name, bot) => namemap += (name -> seqmap(bot))
+      case Axiom(name, bot) => 
+        namemap += (name -> seqmap(bot.left |- removeOr(bot.right.head)))
       case _ => ()
     }
     
-    val newsteps_originalnames = newsteps.map {
-      case Axiom(name, bot) => Axiom(namemap(name), bot)
-      case step => step.renamePremises(namemap.toMap)
-    }
+    val newsteps_originalnames = newsteps.map(step =>
+      val newbot = step.bot.left |- removeOr(step.bot.right(0))
+      step.mapBot(bot => newbot) match
+        case Axiom(name, bot) => Axiom(namemap(name), bot)
+        case step => step.renamePremises(namemap.toMap)
+    )
 
-    LVL2Proof(newsteps_originalnames.asInstanceOf, proof.thmName)
+
+    val premises2 = mutMap[String, Sequent]()
+    val newsteps_clause = newsteps_originalnames.map( step =>
+      premises2 += (step.name -> step.bot)
+      step match 
+        case r:Res2 => 
+          r.castToRes(premises2.apply)
+        case step => step
+    )
+
+    LVL2Proof(newsteps_clause.asInstanceOf, proof.thmName)
   }
 
+  /**
+    * Prove the problem without any pre or post processing
+    *
+    */
   def proveFile(filename: String): SCProof[?] = {
+    val problem = parseProblem(File(filename))
+    val proof = proveProblem(problem)
+    proof
+  }
+
+  def _proveFile(filename: String): SCProof[?] = {
     val ladr2TPTPPathName = "tptp_to_ladr"
     val p9PathName = "prover9"
     val prooftransName = "prooftrans"
@@ -167,10 +229,7 @@ object Prover9 {
     Files.write(pathproof, proofContent.getBytes(StandardCharsets.UTF_8))
 
     val proof = Parser.reconstructProof(new File(pathfileoutname)).asInstanceOf[LVL2Proof]
-    val last = proof.steps.last.asInstanceOf[Res]
-    val newsteps = proof.steps.dropRight(1) :+ last.copy(bot = () |- ())
-
-    proof.copy(steps = newsteps)
+    proof
     
   }
 

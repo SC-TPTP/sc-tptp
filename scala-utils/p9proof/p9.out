@@ -1,16 +1,22 @@
 Test
 ;; ============================== prooftrans ============================
 ;; Prover9 (64) version 2009-11A, November 2009.
-;; Process 226987 was started by sguilloud on minerva,
-;; Sat Mar  1 20:02:22 2025
+;; Process 284639 was started by sguilloud on minerva,
+;; Sun Mar  2 02:56:28 2025
 ;; The command was "/tmp/prouver9".
 ;; ============================== end of head ===========================
 Start
-Count new proof: 4
+Count new proof: 10
 Return
 
 ;; BEGINNING OF PROOF OBJECT
-fof('2', axiom, [] --> [a]).
-fof('3', axiom, [] --> [~(a)]).
-fof('4', plain, [] --> [$false], inference(res, [status(thm), 0, 0], ['3', '2'])).
+fof('2', axiom, [] --> [pTs2(V0)]).
+fof('3', axiom, [] --> [pTs1 | ~(pTs2(V0))]).
+fof('4', axiom, [] --> [pb | ~(pTs1)]).
+fof('6', axiom, [] --> [~(pb)]).
+fof('10', plain, [] --> [pTs2(V100)], inference(instantiateMult, [status(thm), 0, [[$fot(V0), $fot(V100)]]], ['2'])).
+fof('11', plain, [] --> [pTs1 | ~(pTs2(V100))], inference(instantiateMult, [status(thm), 0, [[$fot(V0), $fot(V100)]]], ['3'])).
+fof('7', plain, [] --> [pTs1], inference(res, [status(thm), 0, 1], ['10', '11'])).
+fof('8', plain, [] --> [~(pTs1)], inference(res, [status(thm), 0, 0], ['6', '4'])).
+fof('9', plain, [] --> [$false], inference(res, [status(thm), 0, 0], ['8', '7'])).
 ;; END OF PROOF OBJECT

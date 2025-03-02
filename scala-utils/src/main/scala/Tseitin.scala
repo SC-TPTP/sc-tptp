@@ -1286,7 +1286,7 @@ class Tseitin {
             ) =>
           LeftSubstMulti(s, bot, is: List[Int], p, xs, t1)
         case Congruence(name: String, bot: Sequent) => Congruence(s, bot)
-        case Res(
+        case Res2(
               name: String,
               bot: Sequent,
               i1: Int,
@@ -1294,7 +1294,7 @@ class Tseitin {
               t1: String,
               t2: String
             ) =>
-          Res(s, bot, i1, i2, t1, t2)
+          Res2(s, bot, i1, i2, t1, t2)
         case NegatedConjecture(name: String, bot: Sequent, t1: String) =>
           NegatedConjecture(s, bot, t1)
         case Clausify(name: String, bot: Sequent, i: Int, t1: String) =>
@@ -1547,7 +1547,7 @@ class Tseitin {
             ) =>
           LeftSubstMulti(name, bot, is: List[Int], p, xs, if (old_parent == t1) then new_parent else t1)
         case Congruence(name: String, bot: Sequent) => Congruence(name, bot)
-        case Res(
+        case Res2(
               name: String,
               bot: Sequent,
               i1: Int,
@@ -1555,7 +1555,7 @@ class Tseitin {
               t1: String,
               t2: String
             ) =>
-          Res(name, bot, i1, i2, if (old_parent == t1) then new_parent else t1, if (old_parent == t2) then new_parent else t2)
+          Res2(name, bot, i1, i2, if (old_parent == t1) then new_parent else t1, if (old_parent == t2) then new_parent else t2)
         case NegatedConjecture(name: String, bot: Sequent, t1: String) =>
           NegatedConjecture(name, bot, if (old_parent == t1) then new_parent else t1)
         case Clausify(name: String, bot: Sequent, i: Int, t1: String) =>
@@ -1943,7 +1943,7 @@ class Tseitin {
           )
         case Congruence(name: String, bot: Sequent) =>
           Congruence(name, unrenameSequent(bot))
-        case Res(
+        case Res2(
               name: String,
               bot: Sequent,
               i1: Int,
@@ -1951,7 +1951,7 @@ class Tseitin {
               t1: String,
               t2: String
             ) =>
-          Res(name, unrenameSequent(bot), i1, i2, t1, t2)
+          Res2(name, unrenameSequent(bot), i1, i2, t1, t2)
         case NegatedConjecture(name: String, bot: Sequent, t1: String) =>
           NegatedConjecture(name, unrenameSequent(bot), t1)
         case Clausify(name: String, bot: Sequent, i: Int, t1: String) =>
@@ -2339,7 +2339,7 @@ class Tseitin {
           )
         case Congruence(name: String, bot: Sequent) =>
           Congruence(name, renameTseitinConstantSequent(bot))
-        case Res(
+        case Res2(
               name: String,
               bot: Sequent,
               i1: Int,
@@ -2347,7 +2347,7 @@ class Tseitin {
               t1: String,
               t2: String
             ) =>
-          Res(name, renameTseitinConstantSequent(bot), i1, i2, t1, t2)
+          Res2(name, renameTseitinConstantSequent(bot), i1, i2, t1, t2)
         case NegatedConjecture(name: String, bot: Sequent, t1: String) =>
           NegatedConjecture(name, renameTseitinConstantSequent(bot), t1)
         case Clausify(name: String, bot: Sequent, i: Int, t1: String) =>
@@ -2680,7 +2680,7 @@ class Tseitin {
           )
         case Congruence(name: String, bot: Sequent) =>
           Congruence(name, modifyOrStepsSequent(bot))
-        case Res(
+        case Res2(
               name: String,
               bot: Sequent,
               i1: Int,
@@ -2688,7 +2688,7 @@ class Tseitin {
               t1: String,
               t2: String
             ) =>
-          Res(name, modifyOrStepsSequent(bot), i1, i2, t1, t2)
+          Res2(name, modifyOrStepsSequent(bot), i1, i2, t1, t2)
         case NegatedConjecture(name: String, bot: Sequent, t1: String) =>
           NegatedConjecture(name, modifyOrStepsSequent(bot), t1)
         case Clausify(name: String, bot: Sequent, i: Int, t1: String) =>
@@ -2991,7 +2991,7 @@ class Tseitin {
         )
       case Congruence(name: String, bot: Sequent) =>
         Congruence(name, Sequent(bot.left ++ context, bot.right))
-      case Res(
+      case Res2(
             name: String,
             bot: Sequent,
             i1: Int,
@@ -2999,7 +2999,7 @@ class Tseitin {
             t1: String,
             t2: String
           ) =>
-        Res(name, Sequent(bot.left ++ context, bot.right), i1, i2, t1, t2)
+        Res2(name, Sequent(bot.left ++ context, bot.right), i1, i2, t1, t2)
       case NegatedConjecture(name: String, bot: Sequent, t1: String) =>
         NegatedConjecture(name, Sequent(bot.left ++ context, bot.right), t1)
       case Clausify(name: String, bot: Sequent, i: Int, t1: String) =>
@@ -3311,7 +3311,7 @@ class Tseitin {
           )
         case Congruence(name: String, bot: Sequent) =>
           Congruence(name, Sequent(Seq(), bot.right))
-        case Res(
+        case Res2(
               name: String,
               bot: Sequent,
               i1: Int,
@@ -3319,7 +3319,7 @@ class Tseitin {
               t1: String,
               t2: String
             ) =>
-          Res(name, Sequent(Seq(), bot.right), i1, i2, t1, t2)
+          Res2(name, Sequent(Seq(), bot.right), i1, i2, t1, t2)
         case NegatedConjecture(name: String, bot: Sequent, t1: String) =>
           NegatedConjecture(name, Sequent(Seq(), bot.right), t1)
         case Clausify(name: String, bot: Sequent, i: Int, t1: String) =>
@@ -3737,7 +3737,7 @@ class Tseitin {
           )
         case Congruence(name: String, bot: Sequent) =>
           Congruence(name, Sequent(bot.left, removeFalse2Aux(bot.right)))
-        case Res(
+        case Res2(
               name: String,
               bot: Sequent,
               i1: Int,
@@ -3745,7 +3745,7 @@ class Tseitin {
               t1: String,
               t2: String
             ) =>
-          Res(
+          Res2(
             name,
             Sequent(bot.left, removeFalse2Aux(bot.right)),
             i1,

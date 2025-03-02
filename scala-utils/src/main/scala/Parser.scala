@@ -215,7 +215,7 @@ object Parser {
       case Inference.InstPred(step) => Some(step)
 
       case Inference.Congruence(step) => Some(step)
-      case Inference.Res(step) => Some(step)
+      case Inference.Res2(step) => Some(step)
       case Inference.NegatedConjecture(step) => Some(step)
       case Inference.Clausify(step) => Some(step)
       case Inference.NNF(step) => Some(step)
@@ -711,11 +711,11 @@ object Parser {
         }
     }
 
-    object Res {
+    object Res2 {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
         ann_seq match {
           case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("res", Seq(_, StrOrNum(i), StrOrNum(j)), Seq(t1, t2)), _) =>
-            Some(LVL2.Res(name, convertSequentToFol(sequent), i.toInt, j.toInt, t1, t2))
+            Some(LVL2.Res2(name, convertSequentToFol(sequent), i.toInt, j.toInt, t1, t2))
           case _ => None
         }
     }
@@ -732,8 +732,8 @@ object Parser {
     object Clausify {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("clausify", Seq(_,  StrOrNum(i)), Seq(t1)), _) =>
-            Some(LVL2.Clausify(name, convertSequentToFol(sequent), i.toInt, t1))
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("clausify", Seq(_,  StrOrNum(i)), Seq()), _) =>
+            Some(LVL2.Clausify(name, convertSequentToFol(sequent), i.toInt))
           case _ => None
         }
     }

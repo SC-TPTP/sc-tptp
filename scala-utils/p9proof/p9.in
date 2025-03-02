@@ -1,7 +1,7 @@
 ============================== Prover9 ===============================
 Prover9 (64) version 2009-11A, November 2009.
-Process 284639 was started by sguilloud on minerva,
-Sun Mar  2 02:56:28 2025
+Process 312808 was started by sguilloud on minerva,
+Sun Mar  2 12:34:27 2025
 The command was "/tmp/prouver9".
 ============================== end of head ===========================
 
@@ -9,11 +9,12 @@ The command was "/tmp/prouver9".
 set(prolog_style_variables).
 
 formulas(assumptions).
-pb | -pTs1 # label(ts_cla1) # label(axiom).
-pc | -pTs1 # label(ts_clb1) # label(axiom).
-pf(V0) | -pTs2(V0) # label(ts_claQ2_1) # label(axiom).
-pTs1 | -pTs2(V0) # label(ts_clbQ2_1) # label(axiom).
-pTs2(V0) # label(ts_axQ2_1) # label(axiom).
+pf(V0) | -pTs1(V0) # label(ts_claQ1_1) # label(axiom).
+pb | -pTs1(V0) # label(ts_clbQ1_1) # label(axiom).
+pb | -pTs2(V0) # label(ts_claQ2_1) # label(axiom).
+pg(V0) | -pTs2(V0) # label(ts_clbQ2_1) # label(axiom).
+pTs2(V0) | pTs1(V0) | -pTs3(V0,V0) # label(ts_claQ3_2) # label(axiom).
+pTs3(V0,V0) # label(ts_axQ3_2) # label(axiom).
 -pb # label(a2) # label(axiom).
 end_of_list.
 
@@ -38,11 +39,12 @@ formulas(usable).
 end_of_list.
 
 formulas(sos).
-pb | -pTs1 # label(ts_cla1) # label(axiom).  [assumption].
-pc | -pTs1 # label(ts_clb1) # label(axiom).  [assumption].
-pf(A) | -pTs2(A) # label(ts_claQ2_1) # label(axiom).  [assumption].
-pTs1 | -pTs2(A) # label(ts_clbQ2_1) # label(axiom).  [assumption].
-pTs2(A) # label(ts_axQ2_1) # label(axiom).  [assumption].
+pf(A) | -pTs1(A) # label(ts_claQ1_1) # label(axiom).  [assumption].
+pb | -pTs1(A) # label(ts_clbQ1_1) # label(axiom).  [assumption].
+pb | -pTs2(A) # label(ts_claQ2_1) # label(axiom).  [assumption].
+pg(A) | -pTs2(A) # label(ts_clbQ2_1) # label(axiom).  [assumption].
+pTs2(A) | pTs1(A) | -pTs3(A,A) # label(ts_claQ3_2) # label(axiom).  [assumption].
+pTs3(A,A) # label(ts_axQ3_2) # label(axiom).  [assumption].
 -pb # label(a2) # label(axiom).  [assumption].
 end_of_list.
 
@@ -53,96 +55,74 @@ end_of_list.
 
 Eliminating pf/1
 
+Eliminating pTs1/1
+2 pTs2(A) | pTs1(A) | -pTs3(A,A) # label(ts_claQ3_2) # label(axiom).  [assumption].
+3 pb | -pTs1(A) # label(ts_clbQ1_1) # label(axiom).  [assumption].
+Derived: pTs2(A) | -pTs3(A,A) | pb.  [resolve(2,b,3,b)].
+
 Eliminating pTs2/1
-2 pTs2(A) # label(ts_axQ2_1) # label(axiom).  [assumption].
-3 pTs1 | -pTs2(A) # label(ts_clbQ2_1) # label(axiom).  [assumption].
-Derived: pTs1.  [resolve(2,a,3,b)].
+4 pTs2(A) | -pTs3(A,A) | pb.  [resolve(2,b,3,b)].
+5 pb | -pTs2(A) # label(ts_claQ2_1) # label(axiom).  [assumption].
+6 pg(A) | -pTs2(A) # label(ts_clbQ2_1) # label(axiom).  [assumption].
+Derived: -pTs3(A,A) | pb | pb.  [resolve(4,a,5,b)].
+
+Eliminating pTs3/2
+7 -pTs3(A,A) | pb | pb.  [resolve(4,a,5,b)].
+8 pTs3(A,A) # label(ts_axQ3_2) # label(axiom).  [assumption].
+Derived: pb | pb.  [resolve(7,a,8,a)].
 
 ============================== end predicate elimination =============
 
-Auto_denials:
-  % copying label a2 to answer in negative clause
+Auto_denials:  (non-Horn, no changes).
 
 Term ordering decisions:
-Predicate symbol precedence:  predicate_order([ pTs1, pb, pc ]).
+Predicate symbol precedence:  predicate_order([ pb ]).
 Function symbol precedence:  function_order([ ]).
 After inverse_order:  (no changes).
 Unfolding symbols: (none).
 
 Auto_inference settings:
-  % set(neg_binary_resolution).  % (HNE depth_diff=0)
-  % clear(ordered_res).  % (HNE depth_diff=0)
-  % set(ur_resolution).  % (HNE depth_diff=0)
-    % set(ur_resolution) -> set(pos_ur_resolution).
-    % set(ur_resolution) -> set(neg_ur_resolution).
+  % set(binary_resolution).  % (non-Horn)
+  % set(neg_ur_resolution).  % (non-Horn, less than 100 clauses)
 
-Auto_process settings:  (no changes).
+Auto_process settings:
+  % set(factor).  % (non-Horn)
+  % set(unit_deletion).  % (non-Horn)
 
-kept:      4 pb | -pTs1 # label(ts_cla1) # label(axiom).  [assumption].
-kept:      5 pc | -pTs1 # label(ts_clb1) # label(axiom).  [assumption].
-kept:      6 -pb # label(a2) # label(axiom) # answer(a2).  [assumption].
-kept:      7 pTs1.  [resolve(2,a,3,b)].
-
-============================== end of process initial clauses ========
-
-============================== CLAUSES FOR SEARCH ====================
-
-% Clauses after input processing:
-
-formulas(usable).
-end_of_list.
-
-formulas(sos).
-4 pb | -pTs1 # label(ts_cla1) # label(axiom).  [assumption].
-5 pc | -pTs1 # label(ts_clb1) # label(axiom).  [assumption].
-6 -pb # label(a2) # label(axiom) # answer(a2).  [assumption].
-7 pTs1.  [resolve(2,a,3,b)].
-end_of_list.
-
-formulas(demodulators).
-end_of_list.
-
-============================== end of clauses for search =============
-
-============================== SEARCH ================================
-
-% Starting search at 0.00 seconds.
-
-given #1 (I,wt=2): 4 pb | -pTs1 # label(ts_cla1) # label(axiom).  [assumption].
-
-given #2 (I,wt=2): 5 pc | -pTs1 # label(ts_clb1) # label(axiom).  [assumption].
-
-given #3 (I,wt=1): 6 -pb # label(a2) # label(axiom) # answer(a2).  [assumption].
+kept:      9 -pb # label(a2) # label(axiom).  [assumption].
+           10 pb | pb.  [resolve(7,a,8,a)].
 
 ============================== PROOF =================================
 
-% Proof 1 at 0.00 (+ 0.00) seconds: a2.
-% Length of proof is 7.
-% Level of proof is 2.
-% Maximum clause weight is 2.000.
-% Given clauses 3.
+% Proof 1 at 0.00 (+ 0.00) seconds.
+% Length of proof is 9.
+% Level of proof is 4.
+% Maximum clause weight is 1.000.
+% Given clauses 0.
 
-2 pTs2(A) # label(ts_axQ2_1) # label(axiom).  [assumption].
-3 pTs1 | -pTs2(A) # label(ts_clbQ2_1) # label(axiom).  [assumption].
-4 pb | -pTs1 # label(ts_cla1) # label(axiom).  [assumption].
-6 -pb # label(a2) # label(axiom) # answer(a2).  [assumption].
-7 pTs1.  [resolve(2,a,3,b)].
-8 -pTs1 # answer(a2).  [resolve(6,a,4,a)].
-9 $F # answer(a2).  [resolve(8,a,7,a)].
+2 pTs2(A) | pTs1(A) | -pTs3(A,A) # label(ts_claQ3_2) # label(axiom).  [assumption].
+3 pb | -pTs1(A) # label(ts_clbQ1_1) # label(axiom).  [assumption].
+4 pTs2(A) | -pTs3(A,A) | pb.  [resolve(2,b,3,b)].
+5 pb | -pTs2(A) # label(ts_claQ2_1) # label(axiom).  [assumption].
+7 -pTs3(A,A) | pb | pb.  [resolve(4,a,5,b)].
+8 pTs3(A,A) # label(ts_axQ3_2) # label(axiom).  [assumption].
+9 -pb # label(a2) # label(axiom).  [assumption].
+10 pb | pb.  [resolve(7,a,8,a)].
+11 $F.  [copy(10),merge(b),unit_del(a,9)].
 
 ============================== end of proof ==========================
 
 ============================== STATISTICS ============================
 
-Given=3. Generated=5. Kept=5. proofs=1.
-Usable=3. Sos=1. Demods=0. Limbo=0, Disabled=7. Hints=0.
+Given=0. Generated=2. Kept=1. proofs=1.
+Usable=0. Sos=0. Demods=0. Limbo=1, Disabled=10. Hints=0.
 Kept_by_rule=0, Deleted_by_rule=0.
 Forward_subsumed=0. Back_subsumed=0.
 Sos_limit_deleted=0. Sos_displaced=0. Sos_removed=0.
 New_demodulators=0 (0 lex), Back_demodulated=0. Back_unit_deleted=0.
 Demod_attempts=0. Demod_rewrites=0.
 Res_instance_prunes=0. Para_instance_prunes=0. Basic_paramod_prunes=0.
-Nonunit_fsub_feature_tests=0. Nonunit_bsub_feature_tests=2.
+Nonunit_fsub_feature_tests=0. Nonunit_bsub_feature_tests=0.
 Megabytes=0.03.
 User_CPU=0.00, System_CPU=0.00, Wall_clock=0.
 
@@ -154,4 +134,4 @@ THEOREM PROVED
 
 Exiting with 1 proof.
 
-Process 284639 exit (max_proofs) Sun Mar  2 02:56:28 2025
+Process 312808 exit (max_proofs) Sun Mar  2 12:34:27 2025

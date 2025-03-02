@@ -13,7 +13,9 @@ object Tseitin2 {
   def main(args: Array[String]): Unit = {    
     val file = args(0)
     val problem = parseProblem(File(file))
-    val proof = certify_tseitin(problem, Prover9.proveProblem)
+
+    val tseitin_prover = certify_tseitin(_, Prover9.proveProblem)
+    val proof = certify_prenex(problem, tseitin_prover)
     println("proof: ")
     println(proof)
 
@@ -77,6 +79,61 @@ object Tseitin2 {
     case ConnectorFormula(Neg, Seq(_)) => true
     case _ => false
 
+  
+
+  def matrix(f: Formula, i: Int, map: Map[VariableSymbol, Term]): (Formula, Int) = {
+    f match
+      case AtomicFormula(label, args) => (AtomicFormula(label, args.map(t => substituteVariablesInTerm(t, map))), i)
+      case ConnectorFormula(label, Seq(f1, f2)) => 
+        val (p2, i1) = matrix(f2, i, map)
+        val (p1, i2) = matrix(f1, i1, map)
+        (ConnectorFormula(label, Seq(p1, p2)), i2)
+      case ConnectorFormula(Neg, args) => 
+        val (p, i1) = matrix(args.head, i, map)
+        (ConnectorFormula(Neg, Seq(p)), i1)
+      case BinderFormula(Forall, bound, inner) => 
+        val newmap = map + (bound -> FunctionTerm(VariableSymbol(s"V$i"), Seq()))
+        val (p, i1) = matrix(inner, i+1, newmap)
+        (p, i1)
+      case _ => ???
+  }
+
+  def prenex(f: Formula, i: Int) : (Formula, Int) = 
+    val (m, i1) = matrix(f, i, Map())
+    val p = m.freeVariables.foldRight(m: Formula)((v, f) => Forall(v, f))
+    (p, i1)
+
+
+  def certify_prenex(problem: Problem, prover: Problem => SCProof[?]): SCProof[?] = {
+    assert(problem.conjecture.goal. == (()|-()))
+    var i = 0
+    val prenex_steps = problem.axioms.map(ax => 
+      val (prenexax, i1) = prenex(ax.bot.right.head, i)
+      i = i1
+      val s1 = Prenex(ax.name+"_pre", prenexax, ax.name)
+      def inst_once(f: Formula, prem : String): (LVL2ProofStep, Formula) = f match
+        case BinderFormula(Forall, v, inner) => 
+          i += 1
+          val s2 = InstForall(s"${ax.name}_$v", () |- inner, 0, v, prem)
+          (s2, inner)
+        case _ => throw new Exception("prenex should only return a formula with foralls")
+      var instSteps = List[LVL2ProofStep](s1)
+      var next = prenexax
+      while next.isInstanceOf[BinderFormula] do
+        val (step, inner) = inst_once(next, instSteps.head.name)
+        next = inner
+        instSteps = step :: instSteps
+      val newax = Axiom(ax.name, () |- next)
+      val axrefname = if instSteps.length > 0 then instSteps.head.name else s1.name
+      (instSteps.reverse, newax, ax.name -> axrefname)
+    )
+    val newAxioms = prenex_steps.map(_._2)
+    val innerproof = prover(Problem(newAxioms, problem.conjecture))
+    val axiommap = prenex_steps.map(_._3).toMap
+    val sub = Subproof("prenex_sp", innerproof, Seq(), axiommap)
+    val steps = problem.axioms ++ prenex_steps.flatMap(_._1) :+ sub
+    LVL2Proof(steps.toIndexedSeq, "name")
+  }
 
 
 
@@ -106,6 +163,7 @@ object Tseitin2 {
 
 
     def inner_cert_tseitin(axioms: List[Axiom], clausal_axioms:List[Axiom]): IndexedSeq[LVL2ProofStep] = {
+      println(s"clausal: $clausal_axioms")
       axioms match
         case axiom :: next => 
           if isLiteral(axiom.bot.right.head) then 
@@ -114,9 +172,20 @@ object Tseitin2 {
             i += 1
             val (ts_subst, hole_f, ts_f, tsi, fv) = find_pair(axiom.bot.right.head)
             val tsiapp = tsi(fv.map(_()))
-            val ts_axiom = Axiom(axiom.name, ts_f)
             val equiv = Iff(Seq(tsiapp, ts_subst))
             val quantified = fv.foldRight(equiv: Formula)((v, f) => Forall(v, f))
+            val ts_ax_just = RightSubstIff("ts_ax_just"+i, equiv |- ts_f, 0, false, hole_f, HOLE, axiom.name)
+            var j = 0
+            val miniproof = fv.scanRight(ts_ax_just: LVL2ProofStep)((v, f) => 
+              j+=1
+              LeftForall(s"ts_axQ${i}_$j", Forall(v, f.bot.left.head) |- f.bot.right, 0, v(), f.name)
+            ).reverse
+            var j3 = 0
+            val miniproofaxioms = (next ++ clausal_axioms).map(ax =>
+              j3+=1
+              LeftWeaken(ax.name+s"weak${i}_$j", ax.bot +<< quantified, ax.bot.left.size, ax.name)
+            )
+            val ts_axiom = Axiom(miniproof.last.name, () |- ts_f)
             ts_subst match
               case ConnectorFormula(And, Seq(a, b)) =>
                 val ts_clai = "ts_cla"+i
@@ -133,22 +202,9 @@ object Tseitin2 {
                   j2+=1
                   LeftForall(s"ts_clbQ${i}_$j2", Forall(v, f.bot.left.head) |- f.bot.right, 0, v(), f.name)
                 ).reverse
-                val ts_ax_just = RightSubstIff("ts_ax_just"+i, equiv |- ts_f, 0, false, hole_f, HOLE, axiom.name)
-                var j = 0
-                val miniproof = fv.scanRight(ts_ax_just: LVL2ProofStep)((v, f) => 
-                  j+=1
-                  LeftForall(s"ts_axQ${i}_$j", Forall(v, f.bot.left.head) |- f.bot.right, 0, v(), f.name)
-                ).reverse
-
-                var j3 = 0
-                val miniproofaxioms = (next ++ clausal_axioms).map(ax =>
-                  j3+=1
-                  LeftWeaken(ax.name+s"weak${i}_$j", ax.bot +<< quantified, ax.bot.left.size, ax.name)
-                )
-
-                val ts_axiom = Axiom(miniproof.last.name, () |- ts_f)
                 val ax1 = Axiom(miniproof1.last, () |- (~tsiapp, a))
                 val ax2 = Axiom(miniproof2.last, () |- (~tsiapp, b))
+
                 val innerproof = inner_cert_tseitin(ts_axiom :: next, clausal_axioms :+ ax1 :+ ax2)
                 val axiommap = (ax1 :: ax2 :: ts_axiom :: Nil).map(ax => ax.name -> ax.name).toMap ++ miniproofaxioms.map(ax => ax.t1 -> ax.name).toMap
                 val sub = Subproof("ts_sp"+i, LVL2Proof(innerproof, "thing"), Seq(quantified), axiommap)
@@ -158,6 +214,26 @@ object Tseitin2 {
 
                 val steps:Seq[LVL2ProofStep] = axioms ++ clausal_axioms ++ miniproofaxioms ++ miniproof1 ++ miniproof2 ++ miniproof ++ Vector(sub, instStep, elimStep)
                 steps.toIndexedSeq
+              case ConnectorFormula(Or, Seq(a, b)) =>
+                val ts_claci = "ts_clac"+i
+                val step1: LVL2ProofStep = Clausify(ts_claci, equiv |- (~tsiapp, a, b), 0)
+                var j1 = 0
+                val miniproof1 = fv.scanRight(step1: LVL2ProofStep)((v, f) => 
+                  j1+=1
+                  LeftForall(s"ts_claQ${i}_$j1", Forall(v, f.bot.left.head) |- f.bot.right, 0, v(), f.name)
+                ).reverse
+                val ax1 = Axiom(miniproof1.last, () |- (~tsiapp, a, b))
+
+                val innerproof = inner_cert_tseitin(ts_axiom :: next, clausal_axioms :+ ax1)
+                val axiommap = (ax1 :: ts_axiom :: Nil).map(ax => ax.name -> ax.name).toMap ++ miniproofaxioms.map(ax => ax.t1 -> ax.name).toMap
+                val sub = Subproof("ts_sp"+i, LVL2Proof(innerproof, "thing"), Seq(quantified), axiommap)
+                val quant_refl = substitutePredicatesInFormula(quantified, Map(tsi -> (ts_subst, fv)))
+                val instStep = InstPred("ts_inst"+i, quant_refl |- (), tsi, (ts_subst, fv), sub)
+                val elimStep = ElimIffRefl("ts_elim"+i, () |- (), 0, instStep)
+
+                val steps:Seq[LVL2ProofStep] = axioms ++ clausal_axioms ++ miniproofaxioms ++ miniproof1 ++ miniproof ++ Vector(sub, instStep, elimStep)
+                steps.toIndexedSeq
+
               case _ => ???
           
         case Nil => 

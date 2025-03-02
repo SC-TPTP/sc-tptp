@@ -32,23 +32,31 @@ object Prover9 {
   }
 
   def main(args: Array[String]): Unit = {
-
-    val file = args(0)
-    val problem = parseProblem(File(file))
-    val proof = proveProblem(problem)
-
-    val target = args(1)
-    //print to file target
-    Files.write(Paths.get(target), proof.toString.getBytes(StandardCharsets.UTF_8))
-
-    println(proof)
+    if args.length >= 3 && args(2) == "raw" then
+      println("Debug mode")
+      val proof = _proveFile(args(0))
+      val target = args(1)
+      Files.write(Paths.get(target), proof.toString.getBytes(StandardCharsets.UTF_8))
+      println(proof)
+      return
+    else
+      val file = args(0)
+      val problem = parseProblem(File(file))
+      val proof = proveProblem(problem)
+      val target = args(1)
+      Files.write(Paths.get(target), proof.toString.getBytes(StandardCharsets.UTF_8))
+      println(proof)
   }
 
   val foldername = "p9proof/"
   val p9Exec = getClass.getResource
+
+  def proveProblem(problem: Problem) : LVL2Proof = {
+    certify_P9_variables(problem)
+  }
   
 
-  def proveProblem(problem: Problem): SCProof[?] = {
+  def proveProblem_no_rename(problem: Problem): SCProof[?] = {
     val problem2 = Problem(
       problem.axioms.map(_.mapBot(bot => bot.left |- bot.right.map(toSafe))),
       problem.conjecture
@@ -98,6 +106,7 @@ object Prover9 {
       val newbot = step.bot.left |- removeOr(step.bot.right(0))
       step.mapBot(bot => newbot) match
         case Axiom(name, bot) => Axiom(namemap(name), bot)
+        case LeftWeakenRes(name, bot, i, t1) => RightWeaken(name, bot, i, namemap.getOrElse(t1, t1))
         case step => step.renamePremises(namemap.toMap)
     )
 
@@ -231,6 +240,35 @@ object Prover9 {
     val proof = Parser.reconstructProof(new File(pathfileoutname)).asInstanceOf[LVL2Proof]
     proof
     
+  }
+
+
+  def certify_P9_variables(problem: Problem): LVL2Proof = {
+    val insts = problem.axioms.map( ax =>
+      val clause = ax.bot.right
+      val mmap = mutMap[VariableSymbol, Term]()
+      var i = 0
+      clause.foreach (lit =>
+        val fvs = lit.freeVariables
+        fvs.foreach(fv =>
+          if !mmap.contains(fv) then
+            mmap += (fv -> Variable("V"+i))
+          else
+            ()
+          end if
+        )
+      )
+      val newclause = clause.map(lit => substituteVariablesInFormula(lit, mmap.toMap))
+      val inst = InstantiateMult(ax.name+"_p9r", () |- newclause, 0, mmap.toSeq, ax.name)
+      inst
+    )
+    val newAxs = insts.map(inst => Axiom(inst.t1, inst.bot))
+    val renamed = insts.map(inst => inst.t1 -> inst.name).toMap
+    val innerproof = proveProblem_no_rename(Problem(newAxs, problem.conjecture))
+    val subproof = Subproof("p9_rename_sp", innerproof, Seq(), renamed)
+    val newsteps = (insts :+ subproof).toIndexedSeq
+    LVL2Proof(newsteps, "p9_rename_sp")
+
   }
 
 

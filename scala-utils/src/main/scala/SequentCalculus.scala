@@ -99,7 +99,7 @@ object SequentCalculus {
       s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), [${is.mkString(", ")}], $$fof(${term}), [${subterms.map(st => s"$$fot(${st})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     def outputWithInstFun(name: String, rule: String, bot: Sequent, F: FunctionSymbol, t: (Term, Seq[VariableSymbol]), premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), $$fot(${F.toString()}), $$fot(${t._1.toString()}), [${t._2.map(st => s"$$fot(${st.toString()})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), $$fot(${F.toString()}), $$fot(${t._1.toString()}), [${t._2.map(st => s"'${st.toString()}'").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     def outputWithInstPred(name: String, rule: String, bot: Sequent, P: AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), premises: Seq[String]): String = 
       s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), '${P.toString()}', $$fof(${phi._1.toString()}), [${phi._2.map(st => s"'${st.toString()}'").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
@@ -313,23 +313,7 @@ object SequentCalculus {
       if bot.right.exists(isSame(_, fi)) then None else Some(s"${fi} is not in the right-hand side of the conclusion.")
   }
 
-    /**
-   * -----------------
-   *   Γ, A |- A, Δ
-   *
-   * @param bot Resulting formula
-   * @param i Index of A on the left
-   */
-  case class ElimIffRefl(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
-    val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", "elimIffRefl", bot, i, premises)
-    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
-    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
-    def rename(newName: String) = copy(name = newName)
-    def renamePremises(map: Map[String, String]): SCProofStep = this
-    def checkCorrectness(premises: String => Sequent): Option[String] = None
- 
-  }
+
   /**
    *    Γ |- Δ
    * -------------

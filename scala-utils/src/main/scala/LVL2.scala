@@ -690,4 +690,60 @@ object LVL2 {
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = None}
+
+
+  case class RightEpsilonSubst(name: String, bot: Sequent, i: Int, flip: Boolean,
+                               P:AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), exi: BinderFormula,
+                               t1: String) extends StrictLVL2ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = 
+      s"fof(${name}, plain, ${bot}, inference(rightEpsilonSubst, [status(thm), ${i}, ${if flip then 1 else 0}, ${P}, ${phi._1}, " +
+      s"[${phi._2.map(st => s"'${st.toString()}'").mkString(",")}], ${exi}], [${t1}]))."
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
+    def checkCorrectness(premises: String => Sequent): Option[String] = ???
+  }
+
+  case class RightSubstFun(name: String, bot: Sequent, i: Int, flip:Boolean, P:FunctionSymbol, phi: (Formula, Seq[VariableSymbol]), t1: String) extends StrictLVL2ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = 
+      s"fof(${name}, plain, ${bot}, inference(rightSubstFun, [status(thm), ${i}, ${if flip then 1 else 0}, ${P}, ${phi._1}, " +
+      s"[${phi._2.map(st => s"'${st.toString()}'").mkString(",")}]], [${t1}]))."
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): RightSubstFun = copy(t1 = map.getOrElse(t1, t1))
+    def checkCorrectness(premises: String => Sequent): Option[String] = ???
+  }
+
+  /**
+   * -----------------
+   *   Γ, A |- A, Δ
+   *
+   * @param bot Resulting formula
+   * @param i Index of A on the left
+   */
+  case class ElimIffRefl(name: String, bot: Sequent, i: Int, t1: String) extends StrictLVL2ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", "elimIffRefl", bot, i, premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = this
+    def checkCorrectness(premises: String => Sequent): Option[String] = ???
+  }
+
+  case class ElimEqRefl(name: String, bot: Sequent, i: Int, t1: String) extends StrictLVL2ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", "elimEqRefl", bot, i, premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = this
+    def checkCorrectness(premises: String => Sequent): Option[String] = ???
+  }
+
+
 }

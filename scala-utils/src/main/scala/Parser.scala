@@ -325,7 +325,7 @@ object Parser {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] =
         ann_seq match {
           case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("elimIffRefl", Seq(_, StrOrNum(n)), Seq(t1)), _) =>
-              Some(SC.ElimIffRefl(name, convertSequentToFol(sequent), n.toInt, t1))
+              Some(LVL2.ElimIffRefl(name, convertSequentToFol(sequent), n.toInt, t1))
           case _ => None
         }
     }

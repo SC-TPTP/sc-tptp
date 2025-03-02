@@ -15,7 +15,9 @@ object Tseitin2 {
     val problem = parseProblem(File(file))
 
     val tseitin_prover = certify_tseitin(_, Prover9.proveProblem)
-    val proof = certify_prenex(problem, tseitin_prover)
+    val prenex_prover = certify_prenex(_, tseitin_prover)
+    val skolem_prover = certify_skolem(_, prenex_prover)
+    val proof = skolem_prover(problem)
     println("proof: ")
     println(proof)
 
@@ -34,7 +36,7 @@ object Tseitin2 {
   
   
   def certify_clausal(problem: Problem, prover: Problem => SCProof[?]): SCProof[?] = {
-    ???
+???
   }
 
   def certify_negated(problem: Problem, prover: Problem => SCProof[?]): SCProof[?] = {
@@ -72,6 +74,96 @@ object Tseitin2 {
 
   def certify_nnf(problem: Problem, prover: Problem => SCProof[?]): SCProof[?] = {
     ???
+  }
+
+  def certify_skolem(problem: Problem, prover: Problem => SCProof[?]): SCProof[?] = {
+    /**
+      * (
+      *   formula replaced exists(v, ...),   Formula
+      *   phi(hole(fv)),                         Formula
+      *   phi(inner(eps(v, inner))),
+      *   phi(inner(Sk(fv))),
+      *   Sk
+      *   eps(v, inner),
+      *   fv
+      *   phi(inner(thole(v)))
+      *   forall(fv, eps(v, inner) = Sk(fv))
+      * )
+      */
+    def find_epsilon(f:Formula): Option[(Formula, Formula, Formula, Formula, FunctionSymbol, Term, Seq[VariableSymbol], Formula)] = {
+      f match
+        case BinderFormula(binder, v, inner) =>
+          find_epsilon(inner) match
+            case Some((f, phi_hole, phi_eps, phi_sko, sko, epsterm, fv, phi_thole)) =>
+              def $(inner: Formula) = BinderFormula(binder, v, inner)
+              Some((f, $(phi_hole), $(phi_eps), $(phi_sko), sko, epsterm, fv, $(phi_thole)))
+            case None if binder == Exists =>
+              val freevars = (inner.freeVariables - v).toSeq
+              val HOLE = AtomicSymbol("HOLE", freevars.size)
+              val HOLEterm = AtomicFormula(HOLE, freevars.map(_()))
+              val epsterm = EpsilonTerm(v, inner)
+              val sko = FunctionSymbol(s"Sk${v.name}", freevars.size)
+              val skoterm = sko(freevars.map(_()))
+              val THOLE = FunctionSymbol(s"THOLE", freevars.size)
+              val THOLEterm = THOLE(freevars.map(_()))
+              val phi_eps = substituteVariablesInFormula(inner, Map(v -> epsterm))
+              val phi_sko = substituteVariablesInFormula(inner, Map(v -> skoterm))
+              val phi_thole = substituteVariablesInFormula(inner, Map(v -> THOLEterm))
+              Some((f, HOLEterm, phi_eps, phi_sko, sko, epsterm, freevars, phi_thole))
+            case _ => None
+        case AtomicFormula(label, args) => None
+        case ConnectorFormula(label, Seq(f1, f2)) => 
+          find_epsilon(f1) match
+            case None => find_epsilon(f2) match
+              case None => None
+              case Some((f, phi_hole, phi_eps, phi_sko, sko, epsterm, fv, phi_thole)) =>
+                def $(f2: Formula) = ConnectorFormula(label, Seq(f1, f2))
+                Some((f, $(phi_hole), $(phi_eps), $(phi_sko), sko, epsterm, fv, $(phi_thole)))
+            case Some((f, phi_hole, phi_eps, phi_sko, sko, epsterm, fv, phi_thole)) =>
+              def $(f1: Formula) = ConnectorFormula(label, Seq(f1, f2))
+              Some((f, $(phi_hole), $(phi_eps), $(phi_sko), sko, epsterm, fv, $(phi_thole)))
+        case ConnectorFormula(label, _) => None
+
+
+          
+          
+    }
+    var i = 0
+    def inner_certify_skolem(notdone: List[Axiom], done: List[Axiom]): IndexedSeq[LVL2ProofStep] = {
+      notdone match
+        case ax :: next => 
+          find_epsilon(ax.bot.right.head) match
+            case None => 
+              inner_certify_skolem(next, done :+ ax)
+            case Some((f, phi_hole, phi_eps, phi_sko, sko, epsterm, fv, phi_thole)) =>
+              val skoterm = sko(fv.map(_()))
+              val equa = AtomicFormula(equality, Seq(epsterm, skoterm))
+              val quant_eq = fv.foldRight(equa: Formula)((v, f) => Forall(v, f))
+              var j = 0
+              val miniproofaxioms = (next ++ done).map(ax =>
+                j+=1
+                LeftWeaken(ax.name+s"weak${i}_$j", ax.bot +<< quant_eq, ax.bot.left.size, ax.name)
+              )
+              val HOLE = AtomicSymbol("HOLE", fv.size)
+              val epsistep = RightEpsilonSubst("eps_subst"+i, () |- phi_eps, 0, false,
+                                               HOLE, (phi_hole, fv), f.asInstanceOf, ax.name)
+              val THOLE = FunctionSymbol("THOLE", fv.size)
+              val skosubst_step = RightSubstFun("sko_subst"+i, quant_eq |- phi_sko, 0, false, THOLE, (phi_thole, fv), epsistep)
+              val skoax = Axiom(ax.name, () |- phi_sko)
+              val innerproof = inner_certify_skolem(skoax :: next, done)
+              val skoaxmap = Map(skoax.name -> skosubst_step.name) ++ miniproofaxioms.map(ax => ax.t1 -> ax.name).toMap
+              val sub = Subproof("sko_sp"+i, LVL2Proof(innerproof, "thing"), Seq(quant_eq), skoaxmap)
+              val quantRefl = substituteFunctionsInFormula(quant_eq, Map(sko -> (epsterm, fv)))
+              val instStep = InstFun("sko_inst"+i, quantRefl |- (), sko, (epsterm, fv), sub)
+              val elimStep = ElimEqRefl("sko_elim"+i, () |- (), 0, instStep)
+              val steps:Seq[LVL2ProofStep] = notdone ++ done ++ miniproofaxioms ++ Vector(epsistep, skosubst_step, sub, instStep, elimStep)
+              steps.toIndexedSeq
+        case Nil =>
+          val newProblem = Problem(done, problem.conjecture)
+          prover(newProblem).steps.asInstanceOf[IndexedSeq[LVL2ProofStep]]
+
+    }
+    LVL2Proof(inner_certify_skolem(problem.axioms.toList, List()).toIndexedSeq, "name")
   }
 
   private def isLiteral(f: Formula): Boolean = f match
@@ -181,9 +273,9 @@ object Tseitin2 {
               LeftForall(s"ts_axQ${i}_$j", Forall(v, f.bot.left.head) |- f.bot.right, 0, v(), f.name)
             ).reverse
             var j3 = 0
-            val miniproofaxioms = (next ++ clausal_axioms).map(ax =>
+            val miniproofaxioms = (next ++ clausal_axioms).map(ax => //TODO : remove next
               j3+=1
-              LeftWeaken(ax.name+s"weak${i}_$j", ax.bot +<< quantified, ax.bot.left.size, ax.name)
+              LeftWeaken(ax.name+s"weak${i}_$j3", ax.bot +<< quantified, ax.bot.left.size, ax.name)
             )
             val ts_axiom = Axiom(miniproof.last.name, () |- ts_f)
             ts_subst match

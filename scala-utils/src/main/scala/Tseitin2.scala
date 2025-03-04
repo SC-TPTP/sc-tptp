@@ -80,6 +80,8 @@ object Tseitin2 {
     /**
       * (
       *   formula replaced exists(v, ...),   Formula
+      *   inner(eps(v, inner))
+      *   inner(Sk(fv))
       *   phi(hole(fv)),                         Formula
       *   phi(inner(eps(v, inner))),
       *   phi(inner(Sk(fv))),
@@ -90,13 +92,13 @@ object Tseitin2 {
       *   forall(fv, eps(v, inner) = Sk(fv))
       * )
       */
-    def find_epsilon(f:Formula): Option[(Formula, Formula, Formula, Formula, FunctionSymbol, Term, Seq[VariableSymbol], Formula)] = {
+    def find_epsilon(f:Formula): Option[(Formula, Formula, Formula, Formula, Formula, Formula, FunctionSymbol, Term, Seq[VariableSymbol], Formula)] = {
       f match
         case BinderFormula(binder, v, inner) =>
           find_epsilon(inner) match
-            case Some((f, phi_hole, phi_eps, phi_sko, sko, epsterm, fv, phi_thole)) =>
+            case Some((f, inner_eps, inner_sko, phi_hole, phi_eps, phi_sko, sko, epsterm, fv, phi_thole)) =>
               def $(inner: Formula) = BinderFormula(binder, v, inner)
-              Some((f, $(phi_hole), $(phi_eps), $(phi_sko), sko, epsterm, fv, $(phi_thole)))
+              Some((f, inner_eps, inner_sko, $(phi_hole), $(phi_eps), $(phi_sko), sko, epsterm, fv, $(phi_thole)))
             case None if binder == Exists =>
               val freevars = (inner.freeVariables - v).toSeq
               val HOLE = AtomicSymbol("HOLE", freevars.size)
@@ -109,19 +111,19 @@ object Tseitin2 {
               val phi_eps = substituteVariablesInFormula(inner, Map(v -> epsterm))
               val phi_sko = substituteVariablesInFormula(inner, Map(v -> skoterm))
               val phi_thole = substituteVariablesInFormula(inner, Map(v -> THOLEterm))
-              Some((f, HOLEterm, phi_eps, phi_sko, sko, epsterm, freevars, phi_thole))
+              Some((f, phi_eps, phi_sko, HOLEterm, phi_eps, phi_sko, sko, epsterm, freevars, phi_thole))
             case _ => None
         case AtomicFormula(label, args) => None
         case ConnectorFormula(label, Seq(f1, f2)) => 
           find_epsilon(f1) match
             case None => find_epsilon(f2) match
               case None => None
-              case Some((f, phi_hole, phi_eps, phi_sko, sko, epsterm, fv, phi_thole)) =>
+              case Some((f, inner_eps, inner_sko, phi_hole, phi_eps, phi_sko, sko, epsterm, fv, phi_thole)) =>
                 def $(f2: Formula) = ConnectorFormula(label, Seq(f1, f2))
-                Some((f, $(phi_hole), $(phi_eps), $(phi_sko), sko, epsterm, fv, $(phi_thole)))
-            case Some((f, phi_hole, phi_eps, phi_sko, sko, epsterm, fv, phi_thole)) =>
+                Some((f, inner_eps, inner_sko, $(phi_hole), $(phi_eps), $(phi_sko), sko, epsterm, fv, $(phi_thole)))
+            case Some((f, inner_eps, inner_sko, phi_hole, phi_eps, phi_sko, sko, epsterm, fv, phi_thole)) =>
               def $(f1: Formula) = ConnectorFormula(label, Seq(f1, f2))
-              Some((f, $(phi_hole), $(phi_eps), $(phi_sko), sko, epsterm, fv, $(phi_thole)))
+              Some((f, inner_eps, inner_sko, $(phi_hole), $(phi_eps), $(phi_sko), sko, epsterm, fv, $(phi_thole)))
         case ConnectorFormula(label, _) => None
 
 
@@ -135,7 +137,7 @@ object Tseitin2 {
           find_epsilon(ax.bot.right.head) match
             case None => 
               inner_certify_skolem(next, done :+ ax)
-            case Some((f, phi_hole, phi_eps, phi_sko, sko, epsterm, fv, phi_thole)) =>
+            case Some((f, inner_eps, inner_sko, phi_hole, phi_eps, phi_sko, sko, epsterm, fv, phi_thole)) =>
               val skoterm = sko(fv.map(_()))
               val equa = AtomicFormula(equality, Seq(epsterm, skoterm))
               val quant_eq = fv.foldRight(equa: Formula)((v, f) => Forall(v, f))
@@ -144,11 +146,16 @@ object Tseitin2 {
                 j+=1
                 LeftWeaken(ax.name+s"weak${i}_$j", ax.bot +<< quant_eq, ax.bot.left.size, ax.name)
               )
+              val iff = Iff(Seq(f, inner_eps))
+              val quant_iff = fv.foldRight(iff: Formula)((v, f) => Forall(v, f))
+              val ex_iff_eps_step = ExistsIffEpsilon("sko_iff"+i, () |- quant_iff, 0)
               val HOLE = AtomicSymbol("HOLE", fv.size)
-              val epsistep = RightEpsilonSubst("eps_subst"+i, () |- phi_eps, 0, false,
-                                               HOLE, (phi_hole, fv), f.asInstanceOf, ax.name)
+              //
+              val epsistep = RightSubstPred("eps_subst"+i, quant_iff |- phi_eps, 0, false,
+                                               HOLE, phi_hole, ax.name)
+              val cutstep = Cut("sko_cut"+i, () |- phi_eps, 0, ex_iff_eps_step, epsistep)
               val THOLE = FunctionSymbol("THOLE", fv.size)
-              val skosubst_step = RightSubstFun("sko_subst"+i, quant_eq |- phi_sko, 0, false, THOLE, (phi_thole, fv), epsistep)
+              val skosubst_step = RightSubstFun("sko_subst"+i, quant_eq |- phi_sko, 0, false, THOLE, phi_thole, cutstep)
               val skoax = Axiom(ax.name, () |- phi_sko)
               val innerproof = inner_certify_skolem(skoax :: next, done)
               val skoaxmap = Map(skoax.name -> skosubst_step.name) ++ miniproofaxioms.map(ax => ax.t1 -> ax.name).toMap
@@ -156,7 +163,7 @@ object Tseitin2 {
               val quantRefl = substituteFunctionsInFormula(quant_eq, Map(sko -> (epsterm, fv)))
               val instStep = InstFun("sko_inst"+i, quantRefl |- (), sko, (epsterm, fv), sub)
               val elimStep = ElimEqRefl("sko_elim"+i, () |- (), 0, instStep)
-              val steps:Seq[LVL2ProofStep] = notdone ++ done ++ miniproofaxioms ++ Vector(epsistep, skosubst_step, sub, instStep, elimStep)
+              val steps:Seq[LVL2ProofStep] = notdone ++ done ++ miniproofaxioms ++ Vector(ex_iff_eps_step, epsistep, cutstep, skosubst_step, sub, instStep, elimStep)
               steps.toIndexedSeq
         case Nil =>
           val newProblem = Problem(done, problem.conjecture)

@@ -1,7 +1,7 @@
 ============================== Prover9 ===============================
 Prover9 (64) version 2009-11A, November 2009.
-Process 354514 was started by sguilloud on minerva,
-Sun Mar  2 23:38:14 2025
+Process 442254 was started by sguilloud on minerva,
+Tue Mar  4 18:48:20 2025
 The command was "/tmp/prouver9".
 ============================== end of head ===========================
 
@@ -139,4 +139,4 @@ THEOREM PROVED
 
 Exiting with 1 proof.
 
-Process 354514 exit (max_proofs) Sun Mar  2 23:38:14 2025
+Process 442254 exit (max_proofs) Tue Mar  4 18:48:20 2025

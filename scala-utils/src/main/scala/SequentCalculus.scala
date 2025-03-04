@@ -99,7 +99,7 @@ object SequentCalculus {
       s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), [${is.mkString(", ")}], $$fof(${term}), [${subterms.map(st => s"$$fot(${st})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     def outputWithInstFun(name: String, rule: String, bot: Sequent, F: FunctionSymbol, t: (Term, Seq[VariableSymbol]), premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), $$fot(${F.toString()}), $$fot(${t._1.toString()}), [${t._2.map(st => s"'${st.toString()}'").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), '${F.toString()}', $$fot(${t._1.toString()}), [${t._2.map(st => s"'${st.toString()}'").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     def outputWithInstPred(name: String, rule: String, bot: Sequent, P: AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), premises: Seq[String]): String = 
       s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), '${P.toString()}', $$fof(${phi._1.toString()}), [${phi._2.map(st => s"'${st.toString()}'").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."

@@ -697,8 +697,8 @@ object LVL2 {
                                t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
     override def toString: String = 
-      s"fof(${name}, plain, ${bot}, inference(rightEpsilonSubst, [status(thm), ${i}, ${if flip then 1 else 0}, ${P}, ${phi._1}, " +
-      s"[${phi._2.map(st => s"'${st.toString()}'").mkString(",")}], ${exi}], [${t1}]))."
+      s"fof(${name}, plain, ${bot}, inference(rightEpsilonSubst, [status(thm), ${i}, ${if flip then 1 else 0}, '${P}', $$fof(${phi._1}), " +
+      s"[${phi._2.map(st => s"'${st.toString()}'").mkString(",")}], $$fof(${exi})], [${t1}]))."
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
@@ -706,15 +706,37 @@ object LVL2 {
     def checkCorrectness(premises: String => Sequent): Option[String] = ???
   }
 
-  case class RightSubstFun(name: String, bot: Sequent, i: Int, flip:Boolean, P:FunctionSymbol, phi: (Formula, Seq[VariableSymbol]), t1: String) extends StrictLVL2ProofStep {
+  case class ExistsIffEpsilon(name: String, bot: Sequent, i:Int) extends StrictLVL2ProofStep {
+    val premises = Seq()
+    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", "existsIffEpsilon", bot, i, premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = this
+    def renamePremises(map: Map[String, String]): SCProofStep = this
+    def checkCorrectness(premises: String => Sequent): Option[String] = ???
+  }
+
+
+
+  case class RightSubstFun(name: String, bot: Sequent, i: Int, flip:Boolean, P:FunctionSymbol, phi: Formula, t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
     override def toString: String = 
-      s"fof(${name}, plain, ${bot}, inference(rightSubstFun, [status(thm), ${i}, ${if flip then 1 else 0}, ${P}, ${phi._1}, " +
-      s"[${phi._2.map(st => s"'${st.toString()}'").mkString(",")}]], [${t1}]))."
+      s"fof(${name}, plain, ${bot}, inference(rightSubstFun, [status(thm), ${i}, ${if flip then 1 else 0}, '${P}', $$fof(${phi})], [${t1}]))."
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): RightSubstFun = copy(t1 = map.getOrElse(t1, t1))
+    def checkCorrectness(premises: String => Sequent): Option[String] = ???
+  }
+
+  case class RightSubstPred(name:String, bot: Sequent, i: Int, flip:Boolean, P:AtomicSymbol, phi: Formula, t1: String) extends StrictLVL2ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = 
+      s"fof(${name}, plain, ${bot}, inference(rightSubstPred, [status(thm), ${i}, ${if flip then 1 else 0}, '${P}', $$fof(${phi})], [${t1}]))."
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): RightSubstPred = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = ???
   }
 

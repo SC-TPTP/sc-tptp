@@ -33,4 +33,4 @@ Available [here](https://github.com/SC-TPTP/lean-sctptp)
 
 ### Lisa
 
-Available [here](https://github.com/SimonGuilloud/lisa/pull/new/sctptpCade)
+Available [here](https://github.com/SimonGuilloud/lisa/tree/sctptpCade)

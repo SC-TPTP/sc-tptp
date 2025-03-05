@@ -16,8 +16,9 @@ import leo.modules.input.TPTPParser.problem
 
 object Prover9 {
 
+  /** Run Prover 9 on the given executable with certification of clausification, and returns a proof */
   def fullP9Prover(problem: Problem): LVL2Proof = {
-    flattenProof(Tseitin2.certify_clausal(problem, Prover9.proveProblem))
+    flattenProof(Clausification.certify_clausal(problem, Prover9.proveProblem))
   }
 
   def toSafe(f: Formula): Formula = f match {
@@ -80,7 +81,6 @@ object Prover9 {
       case Axiom(name, f) => f -> name
     }.toMap
     val namemap = mutMap[String, String]()
-    println(seqmap)
 
     newsteps.foreach {
       case Axiom(name, bot) => 
@@ -92,7 +92,7 @@ object Prover9 {
       val newbot = step.bot.left |- removeOr(step.bot.right(0))
       step.mapBot(bot => newbot) match
         case Axiom(name, bot) => Axiom(namemap(name), bot)
-        case LeftWeakenRes(name, bot, i, t1) => RightWeaken(name, bot, i, namemap.getOrElse(t1, t1))
+        case LVL2.LeftWeakenRes(name, bot, i, t1) => RightWeaken(name, bot, i, namemap.getOrElse(t1, t1))
         case step => step.renamePremises(namemap.toMap)
     )
 
@@ -193,13 +193,13 @@ object Prover9 {
     try {
       val exitCode = command.!
       if (exitCode == 0) {
-        println("Executable ran successfully.")
+        println("P9 Executable ran successfully.")
       } else {
-        println(s"Executable failed with exit code: $exitCode")
+        println(s"P9 Executable failed with exit code: $exitCode")
       }
     } catch {
       case e: Exception =>
-        println(s"Error running the executable: ${e.getMessage}")
+        println(s"Error running the P9 executable: ${e.getMessage}")
     }
 
     val fileContent = Source.fromFile(pathfileout).getLines().mkString("\n")

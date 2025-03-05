@@ -219,7 +219,7 @@ object Parser {
       case Inference.NegatedConjecture(step) => Some(step)
       case Inference.Clausify(step) => Some(step)
       case Inference.RightNNF(step) => Some(step)
-      case Inference.Instantiate_L(step) => Some(step)
+      //case Inference.Instantiate_L(step) => Some(step)
       case Inference.InstantiateMult(step) => Some(step)
 
       case Inference.LeftNotAll(step) => Some(step)
@@ -237,7 +237,13 @@ object Parser {
 
   object Inference {
     import leo.datastructures.TPTP.{Annotations, GeneralTerm, MetaFunctionData, NumberData, Integer, FOF, GeneralFormulaData, FOTData, FOFData}
-
+    object Sequence {
+      def unapply(ann_seq: GeneralTerm): Option[Seq[GeneralTerm]] =
+        ann_seq match {
+          case GeneralTerm(List(), Some(terms)) => Some(terms)
+          case _ => None
+        }
+    }
     object Number {
       def unapply(ann_seq: GeneralTerm): Option[BigInt] =
         ann_seq match {
@@ -363,7 +369,7 @@ object Parser {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] =
         ann_seq match {
           case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftWeakenRes", Seq(_, StrOrNum(n)), Seq(t1)), _) =>
-            Some(SC.LeftWeakenRes(name, convertSequentToFol(sequent), n.toInt,  t1))
+            Some(LVL2.LeftWeakenRes(name, convertSequentToFol(sequent), n.toInt,  t1))
           case _ => None
         }
     }
@@ -756,32 +762,27 @@ object Parser {
         }
     }
 
-    object Instantiate_L {
-      def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
-        ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instantiate", Seq(_, StrOrNum(i), GenTerm(x), GenTerm(t)), Seq(t1)), _) =>
-            val x2 = x match 
-              case FunctionTerm(xs: VariableSymbol, Seq()) => xs
-              case _ => throw new Exception(s"Expected a variable, but got $x")
-            Some(LVL2.Instantiate_L(name, convertSequentToFol(sequent), i.toInt, x2, t, t1))
-          case _ => None
-        }
-    }
-
     object InstantiateMult {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
-        ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instantiateMult", Seq(_, StrOrNum(i), GeneralTerm(_, Some(terms))), Seq(t1)), _) =>
-            
-            // println("-----------------------------")
-            val terms1 = terms.asInstanceOf[Seq[GeneralTerm]]
-            // println("Terms1 = " + terms1)
 
-            val termsAsList: Seq[(String, GeneralTerm)] = terms1.foldLeft(Seq[(String, GeneralTerm)]()) { 
-              (acc, x) => { 
-                // println("x = "+ x)
-                // println("data = " + x.data)
-                // println("list = " + x.list)
+        def buildSeqTerm(sss: Seq[(String, GeneralTerm)]) : Seq[(VariableSymbol, Term)] = {
+          sss match
+            case Nil => Seq()
+            case h::t => {
+              val newHead = h match {
+                case (s"$$fot(${v1})", v2) => 
+                  v2 match 
+                    case GeneralTerm(List(GeneralFormulaData(FOTData(v22))), None) => (VariableSymbol(v1), convertTermToFOL(v22))
+                    case _ => throw new Exception(s"Not a general term")
+                case _ => throw new Exception(s"Bad number of element within the list")
+              }
+              newHead+:buildSeqTerm(t)
+            }     
+        }
+        ann_seq match {
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instantiateMult", Seq(_, StrOrNum(i), Sequence(terms: Seq[GeneralTerm])), Seq(t1)), _) =>
+            val termsAsList: Seq[(String, GeneralTerm)] = terms.foldLeft(Seq[(String, GeneralTerm)]()) { 
+              (acc, x) => {
                 x.list match 
                     case None => throw new Exception(s"Empty List")
                     case Some(xList) => {
@@ -793,22 +794,9 @@ object Parser {
               }
             }
 
-            def buildSeqTerm(sss: Seq[(String, GeneralTerm)]) : Seq[(VariableSymbol, Term)] = {
-                sss match
-                  case Nil => Seq()
-                  case h::t => {
-                    val newHead = h match {
-                      case (s"$$fot(${v1})", v2) => 
-                        v2 match 
-                          case GeneralTerm(List(GeneralFormulaData(FOTData(v22))), None) => (VariableSymbol(v1), convertTermToFOL(v22))
-                          case _ => throw new Exception(s"Not a general term")
-                      case _ => throw new Exception(s"Bad number of element within the list")
-                    }
-                    newHead+:buildSeqTerm(t)
-                  }     
-            }
-
             Some(LVL2.InstantiateMult(name, convertSequentToFol(sequent), i.toInt,buildSeqTerm(termsAsList), t1))
+
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instantiateMult", Seq(_, StrOrNum(i), Sequence(terms)), Seq(t1)), _) => ???
           case _ => None
         }
     }

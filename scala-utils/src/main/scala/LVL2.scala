@@ -573,6 +573,7 @@ object LVL2 {
       //   isSubset(bot.right, premises(t1).right)
   }
 
+  /*
     /**
    *   Γ, P[x:=t] |- Δ
    * ----------------
@@ -601,7 +602,7 @@ object LVL2 {
       else
         Some("left sides is not correct")
   }
-
+*/
 
   /**
    *   Γ, P[x:=t] |- Δ
@@ -653,23 +654,25 @@ object LVL2 {
     def checkCorrectness(premises: String => Sequent): Option[String] = None
   }
 
-  case class Let(name: String, bot: Sequent) extends StrictLVL2ProofStep {
+  case class LetFormula(name: String, defin: Formula) extends StrictLVL2ProofStep {
     val premises = Seq()
+    val bot =  Sequent(Seq(), Seq(top()))
     override def toString: String = s"fof(${name}, let, ${bot.right(0)}).";
     def addAssumptions(fs: Seq[Formula]) = this
-    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def mapBot(f: Sequent => Sequent) = this
     def rename(newName: String) = this
     def renamePremises(map: Map[String, String]): SCProofStep = this
     def checkCorrectness(premises: String => Sequent): Option[String] = None
   }
 
-  case class TseitinStep(name: String, bot: Sequent, t1: String) extends StrictLVL2ProofStep {
-    val premises = Seq(t1)
-    override def toString: String = s"fof(${name}, plain, ${bot}, inference(tseitin, [status(thm)], [${t1}])).";
-    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
-    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
-    def rename(newName: String) = copy(name = newName)
-    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
+  case class LetTerm(name: String, defin: Term) extends StrictLVL2ProofStep {
+    val premises = Seq()
+    val bot =  Sequent(Seq(), Seq(top()))
+    override def toString: String = s"fof(${name}, let, ${bot.right(0)}).";
+    def addAssumptions(fs: Seq[Formula]) = this
+    def mapBot(f: Sequent => Sequent) = this
+    def rename(newName: String) = this
+    def renamePremises(map: Map[String, String]): SCProofStep = this
     def checkCorrectness(premises: String => Sequent): Option[String] = None
   }
 
@@ -765,6 +768,53 @@ object LVL2 {
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = this
     def checkCorrectness(premises: String => Sequent): Option[String] = ???
+  }
+
+
+  /**
+   * This step is rather ill-named (it's a rightContract) but that's what the Prover 9 proouf output uses.
+   * Please don't use it.
+   *    Γ |- Δ, a, a
+   * -------------
+   *   Γ |- Δ, a
+   *
+   * @param bot Resulting formula
+   * @param i Index of A on the left
+   */
+  case class LeftWeakenRes(name: String, bot: Sequent, i: Int, t1: String) extends StrictLVL2ProofStep {
+    val premises = Seq(t1)
+    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", "leftWeakenRes", bot, i, Seq(t1))
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
+    def checkCorrectness(premises: String => Sequent): Option[String] = 
+
+      def computeLit(f : Formula, index: Int): (Formula, Seq[Formula]) = {
+        f match
+          case AtomicFormula(_, _) => (f, Seq())
+          case ConnectorFormula(label, args) => {
+            label match
+              case Neg =>  (f,  Seq())
+              case Or => {
+                val args_flat = LVL2.toFlatternOrSeq(f)
+                (args_flat(index), args_flat.zipWithIndex.filter(_._2 != index).map(_._1))
+              } 
+              case _ => throw Exception(s"Resolution literal is not correct") 
+          }
+          case _ => throw Exception(s"Resolution literal is not correct") 
+      }
+
+      val A_Pair = computeLit(bot.left(0), i)  
+      val A = A_Pair._1
+      val new_bot = ConnectorFormula(Or, A +: bot.left)
+
+      if isSameSet(Seq(new_bot), premises(t1).left) then
+        if isSameSet(premises(t1).right, bot.right) then
+          None
+        else Some(s"Right-hand side of premise is not the same as the right-hand side of the conclusion.")
+      else Some(s"Left-hand side of premise is not the same as the left-hand side of the conclusion.")
+
   }
 
 

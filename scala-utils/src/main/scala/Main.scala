@@ -30,14 +30,12 @@ object Main {
       val proof = P9._proveFile(input)
       val target = output
       Files.write(Paths.get(target), proof.toString.getBytes(StandardCharsets.UTF_8))
-      println(proof)
     else
       val file = input
       val problem = parseProblem(File(file))
       val proof = P9.fullP9Prover(problem)
       val target = output
       Files.write(Paths.get(target), proof.toString.getBytes(StandardCharsets.UTF_8))
-      println(proof)
   }
 
   @main

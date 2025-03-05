@@ -42,7 +42,8 @@ version := "0.1"
 
 enablePlugins(AssemblyPlugin)
 
-mainClass in assembly := Some("sctptp.Main")
+assembly/mainClass := Some("sctptp.Main")
+assembly/assemblyJarName := "sctptpUtils.jar"
 
 // Ensures resources are included in the classpath
 unmanagedResourceDirectories in Compile += baseDirectory.value / "src" / "main" / "resources"

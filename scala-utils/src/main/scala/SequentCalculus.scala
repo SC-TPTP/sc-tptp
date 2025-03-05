@@ -50,7 +50,16 @@ object SequentCalculus {
   case class Sequent(left: Seq[Formula], right: Seq[Formula]) {
     override def toString: String =
       s"[${left.mkString(",")}] --> [${right.mkString(",")}]"
+
+    def +<<(f: Formula): Sequent = Sequent(left :+ f, right)
+    def -<<(f: Formula): Sequent = Sequent(left.filterNot(_ == f), right)
+    def +>>(f: Formula): Sequent = Sequent(left, right :+ f)
+    def ->>(f: Formula): Sequent = Sequent(left, right.filterNot(_ == f))
+    def ++<<(fs: Seq[Formula]): Sequent = Sequent(left ++ fs, right)
+    def ++>>(fs: Seq[Formula]): Sequent = Sequent(left, right ++ fs)
   }
+
+  
 
   trait SCProofStep {
     val name: String
@@ -59,6 +68,10 @@ object SequentCalculus {
 
     def checkCorrectness(premises: String => Sequent): Option[String]
     def toStringWithPremises(premises: String => Sequent): String = toString
+    def addAssumptions(fs: Seq[Formula]): SCProofStep
+    def mapBot(f: Sequent => Sequent): SCProofStep
+    def rename(newName: String): SCProofStep
+    def renamePremises(map: Map[String, String]): SCProofStep
   }
 
 
@@ -86,12 +99,24 @@ object SequentCalculus {
       s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), [${is.mkString(", ")}], $$fof(${term}), [${subterms.map(st => s"$$fot(${st})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     def outputWithInstFun(name: String, rule: String, bot: Sequent, F: FunctionSymbol, t: (Term, Seq[VariableSymbol]), premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), $$fot(${F.toString()}), $$fot(${t._1.toString()}), [${t._2.map(st => s"$$fot(${st.toString()})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
+      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), '${F.toString()}', $$fot(${t._1.toString()}), [${t._2.map(st => s"'${st.toString()}'").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     def outputWithInstPred(name: String, rule: String, bot: Sequent, P: AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), premises: Seq[String]): String = 
       s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), '${P.toString()}', $$fof(${phi._1.toString()}), [${phi._2.map(st => s"'${st.toString()}'").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     }
+
+  case class Conjecture(name: String, goal: Sequent) extends LVL1ProofStep{
+    val bot = Sequent(Seq(), Seq(top()))
+    val premises = Seq()
+    def addAssumptions(fs: Seq[Formula]) = this
+    def mapBot(f: Sequent => Sequent) = this
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = this
+    def checkCorrectness(premises: String => Sequent): Option[String] = None
+    override def toString: String = s"fof($name, conjecture, ${goal})."
+
+  }
 
   trait SCProof[Steps<:SCProofStep] {
     val thmName: String
@@ -213,6 +238,7 @@ object SequentCalculus {
 
   private def contains(seq: Seq[Formula], f: Formula): Boolean = seq.contains(f)
 
+  /*
 
   /**
    * --------------
@@ -224,8 +250,14 @@ object SequentCalculus {
     val premises = Seq()
     override def toString: String =
       s"fof(${name}, conjecture, ${bot})."
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = None
   }
+
+  */
 
   /**
    * --------------
@@ -237,6 +269,10 @@ object SequentCalculus {
     val premises = Seq()
     override def toString: String =
       s"fof(${name}, axiom, ${bot})."
+    def addAssumptions(fs: Seq[Formula]): Axiom = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent): Axiom = copy(bot = f(bot))
+    def rename(newName: String): Axiom = copy(name = newName)
+    def renamePremises(map: Map[String, String]): Axiom = this
     def checkCorrectness(premises: String => Sequent): Option[String] = None
   }
 
@@ -250,6 +286,10 @@ object SequentCalculus {
     val premises = Seq()
     override def toString: String =
       s"fof(${name}, assumption, [${"$"}false] --> [], inference(${LeftFalseRuleName}, [status(thm)], []))."
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = this
     def checkCorrectness(premises: String => Sequent): Option[String] = None
   }
 
@@ -264,24 +304,16 @@ object SequentCalculus {
   case class Hyp(name: String, bot: Sequent, i: Int) extends LVL1ProofStep {
     val premises = Seq()
     override def toString: String = SCProofStep.outputSingleIndex(name, "assumption", HypRuleName, bot, i, premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = this
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val fi = bot.left(i)
       if bot.right.exists(isSame(_, fi)) then None else Some(s"${fi} is not in the right-hand side of the conclusion.")
   }
 
-    /**
-   * -----------------
-   *   Γ, A |- A, Δ
-   *
-   * @param bot Resulting formula
-   * @param i Index of A on the left
-   */
-  case class ElimIffRefl(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
-    val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", "elimIffRefl", bot, i, premises)
-    def checkCorrectness(premises: String => Sequent): Option[String] = None
- 
-  }
+
   /**
    *    Γ |- Δ
    * -------------
@@ -293,6 +325,10 @@ object SequentCalculus {
   case class LeftWeaken(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputSingleIndex(name, "plain", LeftWeakenRuleName, bot, i, Seq(t1))
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val A = bot.left(i)
       if isSameSet(A +: premises(t1).left, bot.left) then
@@ -302,54 +338,6 @@ object SequentCalculus {
       else Some(s"Left-hand side of premise is not the same as the left-hand side of the conclusion.")
       
   }
-
-    /**
-   *    Γ |- Δ
-   * -------------
-   *   Γ, A |- Δ1
-   *
-   * @param bot Resulting formula
-   * @param i Index of A on the left
-   */
-  case class LeftWeakenRes(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
-    val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", LeftWeakenResRuleName, bot, i, Seq(t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
-
-      def computeLit(f : Formula, index: Int): (Formula, Seq[Formula]) = {
-        f match
-          case AtomicFormula(_, _) => (f, Seq())
-          case ConnectorFormula(label, args) => {
-            label match
-              case Neg =>  (f,  Seq())
-              case Or => {
-                val args_flat = LVL2.toFlatternOrSeq(f)
-                (args_flat(index), args_flat.zipWithIndex.filter(_._2 != index).map(_._1))
-              } 
-              case _ => throw Exception(s"Resolution literal is not correct") 
-          }
-          case _ => throw Exception(s"Resolution literal is not correct") 
-      }
-
-      val A_Pair = computeLit(bot.left(0), i)  
-      val A = A_Pair._1
-      val new_bot = ConnectorFormula(Or, A +: bot.left)
-
-      // println(s"A = ${A}")
-      // println(s"new_bot = ${new_bot}")
-      // println("----------------------")
-      // println(s"premises(t1).left = ${premises(t1).left}")
-      // println(s"bot.left = ${bot.left}")
-      // println("----------------------")
-
-      if isSameSet(Seq(new_bot), premises(t1).left) then
-        if isSameSet(premises(t1).right, bot.right) then
-          None
-        else Some(s"Right-hand side of premise is not the same as the right-hand side of the conclusion.")
-      else Some(s"Left-hand side of premise is not the same as the left-hand side of the conclusion.")
-      
-  }
-
 
 
    /**
@@ -363,6 +351,10 @@ object SequentCalculus {
   case class RightWeaken(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputSingleIndex(name, "plain", RightWeakenRuleName, bot, i, Seq(t1))
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val A = bot.right(i)
       if isSameSet(A +: premises(t1).right, bot.right) then
@@ -384,6 +376,10 @@ object SequentCalculus {
   case class Cut(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
     override def toString: String = SCProofStep.outputSingleIndex(name, "plain", CutRuleName, bot, i, premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1), t2 = map.getOrElse(t2, t2))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val A = premises(t1).right(i)
       if (isSameSet(bot.left :+ A, premises(t1).left `concat` premises(t2).left) && (!contains(premises(t1).left, A) || contains(bot.left, A))) then
@@ -408,6 +404,10 @@ object SequentCalculus {
   case class LeftAnd(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputSingleIndex(name, LeftAndRuleName, "plain", bot, i, premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val AB = bot.left(i)
       AB match
@@ -435,6 +435,10 @@ object SequentCalculus {
   case class LeftOr(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
     override def toString: String = SCProofStep.outputSingleIndex(name, LeftOrRuleName, "plain", bot, i, premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1), t2 = map.getOrElse(t2, t2))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val AB = bot.left(i)
       AB match
@@ -459,6 +463,10 @@ object SequentCalculus {
   case class LeftImplies(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
     override def toString: String = SCProofStep.outputSingleIndex(name, LeftImpliesRuleName, "plain", bot, i, premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1), t2 = map.getOrElse(t2, t2))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val AB = bot.left(i)
       AB match
@@ -484,6 +492,10 @@ object SequentCalculus {
   case class LeftIff(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputSingleIndex(name, LeftIffRuleName, "plain", bot, i, premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val AB = bot.left(i)
       bot.left(i) match
@@ -509,6 +521,10 @@ object SequentCalculus {
   case class LeftNot(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotRuleName, "plain", bot, i, premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val nA = bot.left(i)
       bot.left(i) match
@@ -533,6 +549,10 @@ object SequentCalculus {
   case class LeftExists(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputWithTerm(name, LeftExistsRuleName, bot, i, y.toString(), premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val eA = bot.left(i)
       bot.left(i) match
@@ -560,6 +580,10 @@ object SequentCalculus {
   case class LeftForall(name: String, bot: Sequent, i: Int, t: Term, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputWithTerm(name, LeftForallRuleName, bot, i, t.toString(), premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val fa = bot.left(i)
       bot.left(i) match
@@ -584,6 +608,10 @@ object SequentCalculus {
   case class RightAnd(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep { //inverse of LeftOr
     val premises = Seq(t1, t2)
     override def toString: String = SCProofStep.outputSingleIndex(name,RightAndRuleName, "plain", bot, i, premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1), t2 = map.getOrElse(t2, t2))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val AB = bot.right(i)
       AB match
@@ -613,6 +641,10 @@ object SequentCalculus {
   case class RightOr(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputSingleIndex(name, RightOrRuleName, "plain", bot, i, premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val AB = bot.right(i)
       AB match
@@ -636,6 +668,10 @@ object SequentCalculus {
   case class RightImplies(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputSingleIndex(name, RightImpliesRuleName, "plain", bot, i, premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val AB = bot.right(i)
       AB match
@@ -659,6 +695,10 @@ object SequentCalculus {
   case class RightIff(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
     override def toString: String = SCProofStep.outputSingleIndex(name, RightIffRuleName, "plain", bot, i, premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1), t2 = map.getOrElse(t2, t2))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val AB = bot.right(i)
       AB match
@@ -688,6 +728,10 @@ object SequentCalculus {
   case class RightNot(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputSingleIndex(name, "plain", RightNotRuleName, bot, i, premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val nA = bot.right(i)
       nA match
@@ -712,6 +756,10 @@ object SequentCalculus {
   case class RightExists(name: String, bot: Sequent, i: Int, t: Term, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputWithTerm(name, RightExistsRuleName, bot, i, t.toString(), premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val eA = bot.right(i)
       eA match
@@ -737,6 +785,10 @@ object SequentCalculus {
   case class RightForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputWithTerm(name, RightForallRuleName, bot, i, y.toString(), premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val fa = bot.right(i)
       fa match
@@ -762,7 +814,11 @@ object SequentCalculus {
   case class RightRefl(name: String, bot: Sequent, i: Int) extends LVL1ProofStep {
     val premises = Seq()
     override def toString: String = SCProofStep.outputSingleIndex(name, RightReflRuleName, "plain", bot, i, premises)
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = this
+    def checkCorrectness(premises: String => Sequent): Option[String] =
       val A = bot.right(i)
       A match
         case AtomicFormula(`equality`, Seq(t1, t2)) => 
@@ -783,6 +839,10 @@ object SequentCalculus {
   case class LeftSubst(name: String, bot: Sequent, i: Int, flip: Boolean, P: Formula, x: VariableSymbol, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputWithSubst(name, LeftSubstRuleName, bot, i, flip, P.toString(), x.toString(), premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val (t, u) = bot.left(i) match
         case AtomicFormula(`equality`, Seq(t1, t2)) => (t1, t2)
@@ -815,6 +875,10 @@ object SequentCalculus {
   case class RightSubst(name: String, bot: Sequent, i: Int, flip:Boolean, P: Formula, x: VariableSymbol, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputWithSubstIff(name, RightSubstRuleName, bot, i, flip, P.toString(), x.toString(), premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val (t, u) = bot.left(i) match
         case AtomicFormula(`equality`, Seq(t1, t2)) => (t1, t2)
@@ -847,6 +911,10 @@ object SequentCalculus {
   case class LeftSubstIff(name: String, bot: Sequent, i: Int,  flip:Boolean, R: Formula, A: AtomicSymbol, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputWithSubstIff(name, LeftSubstIffRuleName, bot, i, flip, R.toString(), A.toString(), premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       if A.arity != 0 || !A.id.isUpper then return Some(s"$A is not a formula variable")
       val (phi, psi) = bot.left(i) match
@@ -879,6 +947,10 @@ object SequentCalculus {
   case class RightSubstIff(name: String, bot: Sequent, i: Int, flip:Boolean, R: Formula, A: AtomicSymbol, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputWithSubst(name, RightSubstIffRuleName, bot, i, flip, R.toString(), A.toString(), premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       if A.arity != 0 || !A.id.isUpper then return Some(s"$A is not a formula variable")
       val (phi, psi) = bot.left(i) match
@@ -898,8 +970,6 @@ object SequentCalculus {
       else Some("Left-hand side is not correct.")
   }
 
-  // Γ [ F X ] ⊢ Δ [ F X ] Γ [ F X := t X ] ⊢ Δ [ F X := t X ] 
-
   /**
    *   Γ[F(Xi)] |- Δ[F(Xi)]
    * -------------------------------------------------------------------------------
@@ -909,6 +979,10 @@ object SequentCalculus {
   case class InstFun(name: String, bot: Sequent, F: FunctionSymbol, t: (Term, Seq[VariableSymbol]), t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputWithInstFun(name, InstFunRuleName, bot, F, t, premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val fun = 
         if t._2.isEmpty then f => substituteVariablesInFormula(f, Map(VariableSymbol(F.id) -> t._1)) 
@@ -931,6 +1005,10 @@ object SequentCalculus {
   case class InstPred(name: String, bot: Sequent, P: AtomicSymbol, phi: (Formula, Seq[VariableSymbol]), t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputWithInstPred(name, InstPredRuleName, bot, P, phi, premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val newleft = premises(t1).left.map(substitutePredicatesInFormula(_, Map(P -> phi)))
       val newright = premises(t1).right.map(substitutePredicatesInFormula(_, Map(P -> phi)))
@@ -954,6 +1032,10 @@ object SequentCalculus {
   case class LeftEpsilon(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputWithTerm(name, LeftExistsRuleName, bot, i, y.toString(), premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val Ay = premises(t1).left(i)
       val Aepsi = substituteVariablesInFormula(Ay, Map(y -> EpsilonTerm(y, Ay)))
@@ -979,6 +1061,10 @@ object SequentCalculus {
   case class RightEpsilon(name: String, bot: Sequent, i: Int, phi: Formula, x: VariableSymbol, t: Term, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
     override def toString: String = SCProofStep.outputWithTerm(name, RightExistsRuleName, bot, i, t.toString(), premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent): Option[String] = 
       val At = substituteVariablesInFormula(phi, Map(x -> t))
       val Aepsi = substituteVariablesInFormula(phi, Map(x -> EpsilonTerm(x, phi)))

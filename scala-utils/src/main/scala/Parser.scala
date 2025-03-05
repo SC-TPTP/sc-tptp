@@ -79,6 +79,53 @@ object Parser {
     Sequent(sequent.lhs.map(convertFormulaToFol), sequent.rhs.map(convertFormulaToFol))
   }
 
+  def parseProblem(file:File): Problem = {
+    val problem = TPTPParser.problem(io.Source.fromFile(file)) 
+    val nameMap = scala.collection.mutable.Map[String, Sequent]()
+    var steps = List[Axiom]()
+    var conjecture = Option.empty[Conjecture]
+    var contextFormula = scala.collection.mutable.Map[String, Formula]()
+    var contextTerm = scala.collection.mutable.Map[String, Term]()
+    val defcontext: DefContext = (contextFormula.get, contextTerm.get)
+    problem.formulas.foreach {
+      case ft: FOTAnnotated =>
+        if ft.role == "let" then
+          val term = ft.formula
+          val defedcst = "$" + ft.name
+          contextTerm(defedcst) = convertTermToFOL(term)(using defcontext)
+       
+      case fa: FOFAnnotated =>
+        if fa.role == "conjecture" then 
+          val fofsequent = fa.formula match {
+            case FOF.Logical(formula) => FOF.Sequent(Seq(), Seq(formula))
+            case s: FOF.Sequent => s
+          }
+          val sequent = Sequent(fofsequent.lhs.map(convertFormulaToFol(_)(using defcontext)), fofsequent.rhs.map(convertFormulaToFol(_)(using defcontext)))
+            nameMap(fa.name) = sequent
+            conjecture = Some(Conjecture(fa.name, sequent))
+        else if fa.role == "let" then
+          val formula = fa.formula match {
+            case FOF.Logical(formula) => formula
+            case s: FOF.Sequent => throw new Exception("Sequent in let statement is incorrect")
+          }
+          val defedcst = "$" + fa.name
+          contextFormula(defedcst) = convertFormulaToFol(formula)(using defcontext)
+        else
+          val fofsequent = fa.formula match {
+            case FOF.Logical(formula) => FOF.Sequent(Seq(), Seq(formula))
+            case s: FOF.Sequent => s
+          }
+          if fa.role == "axiom" then
+            val sequent = Sequent(fofsequent.lhs.map(convertFormulaToFol(_)(using defcontext)), fofsequent.rhs.map(convertFormulaToFol(_)(using defcontext)))
+            nameMap(fa.name) = sequent
+            steps = Axiom(fa.name, sequent) :: steps
+          else
+            throw new Exception("the file contains roles which are not conjecture, axiom and let")
+      case _ => throw new Exception("Only FOF statements are supported")
+    }
+    Problem(steps.reverse.toSeq, conjecture.get)
+  }
+
   def reconstructProof(file: File): SCProof[?] = {
     val problem = TPTPParser.problem(io.Source.fromFile(file)) 
     val nameMap = scala.collection.mutable.Map[String, Sequent]()
@@ -168,11 +215,11 @@ object Parser {
       case Inference.InstPred(step) => Some(step)
 
       case Inference.Congruence(step) => Some(step)
-      case Inference.Res(step) => Some(step)
+      case Inference.Res2(step) => Some(step)
       case Inference.NegatedConjecture(step) => Some(step)
       case Inference.Clausify(step) => Some(step)
-      case Inference.NNF(step) => Some(step)
-      case Inference.Instantiate_L(step) => Some(step)
+      case Inference.RightNNF(step) => Some(step)
+      //case Inference.Instantiate_L(step) => Some(step)
       case Inference.InstantiateMult(step) => Some(step)
 
       case Inference.LeftNotAll(step) => Some(step)
@@ -190,7 +237,13 @@ object Parser {
 
   object Inference {
     import leo.datastructures.TPTP.{Annotations, GeneralTerm, MetaFunctionData, NumberData, Integer, FOF, GeneralFormulaData, FOTData, FOFData}
-
+    object Sequence {
+      def unapply(ann_seq: GeneralTerm): Option[Seq[GeneralTerm]] =
+        ann_seq match {
+          case GeneralTerm(List(), Some(terms)) => Some(terms)
+          case _ => None
+        }
+    }
     object Number {
       def unapply(ann_seq: GeneralTerm): Option[BigInt] =
         ann_seq match {
@@ -278,7 +331,7 @@ object Parser {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] =
         ann_seq match {
           case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("elimIffRefl", Seq(_, StrOrNum(n)), Seq(t1)), _) =>
-              Some(SC.ElimIffRefl(name, convertSequentToFol(sequent), n.toInt, t1))
+              Some(LVL2.ElimIffRefl(name, convertSequentToFol(sequent), n.toInt, t1))
           case _ => None
         }
     }
@@ -316,7 +369,7 @@ object Parser {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] =
         ann_seq match {
           case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftWeakenRes", Seq(_, StrOrNum(n)), Seq(t1)), _) =>
-            Some(SC.LeftWeakenRes(name, convertSequentToFol(sequent), n.toInt,  t1))
+            Some(LVL2.LeftWeakenRes(name, convertSequentToFol(sequent), n.toInt,  t1))
           case _ => None
         }
     }
@@ -664,11 +717,11 @@ object Parser {
         }
     }
 
-    object Res {
+    object Res2 {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
         ann_seq match {
           case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("res", Seq(_, StrOrNum(i), StrOrNum(j)), Seq(t1, t2)), _) =>
-            Some(LVL2.Res(name, convertSequentToFol(sequent), i.toInt, j.toInt, t1, t2))
+            Some(LVL2.Res2(name, convertSequentToFol(sequent), i.toInt, j.toInt, t1, t2))
           case _ => None
         }
     }
@@ -685,8 +738,8 @@ object Parser {
     object Clausify {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("clausify", Seq(_,  StrOrNum(i)), Seq(t1)), _) =>
-            Some(LVL2.Clausify(name, convertSequentToFol(sequent), i.toInt, t1))
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("clausify", Seq(_,  StrOrNum(i)), Seq()), _) =>
+            Some(LVL2.Clausify(name, convertSequentToFol(sequent), i.toInt))
           case _ => None
         }
     }
@@ -700,41 +753,36 @@ object Parser {
         }
     }
 
-    object NNF {
+    object RightNNF {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
         ann_seq match {
           case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightNnf", Seq(_, StrOrNum(i), StrOrNum(j)), Seq(t1)), _) =>
-            Some(LVL2.NNF(name, convertSequentToFol(sequent), i.toInt, j.toInt, t1))
-          case _ => None
-        }
-    }
-
-    object Instantiate_L {
-      def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
-        ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instantiate", Seq(_, StrOrNum(i), GenTerm(x), GenTerm(t)), Seq(t1)), _) =>
-            val x2 = x match 
-              case FunctionTerm(xs: VariableSymbol, Seq()) => xs
-              case _ => throw new Exception(s"Expected a variable, but got $x")
-            Some(LVL2.Instantiate_L(name, convertSequentToFol(sequent), i.toInt, x2, t, t1))
+            Some(LVL2.RightNNF(name, convertSequentToFol(sequent), i.toInt, j.toInt, t1))
           case _ => None
         }
     }
 
     object InstantiateMult {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
-        ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instantiateMult", Seq(_, StrOrNum(i), GeneralTerm(_, Some(terms))), Seq(t1)), _) =>
-            
-            // println("-----------------------------")
-            val terms1 = terms.asInstanceOf[Seq[GeneralTerm]]
-            // println("Terms1 = " + terms1)
 
-            val termsAsList: Seq[(String, GeneralTerm)] = terms1.foldLeft(Seq[(String, GeneralTerm)]()) { 
-              (acc, x) => { 
-                // println("x = "+ x)
-                // println("data = " + x.data)
-                // println("list = " + x.list)
+        def buildSeqTerm(sss: Seq[(String, GeneralTerm)]) : Seq[(VariableSymbol, Term)] = {
+          sss match
+            case Nil => Seq()
+            case h::t => {
+              val newHead = h match {
+                case (s"$$fot(${v1})", v2) => 
+                  v2 match 
+                    case GeneralTerm(List(GeneralFormulaData(FOTData(v22))), None) => (VariableSymbol(v1), convertTermToFOL(v22))
+                    case _ => throw new Exception(s"Not a general term")
+                case _ => throw new Exception(s"Bad number of element within the list")
+              }
+              newHead+:buildSeqTerm(t)
+            }     
+        }
+        ann_seq match {
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instantiateMult", Seq(_, StrOrNum(i), Sequence(terms: Seq[GeneralTerm])), Seq(t1)), _) =>
+            val termsAsList: Seq[(String, GeneralTerm)] = terms.foldLeft(Seq[(String, GeneralTerm)]()) { 
+              (acc, x) => {
                 x.list match 
                     case None => throw new Exception(s"Empty List")
                     case Some(xList) => {
@@ -746,22 +794,9 @@ object Parser {
               }
             }
 
-            def buildSeqTerm(sss: Seq[(String, GeneralTerm)]) : Seq[(VariableSymbol, Term)] = {
-                sss match
-                  case Nil => Seq()
-                  case h::t => {
-                    val newHead = h match {
-                      case (s"$$fot(${v1})", v2) => 
-                        v2 match 
-                          case GeneralTerm(List(GeneralFormulaData(FOTData(v22))), None) => (VariableSymbol(v1), convertTermToFOL(v22))
-                          case _ => throw new Exception(s"Not a general term")
-                      case _ => throw new Exception(s"Bad number of element within the list")
-                    }
-                    newHead+:buildSeqTerm(t)
-                  }     
-            }
-
             Some(LVL2.InstantiateMult(name, convertSequentToFol(sequent), i.toInt,buildSeqTerm(termsAsList), t1))
+
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instantiateMult", Seq(_, StrOrNum(i), Sequence(terms)), Seq(t1)), _) => ???
           case _ => None
         }
     }

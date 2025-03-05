@@ -31,7 +31,8 @@ lazy val root = project
       "-language:implicitConversions"
     ),
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.10" % "test",
-    libraryDependencies += "io.github.leoprover" % "scala-tptp-parser_2.13" % "1.4"
+    libraryDependencies += "io.github.leoprover" % "scala-tptp-parser_2.13" % "1.4",
+    libraryDependencies += "com.lihaoyi" %% "mainargs"% "0.7.6"
   )
   .dependsOn(customTstpParser)
 
@@ -41,7 +42,8 @@ version := "0.1"
 
 enablePlugins(AssemblyPlugin)
 
-mainClass in assembly := Some("sctptp.Main")
+assembly/mainClass := Some("sctptp.Main")
+assembly/assemblyJarName := "sctptpUtils.jar"
 
 // Ensures resources are included in the classpath
 unmanagedResourceDirectories in Compile += baseDirectory.value / "src" / "main" / "resources"

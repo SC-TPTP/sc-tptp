@@ -83,6 +83,8 @@ object FOL {
 
   sealed case class EpsilonTerm(bound: VariableSymbol, inner: Formula) extends Term {
     override def freeVariables: Set[VariableSymbol] = inner.freeVariables - bound
+    override def toString(): String = 
+      s"# [${bound.toString()}]: (${inner.toString()})"
   }
 
   sealed case class FunctionTerm(label: TermSymbol, args: Seq[Term]) extends Term{

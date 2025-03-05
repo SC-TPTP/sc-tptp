@@ -48,7 +48,7 @@ case class Problem(axioms: Seq[Axiom], conjecture: Conjecture) {
 }
 
 
-def flattenProof(proof: SCProof[?]): SCProof[?] = {
+def flattenProof(proof: LVL2Proof): LVL2Proof = {
   def innerFlattenProof(steps: Seq[SCProofStep], in: Boolean, assums: Seq[Formula], renamed: Map[String, String]): Seq[SCProofStep] = {
     steps.flatMap {
       case Subproof(name, proof, assumptions, axioms) =>

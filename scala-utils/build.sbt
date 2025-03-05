@@ -31,7 +31,8 @@ lazy val root = project
       "-language:implicitConversions"
     ),
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.10" % "test",
-    libraryDependencies += "io.github.leoprover" % "scala-tptp-parser_2.13" % "1.4"
+    libraryDependencies += "io.github.leoprover" % "scala-tptp-parser_2.13" % "1.4",
+    libraryDependencies += "com.lihaoyi" %% "mainargs"% "0.7.6"
   )
   .dependsOn(customTstpParser)
 

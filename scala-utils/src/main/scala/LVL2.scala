@@ -643,7 +643,7 @@ object LVL2 {
    *  And Δ is the nnf of Γ
    * @param bot Resulting formula
    */
-  case class NNF(name: String, bot: Sequent, i: Int, j: Int, t1: String) extends StrictLVL2ProofStep {
+  case class RightNNF(name: String, bot: Sequent, i: Int, j: Int, t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
     override def toString: String = s"fof(${name}, plain, ${bot}, inference(rightNnf, [status(thm), ${i}, ${j}], [${t1}])).";
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)

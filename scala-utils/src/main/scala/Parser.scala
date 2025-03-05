@@ -218,7 +218,7 @@ object Parser {
       case Inference.Res2(step) => Some(step)
       case Inference.NegatedConjecture(step) => Some(step)
       case Inference.Clausify(step) => Some(step)
-      case Inference.NNF(step) => Some(step)
+      case Inference.RightNNF(step) => Some(step)
       case Inference.Instantiate_L(step) => Some(step)
       case Inference.InstantiateMult(step) => Some(step)
 
@@ -747,11 +747,11 @@ object Parser {
         }
     }
 
-    object NNF {
+    object RightNNF {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
         ann_seq match {
           case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightNnf", Seq(_, StrOrNum(i), StrOrNum(j)), Seq(t1)), _) =>
-            Some(LVL2.NNF(name, convertSequentToFol(sequent), i.toInt, j.toInt, t1))
+            Some(LVL2.RightNNF(name, convertSequentToFol(sequent), i.toInt, j.toInt, t1))
           case _ => None
         }
     }

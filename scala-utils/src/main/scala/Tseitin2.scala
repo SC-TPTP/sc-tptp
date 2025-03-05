@@ -10,42 +10,27 @@ import sctptp.FOL.*
 
 object Tseitin2 {
 
-  def main(args: Array[String]): Unit = {    
-    val file = args(0)
-    val problem = parseProblem(File(file))
 
-    val tseitin_prover = certify_tseitin(_, Prover9.proveProblem)
+
+
+  
+  
+  def certify_clausal(problem: Problem, prover: Problem => LVL2Proof): LVL2Proof = {
+
+    val tseitin_prover = certify_tseitin(_, prover)
     val prenex_prover = certify_prenex(_, tseitin_prover)
     val skolem_prover = certify_skolem(_, prenex_prover)
-    val proof = skolem_prover(problem)
-    println("proof: ")
-    println(proof)
-
-    val flattenedProof = flattenProof(proof)
-    println("flattened proof: ")
-    println(flattenedProof)
-
-    val target = args(1)
-    //print to file target
-    Files.write(Paths.get(target), flattenedProof.toString.getBytes(StandardCharsets.UTF_8))
+    val nnf_prover = certify_nnf(_, skolem_prover)
+    val full_prover = certify_negated(_, nnf_prover)
+    full_prover(problem)
   }
 
-
-
-
-  
-  
-  def certify_clausal(problem: Problem, prover: Problem => SCProof[?]): SCProof[?] = {
-???
-  }
-
-  def certify_negated(problem: Problem, prover: Problem => SCProof[?]): SCProof[?] = {
+  def certify_negated(problem: Problem, prover: Problem => LVL2Proof): LVL2Proof = {
     val conj = problem.conjecture.goal
     conj match
       case Sequent(Seq(), Seq(c)) =>
         val neg_c = ~(c)
         val ax = Axiom("neg_conjecture", neg_c)
-        println(problem.axioms)
 
         val axiomsWithNegConj = problem.axioms.map(ax => LeftWeaken(ax.name + "_nc", ax.bot +<< neg_c, ax.bot.left.size, ax.name))
         val newProblem = Problem(problem.axioms :+ ax, Conjecture("prove_false", Sequent(Seq(), Seq())))
@@ -66,17 +51,47 @@ object Tseitin2 {
           Vector(hyp, sp_neg_conj, nc_elim_1, nc_elim_2, nc_elim_3)
 
         LVL2Proof(finalsteps.asInstanceOf, "test")
+      
+      case Sequent(Seq(), Seq()) => prover(problem)
 
       case _ =>
         throw new Exception("Conjecture must be a single formula to apply negated conjecture")
     
   }
+  def nnf(f: Formula, neg: Boolean): Formula = f match
+    case AtomicFormula(label, args) => if neg then ~f else f
+    case ConnectorFormula(And, seq) => if neg then Or(seq.map(nnf(_, neg))) else And(seq.map(nnf(_, neg)))
+    case ConnectorFormula(Or, seq) => if neg then And(seq.map(nnf(_, neg))) else Or(seq.map(nnf(_, neg)))
+    case ConnectorFormula(Implies, Seq(f1, f2)) => nnf(Or(Seq(~f1, f2)), neg)
+    case ConnectorFormula(Iff, Seq(f1, f2)) => 
+      nnf(And(Seq(ConnectorFormula(Implies, Seq(f1, f2)), ConnectorFormula(Implies, Seq(f2, f1)))), neg)
+    case ConnectorFormula(Neg, Seq(f1)) => nnf(f1, !neg)
+    case BinderFormula(Forall, v, inner) => if neg then Exists(v, nnf(inner, neg)) else Forall(v, nnf(inner, neg))
+    case BinderFormula(Exists, v, inner) => if neg then Forall(v, nnf(inner, neg)) else Exists(v, nnf(inner, neg))
 
-  def certify_nnf(problem: Problem, prover: Problem => SCProof[?]): SCProof[?] = {
-    ???
+  def certify_nnf(problem: Problem, prover: Problem => LVL2Proof): LVL2Proof = {
+    assert(problem.conjecture.goal == (()|-()))
+    assert(problem.axioms.forall(ax => ax.bot.right.size == 1 && ax.bot.left.size == 0))
+
+    var i = 0
+    var steps = List[RightNNF]()
+    var newAxioms = List[Axiom]()
+    problem.axioms.foreach(ax => {
+      i += 1
+      val nnf_form = nnf(ax.bot.right.head, false)
+      steps = RightNNF(ax.name+"_nnf", () |- nnf_form, 0, 0, ax.name) :: steps
+      newAxioms = Axiom(ax.name, () |- nnf_form) :: newAxioms
+    })
+    val subproof = Subproof("nnf_sp", prover(Problem(newAxioms, problem.conjecture)), Seq(), steps.map(step => step.t1 -> step.name).toMap)
+    val finalsteps = (problem.axioms: Seq[LVL2ProofStep]) ++ steps ++ Vector(subproof)
+    LVL2Proof(finalsteps.toIndexedSeq, "name")
   }
 
-  def certify_skolem(problem: Problem, prover: Problem => SCProof[?]): SCProof[?] = {
+
+  def certify_skolem(problem: Problem, prover: Problem => LVL2Proof): LVL2Proof = {
+  
+    var i = 0
+
     /**
       * (
       *   formula replaced exists(v, ...),   Formula
@@ -93,6 +108,7 @@ object Tseitin2 {
       * )
       */
     def find_epsilon(f:Formula): Option[(Formula, Formula, Formula, Formula, Formula, Formula, FunctionSymbol, Term, Seq[VariableSymbol], Formula)] = {
+      i += 1
       f match
         case BinderFormula(binder, v, inner) =>
           find_epsilon(inner) match
@@ -104,7 +120,7 @@ object Tseitin2 {
               val HOLE = AtomicSymbol("HOLE", freevars.size)
               val HOLEterm = AtomicFormula(HOLE, freevars.map(_()))
               val epsterm = EpsilonTerm(v, inner)
-              val sko = FunctionSymbol(s"Sk${v.name}", freevars.size)
+              val sko = FunctionSymbol(s"Sk$i", freevars.size)
               val skoterm = sko(freevars.map(_()))
               val THOLE = FunctionSymbol(s"THOLE", freevars.size)
               val THOLEterm = THOLE(freevars.map(_()))
@@ -130,7 +146,6 @@ object Tseitin2 {
           
           
     }
-    var i = 0
     def inner_certify_skolem(notdone: List[Axiom], done: List[Axiom]): IndexedSeq[LVL2ProofStep] = {
       notdone match
         case ax :: next => 
@@ -203,7 +218,7 @@ object Tseitin2 {
     (p, i1)
 
 
-  def certify_prenex(problem: Problem, prover: Problem => SCProof[?]): SCProof[?] = {
+  def certify_prenex(problem: Problem, prover: Problem => LVL2Proof): LVL2Proof = {
     assert(problem.conjecture.goal. == (()|-()))
     var i = 0
     val prenex_steps = problem.axioms.map(ax => 
@@ -238,7 +253,7 @@ object Tseitin2 {
 
   private val HOLE = AtomicSymbol("HOLE", 0)
 
-  def certify_tseitin(problem: Problem, prover: Problem => SCProof[?]): SCProof[?] = {
+  def certify_tseitin(problem: Problem, prover: Problem => LVL2Proof): LVL2Proof = {
     assert(problem.conjecture.goal. == (()|-()))
     assert(problem.axioms.forall(ax => ax.bot.right.size == 1 && ax.bot.left.size == 0))
 
@@ -262,7 +277,6 @@ object Tseitin2 {
 
 
     def inner_cert_tseitin(axioms: List[Axiom], clausal_axioms:List[Axiom]): IndexedSeq[LVL2ProofStep] = {
-      println(s"clausal: $clausal_axioms")
       axioms match
         case axiom :: next => 
           if isLiteral(axiom.bot.right.head) then 

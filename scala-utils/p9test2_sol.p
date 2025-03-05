@@ -1,24 +1,37 @@
 
-fof(a1, axiom, [] --> [? [X]: (f(X) & b)]).
-fof(a2, axiom, [] --> [~b]).
-fof(a2weak0_1, plain, [# [X]: ((f(X) & b)) = SkX] --> [~b], inference(leftWeaken, [status(thm), 0], [a2])).
-fof(sko_iff0, plain, [] --> [(? [X]: (f(X) & b) <=> (f(# [X]: ((f(X) & b))) & b))], inference(existsIffEpsilon, [status(thm), 0], [])).
-fof(eps_subst0, plain, [(? [X]: (f(X) & b) <=> (f(# [X]: ((f(X) & b))) & b))] --> [(f(# [X]: ((f(X) & b))) & b)], inference(rightSubstPred, [status(thm), 0, 0, 'HOLE', $fof(HOLE)], [a1])).
-fof(sko_cut0, plain, [] --> [(f(# [X]: ((f(X) & b))) & b)], inference(cut, [status(thm), 0], [sko_iff0, eps_subst0])).
-fof(sko_subst0, plain, [# [X]: ((f(X) & b)) = SkX] --> [(f(SkX) & b)], inference(rightSubstFun, [status(thm), 0, 0, 'THOLE', $fof((f(THOLE) & b))], [sko_cut0])).
-fof(a1_pre, plain, [# [X]: ((f(X) & b)) = SkX] --> [(f(SkX) & b)], inference(rightPrenex, [status(thm), 0, 0], [sko_subst0])).
-fof(a2_pre, plain, [# [X]: ((f(X) & b)) = SkX] --> [~b], inference(rightPrenex, [status(thm), 0, 0], [a2weak0_1])).
-fof(a2weak1_1, plain, [(Ts1 <=> (f(SkX) & b)),# [X]: ((f(X) & b)) = SkX] --> [~b], inference(leftWeaken, [status(thm), 0], [a2_pre])).
-fof(ts_cla1, plain, [(Ts1 <=> (f(SkX) & b)),# [X]: ((f(X) & b)) = SkX] --> [f(SkX),~Ts1], inference(clausify, [status(thm), 0], [])).
-fof(ts_clb1, plain, [(Ts1 <=> (f(SkX) & b)),# [X]: ((f(X) & b)) = SkX] --> [b,~Ts1], inference(clausify, [status(thm), 0], [])).
-fof(ts_ax_just1, plain, [(Ts1 <=> (f(SkX) & b)),# [X]: ((f(X) & b)) = SkX] --> [Ts1], inference(rightSubstIff, [status(thm), 0, 0, $fof(HOLE), 'HOLE'], [a1_pre])).
-fof(ts_cla1_p9r, plain, [(Ts1 <=> (f(SkX) & b)),# [X]: ((f(X) & b)) = SkX] --> [f(SkX),~Ts1], inference(instMult, [status(thm), []], [ts_cla1])).
-fof(ts_clb1_p9r, plain, [(Ts1 <=> (f(SkX) & b)),# [X]: ((f(X) & b)) = SkX] --> [b,~Ts1], inference(instMult, [status(thm), []], [ts_clb1])).
-fof(ts_ax_just1_p9r, plain, [(Ts1 <=> (f(SkX) & b)),# [X]: ((f(X) & b)) = SkX] --> [Ts1], inference(instMult, [status(thm), []], [ts_ax_just1])).
-fof(a2_p9r, plain, [(Ts1 <=> (f(SkX) & b)),# [X]: ((f(X) & b)) = SkX] --> [~b], inference(instMult, [status(thm), []], [a2weak1_1])).
-fof(5, plain, [(Ts1 <=> (f(SkX) & b)),# [X]: ((f(X) & b)) = SkX] --> [b], inference(res, [status(thm), 0], [ts_ax_just1_p9r, ts_clb1_p9r])).
-fof(ts_sp1, plain, [(Ts1 <=> (f(SkX) & b)),# [X]: ((f(X) & b)) = SkX] --> [], inference(res, [status(thm), 0], [5, a2_p9r])).
-fof(ts_inst1, plain, [((f(SkX) & b) <=> (f(SkX) & b)),# [X]: ((f(X) & b)) = SkX] --> [], inference(instPred, [status(thm), 'Ts1', $fof((f(SkX) & b)), []], [ts_sp1])).
-fof(sko_sp0, plain, [# [X]: ((f(X) & b)) = SkX] --> [], inference(elimIffRefl, [status(thm), 0], [ts_inst1])).
-fof(sko_inst0, plain, [# [X]: ((f(X) & b)) = # [X]: ((f(X) & b))] --> [], inference(instFun, [status(thm), 'SkX', $fot(# [X]: ((f(X) & b))), []], [sko_sp0])).
-fof(sko_elim0, plain, [] --> [], inference(elimEqRefl, [status(thm), 0], [sko_inst0])).
+fof(conj, conjecture, [] --> [? [X]: ! [Y]: (p(Y) | ~p(X))]).
+fof(neg_conjecture, assumption, [~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [~? [X]: ! [Y]: (p(Y) | ~p(X))], inference(hyp, [status(thm), 0], [])).
+fof(neg_conjecture_nnf, plain, [~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [! [X]: ? [Y]: (~p(Y) & p(X))], inference(rightNnf, [status(thm), 0, 0], [neg_conjecture])).
+fof(sko_iff5, plain, [~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [! [X]: (? [Y]: (~p(Y) & p(X)) <=> (~p(# [Y]: ((~p(Y) & p(X)))) & p(X)))], inference(existsIffEpsilon, [status(thm), 0], [])).
+fof(eps_subst5, plain, [! [X]: (? [Y]: (~p(Y) & p(X)) <=> (~p(# [Y]: ((~p(Y) & p(X)))) & p(X))),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [! [X]: (~p(# [Y]: ((~p(Y) & p(X)))) & p(X))], inference(rightSubstPred, [status(thm), 0, 0, 'HOLE', $fof(! [X]: HOLE(X))], [neg_conjecture_nnf])).
+fof(sko_cut5, plain, [~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [! [X]: (~p(# [Y]: ((~p(Y) & p(X)))) & p(X))], inference(cut, [status(thm), 0], [sko_iff5, eps_subst5])).
+fof(sko_subst5, plain, [! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [! [X]: (~p(Sk5(X)) & p(X))], inference(rightSubstFun, [status(thm), 0, 0, 'THOLE', $fof(! [X]: (~p(THOLE(X)) & p(X)))], [sko_cut5])).
+fof(neg_conjecture_pre, plain, [! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [! [V0]: (~p(Sk5(V0)) & p(V0))], inference(rightPrenex, [status(thm), 0, 0], [sko_subst5])).
+fof(neg_conjecture_V0, plain, [! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [(~p(Sk5(V0)) & p(V0))], inference(instForall, [status(thm), 0, $fot(V0)], [neg_conjecture_pre])).
+fof(ts_cla1, plain, [(Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [~p(Sk5(V0)),~Ts1(V0)], inference(clausify, [status(thm), 0], [])).
+fof(ts_claQ1_1, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [~p(Sk5(V0)),~Ts1(V0)], inference(leftForall, [status(thm), 0, $fot(V0)], [ts_cla1])).
+fof(ts_clb1, plain, [(Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [p(V0),~Ts1(V0)], inference(clausify, [status(thm), 0], [])).
+fof(ts_clbQ1_1, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [p(V0),~Ts1(V0)], inference(leftForall, [status(thm), 0, $fot(V0)], [ts_clb1])).
+fof(ts_ax_just1, plain, [(Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [Ts1(V0)], inference(rightSubstIff, [status(thm), 0, 0, $fof(HOLE), 'HOLE'], [neg_conjecture_V0])).
+fof(ts_axQ1_1, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [Ts1(V0)], inference(leftForall, [status(thm), 0, $fot(V0)], [ts_ax_just1])).
+fof(ts_claQ1_1_p9r, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [~p(Sk5(V0)),~Ts1(V0)], inference(instMult, [status(thm), [tuple3('V0', $fot(V0), [])]], [ts_claQ1_1])).
+fof(ts_clbQ1_1_p9r, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [p(V0),~Ts1(V0)], inference(instMult, [status(thm), [tuple3('V0', $fot(V0), [])]], [ts_clbQ1_1])).
+fof(ts_axQ1_1_p9r, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [Ts1(V0)], inference(instMult, [status(thm), [tuple3('V0', $fot(V0), [])]], [ts_axQ1_1])).
+fof(8, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [p(Sk5(V100)),~Ts1(Sk5(V100))], inference(instMult, [status(thm), [tuple3('V0', $fot(Sk5(V100)), [])]], [ts_clbQ1_1_p9r])).
+fof(9, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [~p(Sk5(V100)),~Ts1(V100)], inference(instMult, [status(thm), [tuple3('V0', $fot(V100), [])]], [ts_claQ1_1_p9r])).
+fof(10, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [~Ts1(Sk5(V100)),~Ts1(V100)], inference(res, [status(thm), 0], [8, 9])).
+fof(5, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [~Ts1(Sk5(V0)),~Ts1(V0)], inference(instMult, [status(thm), [tuple3('V100', $fot(V0), [])]], [10])).
+fof(11, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [Ts1(Sk5(V100))], inference(instMult, [status(thm), [tuple3('V0', $fot(Sk5(V100)), [])]], [ts_axQ1_1_p9r])).
+fof(12, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [~Ts1(Sk5(V100)),~Ts1(V100)], inference(instMult, [status(thm), [tuple3('V0', $fot(V100), [])]], [5])).
+fof(13, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [~Ts1(V100)], inference(res, [status(thm), 0], [11, 12])).
+fof(a06, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [~Ts1(V0)], inference(instMult, [status(thm), [tuple3('V100', $fot(V0), [])]], [13])).
+fof(14, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [Ts1(V100)], inference(instMult, [status(thm), [tuple3('V0', $fot(V100), [])]], [ts_axQ1_1_p9r])).
+fof(15, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [~Ts1(V100)], inference(instMult, [status(thm), [tuple3('V0', $fot(V100), [])]], [a06])).
+fof(ts_sp1, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [], inference(res, [status(thm), 0], [14, 15])).
+fof(ts_inst1, plain, [! [V0]: ((~p(Sk5(V0)) & p(V0)) <=> (~p(Sk5(V0)) & p(V0))),! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [], inference(instPred, [status(thm), 'Ts1', $fof((~p(Sk5(V0)) & p(V0))), ['V0']], [ts_sp1])).
+fof(sko_sp9, plain, [! [X]: # [Y]: ((~p(Y) & p(X))) = Sk5(X),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [], inference(elimIffRefl, [status(thm), 0], [ts_inst1])).
+fof(sko_inst9, plain, [! [X]: # [Y]: ((~p(Y) & p(X))) = # [Y]: ((~p(Y) & p(X))),~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [], inference(instFun, [status(thm), 'Sk5', $fot(# [Y]: ((~p(Y) & p(X)))), ['X']], [sko_sp9])).
+fof(sp_neg_conj, plain, [~? [X]: ! [Y]: (p(Y) | ~p(X))] --> [], inference(elimEqRefl, [status(thm), 0], [sko_inst9])).
+fof(nc_elim_1, assumption, [? [X]: ! [Y]: (p(Y) | ~p(X))] --> [? [X]: ! [Y]: (p(Y) | ~p(X))], inference(hyp, [status(thm), 0], [])).
+fof(nc_elim_2, plain, [] --> [~? [X]: ! [Y]: (p(Y) | ~p(X)),? [X]: ! [Y]: (p(Y) | ~p(X))], inference(rightNot, [status(thm), 1], [nc_elim_1])).
+fof(nc_elim_3, plain, [] --> [? [X]: ! [Y]: (p(Y) | ~p(X))], inference(cut, [status(thm), 0], [nc_elim_2, sp_neg_conj])).

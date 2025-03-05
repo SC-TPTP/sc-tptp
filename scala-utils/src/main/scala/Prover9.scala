@@ -16,6 +16,10 @@ import leo.modules.input.TPTPParser.problem
 
 object Prover9 {
 
+  def fullP9Prover(problem: Problem): LVL2Proof = {
+    flattenProof(Tseitin2.certify_clausal(problem, Prover9.proveProblem))
+  }
+
   def toSafe(f: Formula): Formula = f match {
     case AtomicFormula(pred, sqf) => 
       if pred.id.name(0) == '$' then f 
@@ -31,23 +35,6 @@ object Prover9 {
     case _ => throw new Exception("quantifiers not supported")
   }
 
-  def main(args: Array[String]): Unit = {
-    if args.length >= 3 && args(2) == "raw" then
-      println("Debug mode")
-      val proof = _proveFile(args(0))
-      val target = args(1)
-      Files.write(Paths.get(target), proof.toString.getBytes(StandardCharsets.UTF_8))
-      println(proof)
-      return
-    else
-      val file = args(0)
-      val problem = parseProblem(File(file))
-      val proof = proveProblem(problem)
-      val target = args(1)
-      Files.write(Paths.get(target), proof.toString.getBytes(StandardCharsets.UTF_8))
-      println(proof)
-  }
-
   val foldername = "p9proof/"
   val p9Exec = getClass.getResource
 
@@ -56,12 +43,11 @@ object Prover9 {
   }
   
 
-  def proveProblem_no_rename(problem: Problem): SCProof[?] = {
+  def proveProblem_no_rename(problem: Problem): LVL2Proof = {
     val problem2 = Problem(
       problem.axioms.map(_.mapBot(bot => bot.left |- bot.right.map(toSafe))),
       problem.conjecture
     )
-    println(problem2)
     val pathdir = Paths.get(foldername)
     if (!(Files.exists(pathdir) && Files.isDirectory(pathdir)))
       Files.createDirectory(pathdir)
@@ -127,13 +113,13 @@ object Prover9 {
     * Prove the problem without any pre or post processing
     *
     */
-  def proveFile(filename: String): SCProof[?] = {
+  def proveFile(filename: String): LVL2Proof = {
     val problem = parseProblem(File(filename))
     val proof = proveProblem(problem)
     proof
   }
 
-  def _proveFile(filename: String): SCProof[?] = {
+  def _proveFile(filename: String): LVL2Proof = {
     val ladr2TPTPPathName = "tptp_to_ladr"
     val p9PathName = "prover9"
     val prooftransName = "prooftrans"

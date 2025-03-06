@@ -657,7 +657,7 @@ object LVL2 {
   case class LetFormula(name: String, defin: Formula) extends StrictLVL2ProofStep {
     val premises = Seq()
     val bot =  Sequent(Seq(), Seq(top()))
-    override def toString: String = s"fof(${name}, let, ${bot.right(0)}).";
+    override def toString: String = s"fof(${name}, let, $defin).";
     def addAssumptions(fs: Seq[Formula]) = this
     def mapBot(f: Sequent => Sequent) = this
     def rename(newName: String) = this
@@ -668,7 +668,7 @@ object LVL2 {
   case class LetTerm(name: String, defin: Term) extends StrictLVL2ProofStep {
     val premises = Seq()
     val bot =  Sequent(Seq(), Seq(top()))
-    override def toString: String = s"fof(${name}, let, ${bot.right(0)}).";
+    override def toString: String = s"fof(${name}, let, $defin).";
     def addAssumptions(fs: Seq[Formula]) = this
     def mapBot(f: Sequent => Sequent) = this
     def rename(newName: String) = this

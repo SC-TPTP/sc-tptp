@@ -32,6 +32,11 @@
 | `instPred` | 1       | $$\frac{\Gamma[P_X] \vdash \Delta[P_X]}{\Gamma[P_X := \phi_X] \vdash \Delta[P_X := \phi_X]}$$ | `'P': String`: Schematic predicate to substitute. `n`can be $0$. <br> `\phi: Formula`: Formula, possibly containing $X_1, ..., X_n$, to instantiate $F$ with. <br> `Xs: Seq[String]`: Name of the variables parametrizing $\phi$. The length gives the arity of $P$. | Requires `Schematic` enabled. If $n$ is 0, $F$ is a formula variable. Otherwise it is a predicate of arity $n$, starting with a capital letter.|
 | `rightEpsilon` | 1   | $$\frac{\Gamma \vdash A[x := t], \Delta}{\Gamma \vdash A[x := \epsilon x. A], \Delta}$$ | `A:Formula`: Formula defining the epsilon-term <br> `X:String`: Name of the variable being substituted in $A$.  <br> `t:Term`: Term in place of $x$ in the premise  | |
 | `leftEpsilon` | 1     | $$\frac{\Gamma, A[x := y] \vdash \Delta}{\Gamma, A[x := \epsilon x. A] \vdash \Delta}$$ | `i:Int`: Index of $A[x := y]$ on the left of the premise<br> `y:String`: Name of the variable in place of $x$ in the premise | $y$ should not be free in the resulting sequent. |
+| `rightSubstFun` | 1     | $$\frac{\Gamma \vdash P(t), \Delta}{\Gamma, \forall \vec{x}. t = u \vdash P(u), \Delta}$$ | `i:Int`: Index of $\forall \vec{x}. t = u$ on the left <br> `backward:Int`: If non-zero, the substitution is done backward <br> `P(Z):Term`: Shape of the predicate on the right <br> `Z:String`: Name of the variable indication where the substitution takes place. | |
+| `leftSubstFun` | 1      | $$\frac{\Gamma, P(t) \vdash \Delta}{\Gamma, \forall \vec{x}. t = u,  P(u) \vdash \Delta}$$ | `i:Int`: Index of $\forall \vec{x}. t = u$ on the left <br> `backward:Int`: If non-zero, the substitution is done backward <br> `P(Z):Term`: Shape of the predicate on the left <br> `Z:String`: Name of the variable indication where the substitution takes place. | |
+| `rightSubstPred` | 1  | $$\frac{\Gamma\vdash R(\phi), \Delta}{\Gamma, \forall \vec{x}. \phi \Leftrightarrow \psi \vdash R(\psi), \Delta}$$ | `i:Int`: Index of $\forall \vec{x}. \phi \Leftrightarrow \psi$ on the left <br> `backward:Int`: If non-zero, the substitution is done backward <br> `R(Z):Var`: Shape of the predicate on the right <br> `Z:String`: Name of the variable indication where in $P$ the substitution takes place. | |
+| `leftSubstPred` | 1   | $$\frac{\Gamma, R(\phi),  \vdash \Delta}{\Gamma, \forall \vec{x}. \phi \Leftrightarrow \psi, R(\psi) \vdash \Delta}$$ | `i:Int`: Index of $\forall \vec{x}. \phi \Leftrightarrow \psi$ on the left <br> `backward:Int`: If non-zero, the substitution is done backward <br> `R(Z):Var`: Shape of the predicate on the right <br> `Z:String`: Name of the schematic variable indication where in $P$ the substitution takes place. | |
+
 
 
 
@@ -52,31 +57,6 @@ Proof steps for which there is an available elimination algorithm implemented in
 | `leftNotAll` | 1    | $$\frac{\Gamma, \neg A \vdash \Delta}{\Gamma, \neg \forall x. A \vdash \Delta}$$ | `i:Int`: Index of $\neg \forall x. A$ on the left <br> `y:String`: Variable in place of $x$ in the premise | |
 
 
-```latex
-
-\begin{table}[H]
-  \centering
-\resizebox{1\textwidth}{!}{%
-  \begin{tabularx}{1.2\textwidth}{|c|c|c|X|}
-\hline 
-Rule name  &  Premises & Rule & Parameters \\ \hline 
-\lstinline{congruence} & 0 & \makecell{\AxiomC{} \UnaryInfC{$\Gamma, \Delta$} \DisplayProof } & No parameters \newline $\Gamma$ contains a set of ground equalities such that P and Q are congruents \\ \hline
-\lstinline{leftHyp} & 0 & \makecell{\AxiomC{} \UnaryInfC{$\Gamma, A, \neg A \vdash \Delta$} \DisplayProof} & \lstinline{i:Int}: Index of $A$ on the left \\ \hline
-\lstinline{leftNotAnd} & 2 & \makecell{\AxiomC{$\Gamma, \neg A \vdash \Delta$} \AxiomC{$\Sigma, \neg B \vdash \Pi$} \BinaryInfC{$\Gamma, \Sigma, \neg(A \land B) \vdash \Delta, \Pi$} \DisplayProof} & \lstinline{i:Int}: Index of $\neg(A \land B)$ on the left \\ \hline
-\lstinline{leftNotOr} & 1 & \makecell{\AxiomC{$\Gamma, \neg A, \neg B \vdash \Delta$} \UnaryInfC{$\Gamma, \neg(A \lor B) \vdash \Delta$} \DisplayProof} & \lstinline{i:Int}: Index of $\neg(A \lor B)$ on the left \\ \hline
-\lstinline{leftNotImplies} & 1 & \makecell{\AxiomC{$\Gamma, A, \neg B \vdash \Delta$} \UnaryInfC{$\Gamma, \neg(A \Rightarrow B) \vdash \Delta$} \DisplayProof} & \lstinline{i:Int}: Index of $\neg(A \Rightarrow B)$ on the left \\ \hline
-\lstinline{leftNotIff} & 2 & \makecell{\AxiomC{$\Gamma, \neg (A \Rightarrow B) \vdash \Delta$} \AxiomC{$\Sigma, \neg (B \Rightarrow A) \vdash \Pi$} \BinaryInfC{$\Gamma, \Sigma, \neg(A \Leftrightarrow B) \vdash \Delta, \Pi$} \DisplayProof} & \lstinline{i:Int}: Index of $\neg(A \Leftrightarrow B)$ on the left \\ \hline
-\lstinline{leftNotNot} & 1 & \makecell{\AxiomC{$\Gamma, A \vdash \Delta$} \UnaryInfC{$\Gamma, \neg \neg A \vdash \Delta$} \DisplayProof} & \lstinline{i:Int}: Index of $\neg \neg A$ on the left \\ \hline
-\lstinline{leftNotEx} & 1 & \makecell{\AxiomC{$\Gamma, \neg A[x := t] \vdash \Delta$} \UnaryInfC{$\Gamma, \neg\exists x. A \vdash \Delta$} \DisplayProof} & \lstinline{i:Int}: Index of $\neg \exists x. A$ on the left \newline \lstinline{t:Term}: Term in place of $x$ in the premise \\ \hline
-\lstinline{leftNotAll} & 1 & \makecell{\AxiomC{$\Gamma, \neg A \vdash \Delta$} \UnaryInfC{$\Gamma, \neg \forall x. A \vdash \Delta$} \DisplayProof} & \lstinline{i:Int}: Index of $\neg \forall x. A$ on the left \newline \lstinline{y:String}: Variable in place of $x$ in the premise \\ \hline
-  \end{tabularx}
-}
-    \caption{Current Level 2 rules of \sctptp, which can be unfolded into level 1 rules with the \sctptp{} utils.}
-  \label{tab:SCTPTP_rules_lvl_2}
-\end{table}
-
-```
-
 
 # Level 3 Proof Steps
 Proof steps for which there is no elimination procedure, but which are precisely defined and checkable, and usually implemented in some way or another in proof systems.
@@ -96,3 +76,4 @@ Proof steps for which there is no elimination procedure, but which are precisely
 | `elimIffRefl` | 1      | $$\frac{\Gamma, \forall x_1, ..., x_n. \phi \iff \phi \vdash \Delta}{\Gamma \vdash\Delta}$$ | `i:Int`: Index of $\phi \iff \phi$ on the left of the premise | |
 | `res` | 2            | $$\frac{\Gamma \vdash A, \Delta \quad \Sigma\vdash \neg A,\Pi}{\Gamma, \Sigma \vdash \Delta, \Pi}$$ |`i:Int`: Index of $A$ on the right of the first premise  | |
 | `instMult` | 1      | $$\frac{\Gamma[F_1, ..., F_n],  \vdash \Delta[F_1, ..., F_n]}{\Gamma[G_1, ..., G_n] \vdash\Delta[G_1, ..., G_n]}$$ | Sequence of triplets of the form: <br> `'F': String, t: Term\|Formula, Xs: Seq[String]`. Each triplet has the same construction as arguments of `instFun`and `instPred`, but the substitution is carried simultaneously. | Simultaneous substitution of function and predicate schemas, including variables and formula variables. |
+| `existsIffEpsilon` | 0   | $$\frac{}{\Gamma \vdash \exists x. P \Leftrightarrow P[ x:= \epsilon x. P] \Delta}$$ |`i:Int`: Index of $\exists x. P \Leftrightarrow P[ x:= \epsilon x. P]$ on the right | |

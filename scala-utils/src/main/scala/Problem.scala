@@ -49,13 +49,20 @@ case class Problem(axioms: Seq[Axiom], conjecture: Conjecture) {
 
 
 def flattenProof(proof: LVL2Proof): LVL2Proof = {
+  var i = 0
   def innerFlattenProof(steps: Seq[SCProofStep], in: Boolean, assums: Seq[Formula], renamed: Map[String, String]): Seq[SCProofStep] = {
     steps.flatMap {
       case Subproof(name, proof, assumptions, axioms) =>
-        val newsteps = innerFlattenProof(proof.steps, true, assumptions ++ assums, renamed ++ axioms)
+        var phisteps : List[LetFormula] = Nil
+        val phis = assumptions.map(phi => {
+          i += 1
+          phisteps = LetFormula("r"+i, phi) :: phisteps
+          AtomicFormula(AtomicSymbol(Identifier("$r"+i, 0), 0), Seq())
+        })
+        val newsteps = innerFlattenProof(proof.steps, true, phis ++ assums, renamed ++ axioms)
         val last = newsteps.last
         val newlast = last.rename(name)
-        newsteps.dropRight(1) :+ newlast
+        newsteps.dropRight(1).prependedAll(phisteps.toIndexedSeq) :+ newlast
 
       case ax: Axiom  =>
         if !in then

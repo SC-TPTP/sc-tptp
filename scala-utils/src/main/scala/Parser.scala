@@ -237,6 +237,7 @@ object Parser {
       case Inference.RightPrenex(step) => Some(step)
       case Inference.InstForall(step) => Some(step)
       case Inference.Res(step) => Some(step)
+      case Inference.InstantiateMultP9(step) => Some(step)
       case _ => None
     }
     r
@@ -891,10 +892,7 @@ object Parser {
         }
     }
 
-
-
-    /*
-    object InstantiateMult {
+    object InstantiateMultP9 {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
 
         def buildSeqTerm(sss: Seq[(String, GeneralTerm)]) : Seq[(VariableSymbol, Term)] = {
@@ -912,7 +910,7 @@ object Parser {
             }     
         }
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instMult", Seq(_, StrOrNum(i), Sequence(terms: Seq[GeneralTerm])), Seq(t1)), _) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instantiateMult", Seq(_, StrOrNum(i), Sequence(terms: Seq[GeneralTerm])), Seq(t1)), _) =>
             val termsAsList: Seq[(String, GeneralTerm)] = terms.foldLeft(Seq[(String, GeneralTerm)]()) { 
               (acc, x) => {
                 x.list match 
@@ -926,10 +924,10 @@ object Parser {
               }
             }
 
-            Some(LVL2.InstantiateMult(name, convertSequentToFol(sequent), i.toInt, buildSeqTerm(termsAsList), t1))
+            Some(LVL2.InstantiateMultP9(name, convertSequentToFol(sequent), i.toInt, buildSeqTerm(termsAsList), t1))
           case _ => None
         }
     }
-  */
+  
   }
 }

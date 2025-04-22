@@ -806,7 +806,37 @@ object LVL2 {
           StepCheckOK
         else StepCheckError(s"Right-hand side of premise is not the same as the right-hand side of the conclusion.")
       else StepCheckError(s"Left-hand side of premise is not the same as the left-hand side of the conclusion.")
+  }
 
+  /**
+   *   Γ, P[x:=t] |- Δ
+   * ----------------
+   *   Γ, P[x:=u] |- Δ
+   *
+   * @param bot Resulting formula
+   * @param (i, x) List of pair (index, term)
+   * @param t term in place of x
+   */
+  case class InstantiateMultP9(name: String, bot: Sequent, i: Int, terms: Seq[(VariableSymbol, Term)], t1: String) extends StrictLVL2ProofStep {
+    val premises = Seq(t1)
+
+    override def toString: String = s"fof(${name}, plain, ${bot}, inference(instantiateMultP9, [status(thm), " +
+      s"[${terms.foldLeft(("", 0))((acc, x) => {(acc._1 ++ s"tuple3('${x(0).toString()}', $$fot(${x(1).toString()}), [])" ++ (if (acc._2 != terms.length - 1) then ", " else ""), acc._2 + 1)})._1}]], [${t1}])).";
+
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
+    def checkCorrectness(premises: String => Sequent) = 
+      val map = terms.foldLeft(Map[sctptp.FOL.VariableSymbol, sctptp.FOL.Term]())((acc, x) => acc + (x._1 -> x._2))
+      val new_p =  substituteVariablesInFormula(premises(t1).left(i), map)
+      if isSameSet(premises(t1).left(i) +: bot.left, new_p +: premises(t1).left) then
+        if isSameSet(bot.right, premises(t1).right) then
+          StepCheckOK
+        else
+          StepCheckError("right sides is not the same")
+      else
+        StepCheckError("left sides is not correct")
   }
 
 

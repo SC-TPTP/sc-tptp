@@ -27,7 +27,7 @@ object Helpers {
     }
 
     given [H <: Formula, T <: Tuple](using c: FormulaSeqConverter[T]): FormulaSeqConverter[H *: T] with {
-      override def apply(t: H *: T): Seq[Formula] = c.apply(t.tail) :+ t.head
+      override def apply(t: H *: T): Seq[Formula] = t.head +: c.apply(t.tail)
     }
 
     given formula_to_Seq[T <: Formula]: FormulaSeqConverter[T] with {

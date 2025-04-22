@@ -245,7 +245,7 @@ object Prover9 {
         )
       )
       val newclause = clause.map(lit => substituteVariablesInFormula(lit, mmap.toMap))
-      val inst = InstantiateMult(ax.name+"_p9r", () |- newclause, 0, mmap.toSeq, ax.name)
+      val inst = InstMult(ax.name+"_p9r", () |- newclause, mmap.toSeq.map((fv, t) => (fv, t, Nil)), ax.name)
       inst
     )
     val newAxs = insts.map(inst => Axiom(inst.t1, inst.bot))

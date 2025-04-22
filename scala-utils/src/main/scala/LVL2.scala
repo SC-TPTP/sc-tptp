@@ -73,10 +73,10 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = this
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val fi = premises(name).left(i)
-      if premises(name).left.contains(~i) then None
-      else Some(s"${fi} and ${~fi} are not the same")
+      if premises(name).left.contains(~i) then StepCheckOK
+      else StepCheckError(s"${fi} and ${~fi} are not the same")
   }
   
   /**
@@ -94,16 +94,16 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1), t2 = map.getOrElse(t2, t2))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val AB = bot.left(i)
       AB match
         case ConnectorFormula(Implies, Seq(a, b)) =>
           if (isSameSet(bot.right, premises(t1).right.concat(premises(t2).right)))
             if (isSameSet(bot.left :+ ~a, premises(t1).left :+ AB) && isSameSet(bot.left :+ b, premises(t2).left :+ AB))
-              None
-            else Some(s"Left-hand side of conclusion must be identical to union of left-hand sides of premisces + φ⇒ψ.")
-          else Some(s"Right-hand side of conclusion + A  + B must be identical to union of right-hand sides of premisces.")
-        case _ => Some(s"$AB is not an implication")
+              StepCheckOK
+            else StepCheckError(s"Left-hand side of conclusion must be identical to union of left-hand sides of premisces + φ⇒ψ.")
+          else StepCheckError(s"Right-hand side of conclusion + A  + B must be identical to union of right-hand sides of premisces.")
+        case _ => StepCheckError(s"$AB is not an implication")
   }
 
 
@@ -126,16 +126,16 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1), t2 = map.getOrElse(t2, t2))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val nAB = bot.left(i)
       nAB match
         case na_b @ ConnectorFormula(Neg, Seq(ConnectorFormula(And, Seq(a, b)))) => 
           if (isSameSet(bot.right, premises(t1).right `concat` premises(t2).right))
             if (isSameSet(bot.left :+ ~a, premises(t1).left :+ nAB) && isSameSet(bot.left :+ ~b, premises(t2).left :+ nAB))
-              None
-            else Some(s"Left-hand side of conclusion must be identical to union of left-hand sides of premisces + ~(A ∧ B).")
-          else Some(s"Right-hand side of conclusion + A + B must be identical to union of right-hand sides of premisces.")
-        case _ => Some(s"$nAB is not a negated conjunction")
+              StepCheckOK
+            else StepCheckError(s"Left-hand side of conclusion must be identical to union of left-hand sides of premisces + ~(A ∧ B).")
+          else StepCheckError(s"Right-hand side of conclusion + A + B must be identical to union of right-hand sides of premisces.")
+        case _ => StepCheckError(s"$nAB is not a negated conjunction")
   }
 
   /**
@@ -153,16 +153,16 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val nAB = bot.left(i)
       bot.left(i) match
         case na_b @ ConnectorFormula(Neg, Seq(ConnectorFormula(Or, Seq(a, b)))) => 
           if isSameSet(bot.right, premises(t1).right) then
             if isSameSet(bot.left :+ ~a :+ ~b, premises(t1).left :+ nAB) then
-              None
-            else Some("Left-hand side of conclusion :+ φ∧ψ must be same as left-hand side of premise :+ A, B")
-          else Some("Right-hand sides of the premise and the conclusion must be the same.")
-        case _ => Some(s"$nAB is not a negated disjunction")
+              StepCheckOK
+            else StepCheckError("Left-hand side of conclusion :+ φ∧ψ must be same as left-hand side of premise :+ A, B")
+          else StepCheckError("Right-hand sides of the premise and the conclusion must be the same.")
+        case _ => StepCheckError(s"$nAB is not a negated disjunction")
   }
 
   /**
@@ -180,16 +180,16 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val nAB = bot.left(i)
       nAB match
         case ConnectorFormula(Neg, Seq(ConnectorFormula(Implies, Seq(a, b)))) => 
           if (isSameSet(bot.right, premises(t1).right))
             if (isSameSet(bot.left :+ a :+ ~b, premises(t1).left :+ nAB))
-              None
-            else Some(s"Left-hand side of conclusion must be identical to union of left-hand sides of premisces + ~(A ⇒ B).")
-          else Some(s"Right-hand side of conclusion + A + ~B must be identical to union of right-hand sides of premisces.")
-        case _ => Some(s"$nAB is not a negated implication")
+              StepCheckOK
+            else StepCheckError(s"Left-hand side of conclusion must be identical to union of left-hand sides of premisces + ~(A ⇒ B).")
+          else StepCheckError(s"Right-hand side of conclusion + A + ~B must be identical to union of right-hand sides of premisces.")
+        case _ => StepCheckError(s"$nAB is not a negated implication")
   }
 
   /**
@@ -207,7 +207,7 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1), t2 = map.getOrElse(t2, t2))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val nAB = bot.left(i)
       bot.left(i) match
         case ConnectorFormula(Neg, Seq(ConnectorFormula(Iff, Seq(a, b)))) => 
@@ -215,10 +215,10 @@ object LVL2 {
           val nBimpA = ~(b ==> a)
           if (isSameSet(bot.right, premises(t1).right `concat` premises(t2).right))
             if (isSameSet(bot.left :+ nAimpB, premises(t1).left :+ nAB) && isSameSet(bot.left :+ nBimpA, premises(t2).left :+ nAB))
-              None
-            else Some(s"Left-hand side of conclusion must be identical to union of left-hand sides of premisces + ~(A ⇔ B).")
-          else Some(s"Right-hand side of conclusion + ~(A ⇒ B) + ~(B ⇒ A) must be identical to union of right-hand sides of premisces.")
-        case _ => Some(s"$nAB is not a negated biconditional")
+              StepCheckOK
+            else StepCheckError(s"Left-hand side of conclusion must be identical to union of left-hand sides of premisces + ~(A ⇔ B).")
+          else StepCheckError(s"Right-hand side of conclusion + ~(A ⇒ B) + ~(B ⇒ A) must be identical to union of right-hand sides of premisces.")
+        case _ => StepCheckError(s"$nAB is not a negated biconditional")
   }
 
   /**
@@ -236,16 +236,16 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val nnA = bot.left(i)
       bot.left(i) match
         case ConnectorFormula(Neg, Seq(ConnectorFormula(Neg, Seq(a)))) => 
           if (isSameSet(bot.right, premises(t1).right))
             if (isSameSet(bot.left :+ a, premises(t1).left :+ nnA))
-              None
-            else Some(s"Left-hand side of conclusion must be identical to union of left-hand sides of premisces + ¬¬A.")
-          else Some(s"Right-hand side of conclusion + A must be identical to union of right-hand sides of premisces.")
-        case _ => Some(s"$nnA is not a double negation")
+              StepCheckOK
+            else StepCheckError(s"Left-hand side of conclusion must be identical to union of left-hand sides of premisces + ¬¬A.")
+          else StepCheckError(s"Right-hand side of conclusion + A must be identical to union of right-hand sides of premisces.")
+        case _ => StepCheckError(s"$nnA is not a double negation")
   }
 
   /**
@@ -264,17 +264,17 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val neA = bot.left(i)
       neA match
         case ConnectorFormula(Neg, Seq(BinderFormula(Exists, x, a))) => 
           val inst = substituteVariablesInFormula(a, Map(x -> t))
           if (isSameSet(bot.right, premises(t1).right))
             if (isSameSet(bot.left :+ ~inst, premises(t1).left :+ neA))
-              None
-            else Some("Left-hand side of conclusion + A[t/x] must be the same as left-hand side of premise + ∀x. A")
-          else Some("Right-hand side of conclusion must be the same as right-hand side of premise")
-        case _ => Some("The formula is not a negated existential quantification")
+              StepCheckOK
+            else StepCheckError("Left-hand side of conclusion + A[t/x] must be the same as left-hand side of premise + ∀x. A")
+          else StepCheckError("Right-hand side of conclusion must be the same as right-hand side of premise")
+        case _ => StepCheckError("The formula is not a negated existential quantification")
   }
 
   /**
@@ -293,7 +293,7 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val nfA = bot.left(i)
       bot.left(i) match
         case nall @ ConnectorFormula(Neg, Seq(BinderFormula(Forall, x, a))) => 
@@ -301,11 +301,11 @@ object LVL2 {
           if (isSameSet(bot.right, premises(t1).right))
             if (isSameSet(bot.left :+ inst, premises(t1).left :+ nfA))
               if ((bot.left `concat` bot.right).forall(f => !f.freeVariables.contains(x)))
-                None
-              else Some("The variable x must not be free in the resulting sequent.")
-            else Some("Left-hand side of conclusion + A must be the same as left-hand side of premise + ∃x. A")
-          else Some("Right-hand side of conclusion must be the same as right-hand side of premise")
-        case _ => Some("The formula is not a negated universal quantification")
+                StepCheckOK
+              else StepCheckError("The variable x must not be free in the resulting sequent.")
+            else StepCheckError("Left-hand side of conclusion + A must be the same as left-hand side of premise + ∃x. A")
+          else StepCheckError("Right-hand side of conclusion must be the same as right-hand side of premise")
+        case _ => StepCheckError("The formula is not a negated universal quantification")
   }
 
 
@@ -331,25 +331,25 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] =
+    def checkCorrectness(premises: String => Sequent) =
       val (ls, rs) = is.foldLeft(None: Option[(List[Term], List[Term])]) {
         case (Some((list1, list2)), i) =>
           premises(t1).left(i) match
             case AtomicFormula(`equality`, Seq(l, r)) => Some(l :: list1, r :: list2)
             case _ => None
-        case (None, _) => None
+        case (StepCheckOK, _) => None
       } match
         case Some((ls, rs)) => (ls.reverse, rs.reverse)
-        case None => return Some("Right substitution failed: equality not found")
+        case None => return StepCheckError("Right substitution failed: equality not found")
       val P_t = substituteVariablesInFormula(P, (xs zip ls).toMap)
       val P_u = substituteVariablesInFormula(P, (xs zip rs).toMap)
       if isSameSet(bot.left, premises(t1).left ++ (ls zip rs).map(_ === _)) then
         if isSameSet(P_t +: bot.right, P_u +: premises(t1).right) then
-          None
+          StepCheckOK
         else
-          Some(s"Right substitution failed: left sides are not correct")
+          StepCheckError(s"Right substitution failed: left sides are not correct")
       else
-        Some(s"Right substitution failed: right sides are not correct")
+        StepCheckError(s"Right substitution failed: right sides are not correct")
   }
 
   /**
@@ -371,25 +371,25 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] =
+    def checkCorrectness(premises: String => Sequent) =
       val (ls, rs) = is.foldLeft(None: Option[(List[Term], List[Term])]) {
         case (Some((list1, list2)), i) =>
           premises(t1).left(i) match
             case AtomicFormula(`equality`, Seq(l, r)) => Some(l :: list1, r :: list2)
             case _ => None
-        case (None, _) => None
+        case (StepCheckOK, _) => None
       } match
         case Some((ls, rs)) => (ls.reverse, rs.reverse)
-        case None => return Some("Left substitution failed: equality not found")
+        case None => return StepCheckError("Left substitution failed: equality not found")
       val P_t = substituteVariablesInFormula(P, (xs zip ls).toMap)
       val P_u = substituteVariablesInFormula(P, (xs zip rs).toMap)
       if isSameSet(P_t +: bot.left, (P_u +: premises(t1).left) ++ (ls zip rs).map(_ === _)) then
         if isSameSet(bot.right, premises(t1).right) then
-          None
+          StepCheckOK
         else
-          Some(s"Left substitution failed: right sides are not correct")
+          StepCheckError(s"Left substitution failed: right sides are not correct")
       else
-        Some(s"Left substitution failed: left sides are not correct")
+        StepCheckError(s"Left substitution failed: left sides are not correct")
 
   }
 
@@ -408,13 +408,13 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = this
-    def checkCorrectness(premises: String => Sequent): Option[String] =
+    def checkCorrectness(premises: String => Sequent) =
       try {
         CongruenceClosure.eliminateCongruence(Seq(this))
-        return None
+        return StepCheckOK
       } catch
         case e: Exception => {
-          return Some(e.getMessage)
+          return StepCheckError(e.getMessage)
         }
   }
 
@@ -427,7 +427,7 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1), t2 = map.getOrElse(t2, t2))
-    def checkCorrectness(premises: String => Sequent): Option[String] = None //todo
+    def checkCorrectness(premises: String => Sequent) = StepCheckUnknown //todo
   }
 
 
@@ -480,7 +480,7 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1), t2 = map.getOrElse(t2, t2))
-    def checkCorrectness(premises: String => Sequent): Option[String] =
+    def checkCorrectness(premises: String => Sequent) =
 
       val A_Pair = computeLit(premises(t1).left(0), i1)
       val B_Pair = computeLit(premises(t2).left(0), i2)
@@ -513,7 +513,7 @@ object LVL2 {
           (isSameSet(A_Rest ++ B_Rest, Res2) || bot.left(0) == AtomicFormula(AtomicSymbol("$false",0), Seq()))
         case _ => false
 
-      if res then None else Some("Resolution failed")
+      if res then StepCheckOK else StepCheckError("Resolution failed")
   }
 
   /**
@@ -530,9 +530,7 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = None
-      // isSubset(bot.left, premises(t1).left) &&
-      //   isSubset(bot.right, premises(t1).right)
+    def checkCorrectness(premises: String => Sequent) = StepCheckUnknown //TODO
   }
 
     /**
@@ -549,7 +547,7 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = this
-    def checkCorrectness(premises: String => Sequent): Option[String] = None
+    def checkCorrectness(premises: String => Sequent) = StepCheckUnknown
       // isSubset(bot.left, premises(t1).left) &&
       //   isSubset(bot.right, premises(t1).right)
   }
@@ -561,14 +559,14 @@ object LVL2 {
    *  And Δ is the negation of Γ
    * @param bot Resulting formula
    */
-  case class Prenex(name: String, bot: Sequent, t1: String) extends StrictLVL2ProofStep {
+  case class RightPrenex(name: String, bot: Sequent, i:Int, j: Int, t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
-    override def toString: String = s"fof(${name}, plain, ${bot}, inference(rightPrenex, [status(thm), 0, 0], [${t1}])).";
+    override def toString: String = s"fof(${name}, plain, ${bot}, inference(rightPrenex, [status(thm), $i, $j], [${t1}])).";
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = None
+    def checkCorrectness(premises: String => Sequent) = StepCheckUnknown
       // isSubset(bot.left, premises(t1).left) &&
       //   isSubset(bot.right, premises(t1).right)
   }
@@ -591,16 +589,16 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val new_p = substituteVariablesInFormula(premises(t1).left(i), Map(x -> t))
 
       if isSameSet(premises(t1).left(i) +: bot.left, new_p +: premises(t1).left) then
         if isSameSet(bot.right, premises(t1).right) then
-          None
+          StepCheckOK
         else
-          Some("right sides is not the same")
+          StepCheckError("right sides is not the same")
       else
-        Some("left sides is not correct")
+        StepCheckError("left sides is not correct")
   }
 */
 
@@ -613,27 +611,20 @@ object LVL2 {
    * @param (i, x) List of pair (index, term)
    * @param t term in place of x
    */
-  case class InstantiateMult(name: String, bot: Sequent, i: Int, terms: Seq[(VariableSymbol, Term)], t1: String) extends StrictLVL2ProofStep {
+  case class InstMult(name: String, bot: Sequent, terms: Seq[(FunctionSymbol|AtomicSymbol|VariableSymbol, Term|Formula, Seq[VariableSymbol])], t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
 
-    override def toString: String = s"fof(${name}, plain, ${bot}, inference(instMult, [status(thm), " +
-      s"[${terms.foldLeft(("", 0))((acc, x) => {(acc._1 ++ s"tuple3('${x(0).toString()}', $$fot(${x(1).toString()}), [])" ++ (if (acc._2 != terms.length - 1) then ", " else ""), acc._2 + 1)})._1}]], [${t1}])).";
+    override def toString: String = 
+      s"fof(${name}, plain, ${bot}, inference(instMult, [status(thm), " +
+      s"[" +
+        terms.map((label, t, varsl) => s"tuple3('${label.toString()}', $$fot(${t.toString()}), [${varsl.mkString(", ")}])").mkString(", ") +
+      "]], [${t1}]))."
 
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
-      val map = terms.foldLeft(Map[sctptp.FOL.VariableSymbol, sctptp.FOL.Term]())((acc, x) => acc + (x._1 -> x._2))
-      val new_p =  substituteVariablesInFormula(premises(t1).left(i), map)
-
-      if isSameSet(premises(t1).left(i) +: bot.left, new_p +: premises(t1).left) then
-        if isSameSet(bot.right, premises(t1).right) then
-          None
-        else
-          Some("right sides is not the same")
-      else
-        Some("left sides is not correct")
+    def checkCorrectness(premises: String => Sequent) = StepCheckUnknown
   }
 
 
@@ -651,7 +642,7 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = None
+    def checkCorrectness(premises: String => Sequent) = StepCheckUnknown
   }
 
   case class LetFormula(name: String, defin: Formula) extends StrictLVL2ProofStep {
@@ -662,7 +653,7 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = this
     def rename(newName: String) = this
     def renamePremises(map: Map[String, String]): SCProofStep = this
-    def checkCorrectness(premises: String => Sequent): Option[String] = None
+    def checkCorrectness(premises: String => Sequent) = StepCheckOK
   }
 
   case class LetTerm(name: String, defin: Term) extends StrictLVL2ProofStep {
@@ -673,7 +664,7 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = this
     def rename(newName: String) = this
     def renamePremises(map: Map[String, String]): SCProofStep = this
-    def checkCorrectness(premises: String => Sequent): Option[String] = None
+    def checkCorrectness(premises: String => Sequent) = StepCheckOK
   }
 
    /**
@@ -685,14 +676,15 @@ object LVL2 {
    * @param i Index of ∀x. A on the right
    * @param y Variable in place of x in the premise
    */
-  case class InstForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) extends StrictLVL2ProofStep {
+  case class InstForall(name: String, bot: Sequent, i: Int, t: Term, t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithTerm(name, "instForall", bot, i, y.toString(), premises)
+    override def toString: String = SCProofStep.outputWithTerm(name, "instForall", bot, i, t.toString(), premises)
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = None}
+    def checkCorrectness(premises: String => Sequent) = StepCheckUnknown
+  }
 
 
   case class RightEpsilonSubst(name: String, bot: Sequent, i: Int, flip: Boolean,
@@ -706,7 +698,7 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = ???
+    def checkCorrectness(premises: String => Sequent) = StepCheckUnknown
   }
 
   case class ExistsIffEpsilon(name: String, bot: Sequent, i:Int) extends StrictLVL2ProofStep {
@@ -716,31 +708,31 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = this
     def renamePremises(map: Map[String, String]): SCProofStep = this
-    def checkCorrectness(premises: String => Sequent): Option[String] = ???
+    def checkCorrectness(premises: String => Sequent) = StepCheckUnknown
   }
 
 
 
-  case class RightSubstFun(name: String, bot: Sequent, i: Int, flip:Boolean, P:FunctionSymbol, phi: Formula, t1: String) extends StrictLVL2ProofStep {
+  case class RightSubstFun(name: String, bot: Sequent, i: Int, flip:Boolean, phi: Formula, F:FunctionSymbol,  t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
     override def toString: String = 
-      s"fof(${name}, plain, ${bot}, inference(rightSubstFun, [status(thm), ${i}, ${if flip then 1 else 0}, '${P}', $$fof(${phi})], [${t1}]))."
+      s"fof(${name}, plain, ${bot}, inference(rightSubstFun, [status(thm), ${i}, ${if flip then 1 else 0}, $$fof(${phi}), '${F}'], [${t1}]))."
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): RightSubstFun = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = ???
+    def checkCorrectness(premises: String => Sequent) = StepCheckUnknown
   }
 
-  case class RightSubstPred(name:String, bot: Sequent, i: Int, flip:Boolean, P:AtomicSymbol, phi: Formula, t1: String) extends StrictLVL2ProofStep {
+  case class RightSubstPred(name:String, bot: Sequent, i: Int, flip:Boolean, phi: Formula, P:AtomicSymbol,  t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
     override def toString: String = 
-      s"fof(${name}, plain, ${bot}, inference(rightSubstPred, [status(thm), ${i}, ${if flip then 1 else 0}, '${P}', $$fof(${phi})], [${t1}]))."
+      s"fof(${name}, plain, ${bot}, inference(rightSubstPred, [status(thm), ${i}, ${if flip then 1 else 0}, $$fof(${phi}), '${P}'], [${t1}]))."
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): RightSubstPred = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = ???
+    def checkCorrectness(premises: String => Sequent) = StepCheckUnknown
   }
 
   /**
@@ -757,7 +749,7 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = this
-    def checkCorrectness(premises: String => Sequent): Option[String] = ???
+    def checkCorrectness(premises: String => Sequent) = StepCheckUnknown
   }
 
   case class ElimEqRefl(name: String, bot: Sequent, i: Int, t1: String) extends StrictLVL2ProofStep {
@@ -767,7 +759,7 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = this
-    def checkCorrectness(premises: String => Sequent): Option[String] = ???
+    def checkCorrectness(premises: String => Sequent) = StepCheckUnknown
   }
 
 
@@ -788,7 +780,7 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
 
       def computeLit(f : Formula, index: Int): (Formula, Seq[Formula]) = {
         f match
@@ -811,9 +803,9 @@ object LVL2 {
 
       if isSameSet(Seq(new_bot), premises(t1).left) then
         if isSameSet(premises(t1).right, bot.right) then
-          None
-        else Some(s"Right-hand side of premise is not the same as the right-hand side of the conclusion.")
-      else Some(s"Left-hand side of premise is not the same as the left-hand side of the conclusion.")
+          StepCheckOK
+        else StepCheckError(s"Right-hand side of premise is not the same as the right-hand side of the conclusion.")
+      else StepCheckError(s"Left-hand side of premise is not the same as the left-hand side of the conclusion.")
 
   }
 

@@ -44,13 +44,14 @@ object Main {
              input: String) = {
     val proof = reconstructProof(File(input))
     val res = checkProof(proof)
-      res match {
-        case Some((msg, step)) =>
-          println(s"Error: $msg")
-          println(s"Step: $step")
-        case None =>
-          println(s"Proof is correct")
-      }
+    res match {
+      case SequentCalculus.StepCheckError(msg) =>
+        println(s"Error: $msg") 
+      case SequentCalculus.StepCheckOK =>
+        println(s"Proof is correct")
+      case SequentCalculus.StepCheckUnknown =>
+        println(s"Proof seems correct but contains level 3 proof steps that have not been checked.")
+    }
   }
 
 

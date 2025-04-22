@@ -60,13 +60,18 @@ object SequentCalculus {
   }
 
   
+  
+  sealed trait StepCheck
+  case object StepCheckOK extends StepCheck
+  case class StepCheckError(msg: String) extends StepCheck
+  case object StepCheckUnknown extends StepCheck
 
   trait SCProofStep {
     val name: String
     val bot: Sequent
     val premises: Seq[String]
 
-    def checkCorrectness(premises: String => Sequent): Option[String]
+    def checkCorrectness(premises: String => Sequent): StepCheck
     def toStringWithPremises(premises: String => Sequent): String = toString
     def addAssumptions(fs: Seq[Formula]): SCProofStep
     def mapBot(f: Sequent => Sequent): SCProofStep
@@ -113,7 +118,7 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = this
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = this
-    def checkCorrectness(premises: String => Sequent): Option[String] = None
+    def checkCorrectness(premises: String => Sequent) = StepCheckOK
     override def toString: String = s"fof($name, conjecture, ${goal})."
 
   }
@@ -168,21 +173,30 @@ object SequentCalculus {
     override def toString(): String = steps.foldLeft("")((acc, e) => acc + "\n" + e.toString())
   }
 
-  def checkProof[Steps<:SCProofStep](p: SCProof[Steps]): Option[(String, Steps)] = {
+  def checkProof[Steps<:SCProofStep](p: SCProof[Steps]): StepCheck = {
     val steps = p.steps
     val premises: scala.collection.mutable.Map[String, Sequent] = scala.collection.mutable.Map()
+    var unknown = false
     def inner( steps: Iterator[Steps]): Option[(String, Steps)] =
       if steps.hasNext then
         val step = steps.next()
         step.checkCorrectness(premises) match
-        case None =>
+        case StepCheckOK =>
           premises.update(step.name, step.bot)
           inner(steps)
-        case Some(msg) =>
+        case StepCheckUnknown =>
+          unknown = true
+          premises.update(step.name, step.bot)
+          inner(steps)
+        case StepCheckError(msg) =>
           Some((s"${step.name}:  $msg", step))
       else
         None
-    inner(steps.iterator)
+    inner(steps.iterator) match
+      case Some((msg, step)) =>
+        StepCheckError(s"line $step\n $msg")
+      case None =>
+        if unknown then StepCheckUnknown else StepCheckOK
   }
 
   def printProof[Steps<:SCProofStep](p: SCProof[Steps]): Unit = {
@@ -238,27 +252,6 @@ object SequentCalculus {
 
   private def contains(seq: Seq[Formula], f: Formula): Boolean = seq.contains(f)
 
-  /*
-
-  /**
-   * --------------
-   *    Γ |- Δ
-   *
-   * @param bot Resulting formula
-   */
-  case class Conjecture(name: String, bot: Sequent) extends LVL1ProofStep {
-    val premises = Seq()
-    override def toString: String =
-      s"fof(${name}, conjecture, ${bot})."
-    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
-    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
-    def rename(newName: String) = copy(name = newName)
-    def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = None
-  }
-
-  */
-
   /**
    * --------------
    *    Γ |- Δ
@@ -273,7 +266,7 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent): Axiom = copy(bot = f(bot))
     def rename(newName: String): Axiom = copy(name = newName)
     def renamePremises(map: Map[String, String]): Axiom = this
-    def checkCorrectness(premises: String => Sequent): Option[String] = None
+    def checkCorrectness(premises: String => Sequent) = StepCheckOK
   }
 
     /**
@@ -290,7 +283,7 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = this
-    def checkCorrectness(premises: String => Sequent): Option[String] = None
+    def checkCorrectness(premises: String => Sequent) = StepCheckOK
   }
 
 
@@ -308,9 +301,9 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = this
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val fi = bot.left(i)
-      if bot.right.exists(isSame(_, fi)) then None else Some(s"${fi} is not in the right-hand side of the conclusion.")
+      if bot.right.exists(isSame(_, fi)) then StepCheckOK else StepCheckError(s"${fi} is not in the right-hand side of the conclusion.")
   }
 
 
@@ -329,13 +322,13 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val A = bot.left(i)
       if isSameSet(A +: premises(t1).left, bot.left) then
         if isSameSet(premises(t1).right, bot.right) then
-          None
-        else Some(s"Right-hand side of premise is not the same as the right-hand side of the conclusion.")
-      else Some(s"Left-hand side of premise is not the same as the left-hand side of the conclusion.")
+          StepCheckOK
+        else StepCheckError(s"Right-hand side of premise is not the same as the right-hand side of the conclusion.")
+      else StepCheckError(s"Left-hand side of premise is not the same as the left-hand side of the conclusion.")
       
   }
 
@@ -355,13 +348,13 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val A = bot.right(i)
       if isSameSet(A +: premises(t1).right, bot.right) then
         if isSameSet(premises(t1).left, bot.left) then
-          None
-        else Some(s"Left-hand side of premise is not the same as the left-hand side of the conclusion.")
-      else Some(s"Right-hand side of premise is not the same as the right-hand side of the conclusion.")
+          StepCheckOK
+        else StepCheckError(s"Left-hand side of premise is not the same as the left-hand side of the conclusion.")
+      else StepCheckError(s"Right-hand side of premise is not the same as the right-hand side of the conclusion.")
       
   }
 
@@ -380,17 +373,17 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1), t2 = map.getOrElse(t2, t2))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val A = premises(t1).right(i)
       if (isSameSet(bot.left :+ A, premises(t1).left `concat` premises(t2).left) && (!contains(premises(t1).left, A) || contains(bot.left, A))) then
         if (isSameSet(bot.right :+ A, premises(t2).right `concat` premises(t1).right) && (!contains(premises(t2).right, A) || contains(bot.right, A))) then
           if (contains(premises(t2).left, A)) then
             if (contains(premises(t1).right, A)) then
-              None
-            else Some(s"Right-hand side of first premise does not contain A as claimed.")
-          else Some(s"Left-hand side of second premise does not contain A as claimed.")
-        else Some(s"Right-hand side of conclusion :+ A is not the union of the right-hand sides of the premises.")
-      else Some(s"Left-hand side of conclusion :+ A is not the union of the left-hand sides of the premises.")
+              StepCheckOK
+            else StepCheckError(s"Right-hand side of first premise does not contain A as claimed.")
+          else StepCheckError(s"Left-hand side of second premise does not contain A as claimed.")
+        else StepCheckError(s"Right-hand side of conclusion :+ A is not the union of the right-hand sides of the premises.")
+      else StepCheckError(s"Left-hand side of conclusion :+ A is not the union of the left-hand sides of the premises.")
   }
 
   /**
@@ -408,20 +401,20 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val AB = bot.left(i)
       AB match
         case ConnectorFormula(And, Seq(a, b)) =>
           if isSameSet(bot.right, premises(t1).right) then
             if isSameSet(bot.left :+ a :+ b, premises(t1).left :+ AB) then
-              None
+              StepCheckOK
             else 
               println()
               println("bot + a + b: " + (bot.left :+ a :+ b))
               println("premises(t1).left + AB: " + (premises(t1).left :+ AB))
-              Some("Left-hand side of premise :+ A∧B must be same as left-hand side of premise :+ A, B")
-          else Some("Right-hand sides of the premise and the conclusion must be the same.")
-        case _ => Some(s"$AB is not a conjunction")
+              StepCheckError("Left-hand side of premise :+ A∧B must be same as left-hand side of premise :+ A, B")
+          else StepCheckError("Right-hand sides of the premise and the conclusion must be the same.")
+        case _ => StepCheckError(s"$AB is not a conjunction")
   }
 
   /**
@@ -439,16 +432,16 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1), t2 = map.getOrElse(t2, t2))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val AB = bot.left(i)
       AB match
         case ConnectorFormula(Or, Seq(a, b)) =>
           if (isSameSet(bot.right, premises(t1).right `concat` premises(t2).right))
             if (isSameSet(bot.left :+ a :+ b, premises(t1).left `concat` premises(t2).left :+ AB))
-              None
-            else Some(s"Left-hand side of conclusion must be identical to `concat` of left-hand sides of premisces :+ A ∨ B.")
-          else Some(s"Right-hand side of conclusion :+ A :+ B must be identical to `concat` of right-hand sides of premisces.")
-        case _ => Some(s"$AB is not a disjunction")
+              StepCheckOK
+            else StepCheckError(s"Left-hand side of conclusion must be identical to `concat` of left-hand sides of premisces :+ A ∨ B.")
+          else StepCheckError(s"Right-hand side of conclusion :+ A :+ B must be identical to `concat` of right-hand sides of premisces.")
+        case _ => StepCheckError(s"$AB is not a disjunction")
   }
 
 
@@ -467,16 +460,16 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1), t2 = map.getOrElse(t2, t2))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val AB = bot.left(i)
       AB match
         case ConnectorFormula(Implies, Seq(a, b)) =>
             if (isSameSet(bot.right :+ a, premises(t1).right `concat` premises(t2).right))
               if (isSameSet(bot.left :+ b, premises(t1).left `concat` premises(t2).left :+ AB))
-                None
-              else Some(s"Left-hand side of conclusion :+ B must be identical to `concat` of left-hand sides of premisces :+ A⇒B.")
-            else Some(s"Right-hand side of conclusion :+ A must be identical to `concat` of right-hand sides of premisces.")
-        case _ => Some(s"$AB is not an implication")
+                StepCheckOK
+              else StepCheckError(s"Left-hand side of conclusion :+ B must be identical to `concat` of left-hand sides of premisces :+ A⇒B.")
+            else StepCheckError(s"Right-hand side of conclusion :+ A must be identical to `concat` of right-hand sides of premisces.")
+        case _ => StepCheckError(s"$AB is not an implication")
   }
 
 
@@ -496,7 +489,7 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val AB = bot.left(i)
       bot.left(i) match
         case a_b @ ConnectorFormula(Iff, Seq(a, b)) =>
@@ -504,10 +497,10 @@ object SequentCalculus {
           val BimpA = ConnectorFormula(Implies, Seq(b, a))
           if (isSameSet(premises(t1).right, bot.right))
             if isSameSet(bot.left :+ AimpB :+ BimpA, premises(t1).left :+ AB) then
-              None
-            else Some("Left-hand side of conclusion :+ A⇔B must be same as left-hand side of premise :+ either A⇒B, B⇒A or both.")
-          else Some("Right-hand sides of premise and conclusion must be the same.")
-        case _ => Some(s"$AB is not a biconditional")
+              StepCheckOK
+            else StepCheckError("Left-hand side of conclusion :+ A⇔B must be same as left-hand side of premise :+ either A⇒B, B⇒A or both.")
+          else StepCheckError("Right-hand sides of premise and conclusion must be the same.")
+        case _ => StepCheckError(s"$AB is not a biconditional")
   }
 
   /**
@@ -525,16 +518,16 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val nA = bot.left(i)
       bot.left(i) match
         case ConnectorFormula(Neg, Seq(a)) => 
           if (isSameSet(bot.left, premises(t1).left :+ nA)) then
             if (isSameSet(bot.right :+ a, premises(t1).right)) then
-              None
-            else Some("Right-hand side of conclusion :+ A must be the same as right-hand side of premise")
-          else Some("Left-hand side of conclusion must be the same as left-hand side of premise :+ ¬A")
-        case _ => Some(s"$nA is not a negation")
+              StepCheckOK
+            else StepCheckError("Right-hand side of conclusion :+ A must be the same as right-hand side of premise")
+          else StepCheckError("Left-hand side of conclusion must be the same as left-hand side of premise :+ ¬A")
+        case _ => StepCheckError(s"$nA is not a negation")
   }
 
   /**
@@ -553,7 +546,7 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val eA = bot.left(i)
       bot.left(i) match
         case  BinderFormula(Exists, x, a) => 
@@ -561,11 +554,11 @@ object SequentCalculus {
           if (isSameSet(bot.right, premises(t1).right)) then
             if (isSameSet(bot.left :+ inst, premises(t1).left :+ eA)) then
               if ((bot.left `concat` bot.right).forall(f => !f.freeVariables.contains(y))) then
-                None
-              else Some(s"The variable $y must not be free in the resulting sequent.")
-            else Some("Left-hand side of conclusion :+ A must be the same as left-hand side of premise :+ ∃x. A")
-          else Some("Right-hand side of conclusion must be the same as right-hand side of premise")
-        case _ => Some(s"$eA is not an existential quantification")
+                StepCheckOK
+              else StepCheckError(s"The variable $y must not be free in the resulting sequent.")
+            else StepCheckError("Left-hand side of conclusion :+ A must be the same as left-hand side of premise :+ ∃x. A")
+          else StepCheckError("Right-hand side of conclusion must be the same as right-hand side of premise")
+        case _ => StepCheckError(s"$eA is not an existential quantification")
   }
 
   /**
@@ -584,17 +577,17 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val fa = bot.left(i)
       bot.left(i) match
         case all @ BinderFormula(Forall, x, a) => 
           val inst = substituteVariablesInFormula(a, Map(x -> t))
           if (isSameSet(bot.right, premises(t1).right))
             if (isSameSet(bot.left :+ inst, premises(t1).left :+ fa))
-              None
-            else Some("Left-hand side of conclusion :+ A[t/x] must be the same as left-hand side of premise :+ ∀x. A")
-          else Some("Right-hand side of conclusion must be the same as right-hand side of premise")
-        case _ => Some(s"$fa is not a universal quantification")
+              StepCheckOK
+            else StepCheckError("Left-hand side of conclusion :+ A[t/x] must be the same as left-hand side of premise :+ ∀x. A")
+          else StepCheckError("Right-hand side of conclusion must be the same as right-hand side of premise")
+        case _ => StepCheckError(s"$fa is not a universal quantification")
   }
 
   /**
@@ -612,7 +605,7 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1), t2 = map.getOrElse(t2, t2))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val AB = bot.right(i)
       AB match
         case ConnectorFormula(And, Seq(a, b)) =>
@@ -622,10 +615,10 @@ object SequentCalculus {
               isSubset(premises(t2).right, bot.right :+ b) &&
               isSubset(bot.right, premises(t1).right `concat` premises(t2).right :+ AB)
               ) then 
-              None
-            else Some(s"Right-hand side of conclusion + a + b is not the same as the union of the right-hand sides of the premises A, B.")
-          else Some("Left-hand side of conclusion must be the same as left-hand side of premise")
-        case _ => Some(s"$AB is not a conjunction")
+              StepCheckOK
+            else StepCheckError(s"Right-hand side of conclusion + a + b is not the same as the union of the right-hand sides of the premises A, B.")
+          else StepCheckError("Left-hand side of conclusion must be the same as left-hand side of premise")
+        case _ => StepCheckError(s"$AB is not a conjunction")
 
   }
 
@@ -645,16 +638,16 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val AB = bot.right(i)
       AB match
         case ConnectorFormula(Or, Seq(a, b)) =>
           if (isSameSet(bot.left, premises(t1).left))
             if (isSameSet(bot.right :+ a :+ b, premises(t1).right :+ AB))
-              None
-            else Some("Right-hand side of conclusion  :+ A, B must be the same as right-hand side of premise :+ A ∨ B")
-          else Some("Left-hand side of conclusion must be the same as left-hand side of premise")
-        case _ => Some(s"$AB is not a disjunction")
+              StepCheckOK
+            else StepCheckError("Right-hand side of conclusion  :+ A, B must be the same as right-hand side of premise :+ A ∨ B")
+          else StepCheckError("Left-hand side of conclusion must be the same as left-hand side of premise")
+        case _ => StepCheckError(s"$AB is not a disjunction")
   }
 
   /**
@@ -672,16 +665,16 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val AB = bot.right(i)
       AB match
         case ConnectorFormula(Implies, Seq(a, b)) =>
           if (isSameSet(bot.left :+ a, premises(t1).left))
             if (isSameSet(bot.right :+ b, premises(t1).right :+ AB))
-              None
-            else Some("Right-hand side of conclusion :+ A=>B must be the same as right-hand side of premise + B")
-          else Some("Left-hand side of conclusion :+ A must be the same as left-hand side of premise")
-        case _ => Some(s"$AB is not an implication")
+              StepCheckOK
+            else StepCheckError("Right-hand side of conclusion :+ A=>B must be the same as right-hand side of premise + B")
+          else StepCheckError("Left-hand side of conclusion :+ A must be the same as left-hand side of premise")
+        case _ => StepCheckError(s"$AB is not an implication")
   }
 
   /**
@@ -699,7 +692,7 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1), t2 = map.getOrElse(t2, t2))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val AB = bot.right(i)
       AB match
         case ConnectorFormula(Iff, Seq(a, b)) =>
@@ -711,10 +704,10 @@ object SequentCalculus {
               isSubset(premises(t2).right, bot.right :+ BimpA) &&
               isSubset(bot.right, premises(t1).right `concat` premises(t2).right :+ AB)
               )
-              None
-            else Some(s"Right-hand side of conclusion + a⇒B + B⇒A is not the same as the union of the right-hand sides of the premises A⇔b.")
-          else Some(s"Left-hand side of conclusion is not the union of the left-hand sides of the premises.")
-        case _ => Some(s"$AB is not a biconditional")
+              StepCheckOK
+            else StepCheckError(s"Right-hand side of conclusion + a⇒B + B⇒A is not the same as the union of the right-hand sides of the premises A⇔b.")
+          else StepCheckError(s"Left-hand side of conclusion is not the union of the left-hand sides of the premises.")
+        case _ => StepCheckError(s"$AB is not a biconditional")
   }
 
   /**
@@ -732,16 +725,16 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val nA = bot.right(i)
       nA match
         case ConnectorFormula(Neg, Seq(a)) =>
           if (isSameSet(bot.left :+ a, premises(t1).left))
             if (isSameSet(bot.right, premises(t1).right :+ nA))
-              None
-            else Some("Right-hand side of conclusion :+ A must be the same as right-hand side of premise")
-          else Some("Left-hand side of conclusion must be the same as left-hand side of premise :+ A")
-        case _ => Some(s"$nA is not a negation")
+              StepCheckOK
+            else StepCheckError("Right-hand side of conclusion :+ A must be the same as right-hand side of premise")
+          else StepCheckError("Left-hand side of conclusion must be the same as left-hand side of premise :+ A")
+        case _ => StepCheckError(s"$nA is not a negation")
   }
 
   /**
@@ -760,17 +753,17 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val eA = bot.right(i)
       eA match
         case BinderFormula(Exists, x, a) => 
           val inst = substituteVariablesInFormula(a, Map(x -> t))
           if (isSameSet(bot.left, premises(t1).left))
             if (isSameSet(bot.right :+ inst, premises(t1).right :+ eA))
-              None
-            else Some("Right-hand side of conclusion :+ A must be the same as right-hand side of premise")
-          else Some("Left-hand side of conclusion must be the same as left-hand side of premise :+ A")
-        case _ => Some("$eA is not an existential")
+              StepCheckOK
+            else StepCheckError("Right-hand side of conclusion :+ A must be the same as right-hand side of premise")
+          else StepCheckError("Left-hand side of conclusion must be the same as left-hand side of premise :+ A")
+        case _ => StepCheckError("$eA is not an existential")
   }
 
   /**
@@ -789,7 +782,7 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val fa = bot.right(i)
       fa match
         case BinderFormula(Forall, x, a) => 
@@ -797,11 +790,11 @@ object SequentCalculus {
           if (isSameSet(bot.left, premises(t1).left))
             if (isSameSet(bot.right :+ inst, premises(t1).right :+ fa))
               if ((bot.left `concat` bot.right).forall(f => !f.freeVariables.contains(y))) then
-                None
-              else Some(s"The variable $y must not be free in the resulting sequent.")
-            else Some("Right-hand side of conclusion :+ A must be the same as right-hand side of premise :+ A")
-          else Some("Left-hand side of conclusion must be the same as left-hand side of premise")
-        case _ => Some("$fa is not a universal")
+                StepCheckOK
+              else StepCheckError(s"The variable $y must not be free in the resulting sequent.")
+            else StepCheckError("Right-hand side of conclusion :+ A must be the same as right-hand side of premise :+ A")
+          else StepCheckError("Left-hand side of conclusion must be the same as left-hand side of premise")
+        case _ => StepCheckError("$fa is not a universal")
   }
 
   /**
@@ -818,12 +811,12 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = this
-    def checkCorrectness(premises: String => Sequent): Option[String] =
+    def checkCorrectness(premises: String => Sequent) =
       val A = bot.right(i)
       A match
         case AtomicFormula(`equality`, Seq(t1, t2)) => 
-          if t1 == t2 then None else Some("t1 and t2 are not the same")
-        case _ => Some("$A is not an equality")
+          if t1 == t2 then StepCheckOK else StepCheckError("t1 and t2 are not the same")
+        case _ => StepCheckError("$A is not an equality")
   }
 
   /**
@@ -843,10 +836,10 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val (t, u) = bot.left(i) match
         case AtomicFormula(`equality`, Seq(t1, t2)) => (t1, t2)
-        case _ => return Some(s"${bot.right(i)} is not an equality")
+        case _ => return StepCheckError(s"${bot.right(i)} is not an equality")
       val P_t = substituteVariablesInFormula(P, Map(x -> t))
       val P_u = substituteVariablesInFormula(P, Map(x -> u))
       val is_left_correct = 
@@ -856,9 +849,9 @@ object SequentCalculus {
           isSameSet(P_t +: bot.left, P_u +: bot.left(i) +: premises(t1).left) 
       if is_left_correct then
         if isSameSet(bot.right, premises(t1).right) then
-          None
-        else Some("Right-hand side is not correct.")
-      else Some("Left-hand side is not correct.")
+          StepCheckOK
+        else StepCheckError("Right-hand side is not correct.")
+      else StepCheckError("Left-hand side is not correct.")
       
   }
 
@@ -879,10 +872,10 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val (t, u) = bot.left(i) match
         case AtomicFormula(`equality`, Seq(t1, t2)) => (t1, t2)
-        case _ => return  Some(s"${bot.left(i)} is not an equality")
+        case _ => return  StepCheckError(s"${bot.left(i)} is not an equality")
       val P_t = substituteVariablesInFormula(P, Map(x -> t))
       val P_u = substituteVariablesInFormula(P, Map(x -> u))
       val is_right_correct = 
@@ -892,9 +885,9 @@ object SequentCalculus {
           isSameSet(P_t +: bot.right, P_u +: premises(t1).right)
       if isSameSet(bot.left, bot.left(i) +: premises(t1).left) then
         if is_right_correct then
-          None
-        else Some("Right-hand side is not correct.")
-      else Some("Left-hand side is not correct.")
+          StepCheckOK
+        else StepCheckError("Right-hand side is not correct.")
+      else StepCheckError("Left-hand side is not correct.")
   }
 
 
@@ -915,11 +908,11 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
-      if A.arity != 0 || !A.id.isUpper then return Some(s"$A is not a formula variable")
+    def checkCorrectness(premises: String => Sequent) = 
+      if A.arity != 0 || !A.id.isUpper then return StepCheckError(s"$A is not a formula variable")
       val (phi, psi) = bot.left(i) match
         case ConnectorFormula(Iff, Seq(phi, psi)) => (phi, psi)
-        case _ => return Some(s"${bot.right(i)} is not a biconditional")
+        case _ => return StepCheckError(s"${bot.right(i)} is not a biconditional")
       val R_phi = substituteAtomicsInFormula(R, Map(A -> phi))
       val R_psi = substituteAtomicsInFormula(R, Map(A -> psi))
       val is_left_correct = 
@@ -929,9 +922,9 @@ object SequentCalculus {
           isSameSet(R_phi +: bot.left, R_psi +: bot.left(i) +: premises(t1).left)
       if is_left_correct then
         if isSameSet(bot.right, premises(t1).right) then
-          None
-        else Some("Right-hand side is not correct.")
-      else Some("Left-hand side is not correct.")
+          StepCheckOK
+        else StepCheckError("Right-hand side is not correct.")
+      else StepCheckError("Left-hand side is not correct.")
   }
 
   /**
@@ -951,11 +944,11 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
-      if A.arity != 0 || !A.id.isUpper then return Some(s"$A is not a formula variable")
+    def checkCorrectness(premises: String => Sequent) = 
+      if A.arity != 0 || !A.id.isUpper then return StepCheckError(s"$A is not a formula variable")
       val (phi, psi) = bot.left(i) match
         case ConnectorFormula(Iff, Seq(phi, psi)) => (phi, psi)
-        case _ => return Some(s"${bot.left(i)} is not a biconditional")
+        case _ => return StepCheckError(s"${bot.left(i)} is not a biconditional")
       val R_phi = substituteAtomicsInFormula(R, Map(A -> phi))
       val R_psi = substituteAtomicsInFormula(R, Map(A -> psi))
       val is_right_correct = 
@@ -965,9 +958,9 @@ object SequentCalculus {
           isSameSet(R_phi +: bot.right, R_psi +: premises(t1).right)
       if isSameSet(bot.left, bot.left(i) +: premises(t1).left) then
         if is_right_correct then
-          None
-        else Some("Right-hand side is not correct.")
-      else Some("Left-hand side is not correct.")
+          StepCheckOK
+        else StepCheckError("Right-hand side is not correct.")
+      else StepCheckError("Left-hand side is not correct.")
   }
 
   /**
@@ -983,7 +976,7 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val fun = 
         if t._2.isEmpty then f => substituteVariablesInFormula(f, Map(VariableSymbol(F.id) -> t._1)) 
         else f => substituteFunctionsInFormula(f, Map(F -> t))
@@ -991,9 +984,9 @@ object SequentCalculus {
       val newright = premises(t1).right.map(fun)
       if isSameSet(newleft, bot.left) then
         if isSameSet(newright, bot.right) then
-          None
-        else Some("Right-hand side is not correct. Expected: " + newright)
-      else Some("Left-hand side is not correct. Expected: " + newleft)
+          StepCheckOK
+        else StepCheckError("Right-hand side is not correct. Expected: " + newright)
+      else StepCheckError("Left-hand side is not correct. Expected: " + newleft)
   }   
 
   /**
@@ -1009,14 +1002,14 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val newleft = premises(t1).left.map(substitutePredicatesInFormula(_, Map(P -> phi)))
       val newright = premises(t1).right.map(substitutePredicatesInFormula(_, Map(P -> phi)))
       if isSameSet(newleft, bot.left) then
         if isSameSet(newright, bot.right) then
-          None
-        else Some("Right-hand side is not correct. Expected: " + newright)
-      else Some("Left-hand side is not correct. Expected: " + newleft)
+          StepCheckOK
+        else StepCheckError("Right-hand side is not correct. Expected: " + newright)
+      else StepCheckError("Left-hand side is not correct. Expected: " + newleft)
   }
 
 
@@ -1036,16 +1029,16 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val Ay = premises(t1).left(i)
       val Aepsi = substituteVariablesInFormula(Ay, Map(y -> EpsilonTerm(y, Ay)))
       if (isSameSet(bot.right, premises(t1).right)) then
         if (isSameSet(bot.left :+ Ay, premises(t1).left :+ Aepsi)) then
           if ((bot.left `concat` bot.right).forall(f => !f.freeVariables.contains(y))) then
-            None
-          else Some(s"The variable $y must not be free in the resulting sequent.")
-        else Some("Left-hand side of conclusion :+ A must be the same as left-hand side of premise :+ ∃x. A")
-      else Some("Right-hand side of conclusion must be the same as right-hand side of premise")
+            StepCheckOK
+          else StepCheckError(s"The variable $y must not be free in the resulting sequent.")
+        else StepCheckError("Left-hand side of conclusion :+ A must be the same as left-hand side of premise :+ ∃x. A")
+      else StepCheckError("Right-hand side of conclusion must be the same as right-hand side of premise")
   }
 
 
@@ -1065,14 +1058,14 @@ object SequentCalculus {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent): Option[String] = 
+    def checkCorrectness(premises: String => Sequent) = 
       val At = substituteVariablesInFormula(phi, Map(x -> t))
       val Aepsi = substituteVariablesInFormula(phi, Map(x -> EpsilonTerm(x, phi)))
       if (isSameSet(bot.left, premises(t1).left))
         if (isSameSet(bot.right :+ At, premises(t1).right :+ Aepsi))
-          None
-        else Some("Right-hand side of conclusion :+ A must be the same as right-hand side of premise")
-      else Some("Left-hand side of conclusion must be the same as left-hand side of premise :+ A")
+          StepCheckOK
+        else StepCheckError("Right-hand side of conclusion :+ A must be the same as right-hand side of premise")
+      else StepCheckError("Left-hand side of conclusion must be the same as left-hand side of premise :+ A")
   }
 }
 

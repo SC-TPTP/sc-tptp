@@ -21,8 +21,8 @@ case class Subproof(name: String, proof: SCProof[?], assumptions: Seq[Formula], 
     s"fof($name, plain, $bot, inference(subproof, [$assumptions], {\n $proof\n}, [$axiomsString]))."
   }
 
-  def checkCorrectness(premises: String => Sequent): Option[String] = {
-    checkProof(proof).map(_._1)
+  def checkCorrectness(premises: String => Sequent) = {
+    checkProof(proof)
   }
 }
 

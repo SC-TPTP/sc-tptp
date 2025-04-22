@@ -186,6 +186,7 @@ object Parser {
       case Inference.Hyp(step) => Some(step)
       case Inference.LeftFalse(step) => Some(step)
       case Inference.ElimIffRefl(step) => Some(step)
+      case Inference.ElimEqRefl(step) => Some(step)
       case Inference.LeftWeaken(step) => Some(step)
       case Inference.LeftWeakenRes(step) => Some(step)
       case Inference.RightWeaken(step) => Some(step)
@@ -220,7 +221,7 @@ object Parser {
       case Inference.Clausify(step) => Some(step)
       case Inference.RightNNF(step) => Some(step)
       //case Inference.Instantiate_L(step) => Some(step)
-      case Inference.InstantiateMult(step) => Some(step)
+      case Inference.InstMult(step) => Some(step)
 
       case Inference.LeftNotAll(step) => Some(step)
       case Inference.LeftNotEx(step) => Some(step)
@@ -230,6 +231,12 @@ object Parser {
       case Inference.LeftNotImp(step) => Some(step)
       case Inference.LeftNotAnd(step) => Some(step)
       case Inference.LeftImp2(step) => Some(step)
+      case Inference.ExistsIffEpsilon(step) => Some(step)
+      case Inference.RightSubstPred(step) => Some(step)
+      case Inference.RightSubstFun(step) => Some(step)
+      case Inference.RightPrenex(step) => Some(step)
+      case Inference.InstForall(step) => Some(step)
+      case Inference.Res(step) => Some(step)
       case _ => None
     }
     r
@@ -244,6 +251,15 @@ object Parser {
           case _ => None
         }
     }
+
+        object Tuple {
+      def unapply(ann_seq: GeneralTerm): Option[Seq[GeneralTerm]] =
+        ann_seq match {
+          case GeneralTerm(List(MetaFunctionData("tuple3", tup)), None) => Some(tup)
+          case _ => None
+        }
+    }
+
     object Number {
       def unapply(ann_seq: GeneralTerm): Option[BigInt] =
         ann_seq match {
@@ -332,6 +348,16 @@ object Parser {
         ann_seq match {
           case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("elimIffRefl", Seq(_, StrOrNum(n)), Seq(t1)), _) =>
               Some(LVL2.ElimIffRefl(name, convertSequentToFol(sequent), n.toInt, t1))
+          case _ => None
+        }
+    }
+
+
+    object ElimEqRefl {
+      def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] =
+        ann_seq match {
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("elimEqRefl", Seq(_, StrOrNum(n)), Seq(t1)), _) =>
+              Some(LVL2.ElimEqRefl(name, convertSequentToFol(sequent), n.toInt, t1))
           case _ => None
         }
     }
@@ -744,11 +770,11 @@ object Parser {
         }
     }
 
-    object Prenex {
+    object RightPrenex {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightPrenex", Seq(_), Seq(t1)), _) =>
-            Some(LVL2.Prenex(name, convertSequentToFol(sequent), t1))
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightPrenex", Seq(_, StrOrNum(i), StrOrNum(j)), Seq(t1)), _) =>
+            Some(LVL2.RightPrenex(name, convertSequentToFol(sequent), i.toInt, j.toInt, t1))
           case _ => None
         }
     }
@@ -762,6 +788,112 @@ object Parser {
         }
     }
 
+    object ExistsIffEpsilon {
+      def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
+        ann_seq match {
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("existsIffEpsilon", Seq(_, StrOrNum(i)), Seq()), _) =>
+            Some(LVL2.ExistsIffEpsilon(name, convertSequentToFol(sequent), i.toInt))
+          case _ => None
+        }
+    }
+
+    object InstForall {
+      def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
+        ann_seq match {
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instForall", Seq(_, StrOrNum(i), GenTerm(t)), Seq(t1)), _) =>
+            Some(LVL2.InstForall(name, convertSequentToFol(sequent), i.toInt, t, t1))
+          case _ => None
+        }
+    }
+
+    object RightSubstPred {
+      def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
+        ann_seq match {
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightSubstPred", args, Seq(t1)), _) =>
+            val (i, forward, phi, pl) = args match
+              case Seq(_, StrOrNum(i), StrOrNum(forward), GenFormula(phi), String(pl)) => (i, forward, phi, pl)
+              case Seq(_, StrOrNum(i), StrOrNum(forward), String(pl), GenFormula(phi)) => (i, forward, phi, pl)
+              case _ => throw new Exception(s"args to rightSubstPred should be of the form status(thm), i, forward, phi, pl")  
+            
+            if !(pl(0).isUpper) then throw new Exception(s"Expected an atomic symbol (upper word), but got $pl")
+            def numberForall(prem: Formula): Option[Int] = prem match {
+              case BinderFormula(Forall, _, inner) => numberForall(inner).map(_+1)
+              case ConnectorFormula(Iff, Seq(_, _)) => Some(0)
+              case _ => None
+            }
+            val premise: Formula = convertFormulaToFol(sequent.lhs(i.toInt))
+            numberForall(premise) match
+              case Some(n) => 
+                val P = AtomicSymbol(pl, n)
+                Some(LVL2.RightSubstPred(name, convertSequentToFol(sequent), i.toInt, forward.toInt != 0, phi, P, t1))
+              case None => None
+          case _ => None
+        }
+    }
+
+    object RightSubstFun {
+      def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
+        ann_seq match {
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("rightSubstFun", args, Seq(t1)), _) =>
+            val (i, forward, phi, fl) = args match
+              case Seq(_, StrOrNum(i), StrOrNum(forward), GenFormula(phi), String(fl)) => (i, forward, phi, fl)
+              case Seq(_, StrOrNum(i), StrOrNum(forward), String(fl), GenFormula(phi)) => (i, forward, phi, fl)
+              case _ => throw new Exception(s"args to rightSubstPred should be of the form status(thm), i, forward, phi, fl")  
+            if !(fl(0).isUpper) then throw new Exception(s"Expected an atomic symbol (upper word), but got $fl")
+            def numberForall(prem: Formula): Option[Int] = prem match {
+              case BinderFormula(Forall, _, inner) => numberForall(inner).map(_+1)
+              case AtomicFormula(`equality`, Seq(_, _)) => Some(0)
+              case _ => None
+            }
+            val premise: Formula = convertFormulaToFol(sequent.lhs(i.toInt))
+            numberForall(premise) match
+              case Some(n) => 
+                val F = FunctionSymbol(fl, n)
+                Some(LVL2.RightSubstFun(name, convertSequentToFol(sequent), i.toInt, forward.toInt != 0, phi, F, t1))
+              case None => None
+          case _ => None
+        }
+    }
+
+
+
+    object InstMult {
+      def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
+        ann_seq match {
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instMult", Seq(_, Sequence(instantiations)), Seq(t1)), origin) =>
+            val map = instantiations.map {
+              case Tuple(Seq(String(sfl), expr, Sequence(varsl))) =>
+                val vars = varsl.map {
+                  case String(xl) => 
+                    if !(xl(0).isLower) then throw new Exception(s"Expected a variable (lower word), but got $xl")
+                    VariableSymbol(xl)
+                  case _ => throw new Exception(s"$name: Expected a list of strings, but got $varsl")
+                }
+                expr match
+                  case GenTerm(t) => 
+                    val sf = FunctionSymbol(sfl, vars.size)
+                    (sf, t, vars)
+                  case GenFormula(phi) => 
+                    val sp = AtomicSymbol(sfl, vars.size)
+                    (sp, phi, vars)
+              }
+            Some(LVL2.InstMult(name, convertSequentToFol(sequent), map, t1))
+          case _ => None
+        }
+    }
+
+    object Res {
+      def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
+        ann_seq match {
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("res", Seq(_, StrOrNum(n)), Seq(t1, t2)), _) =>
+            Some(LVL2.Res(name, convertSequentToFol(sequent), n.toInt, t1, t2))
+          case _ => None
+        }
+    }
+
+
+
+    /*
     object InstantiateMult {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
 
@@ -780,7 +912,7 @@ object Parser {
             }     
         }
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instantiateMult", Seq(_, StrOrNum(i), Sequence(terms: Seq[GeneralTerm])), Seq(t1)), _) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instMult", Seq(_, StrOrNum(i), Sequence(terms: Seq[GeneralTerm])), Seq(t1)), _) =>
             val termsAsList: Seq[(String, GeneralTerm)] = terms.foldLeft(Seq[(String, GeneralTerm)]()) { 
               (acc, x) => {
                 x.list match 
@@ -794,12 +926,10 @@ object Parser {
               }
             }
 
-            Some(LVL2.InstantiateMult(name, convertSequentToFol(sequent), i.toInt,buildSeqTerm(termsAsList), t1))
-
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instantiateMult", Seq(_, StrOrNum(i), Sequence(terms)), Seq(t1)), _) => ???
+            Some(LVL2.InstantiateMult(name, convertSequentToFol(sequent), i.toInt, buildSeqTerm(termsAsList), t1))
           case _ => None
         }
     }
-  
+  */
   }
 }

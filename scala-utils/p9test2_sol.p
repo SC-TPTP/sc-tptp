@@ -14,7 +14,7 @@ fof(ts_cla1, plain, [(Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),$r2,$r1] --> [~p(Sk5(V0
 fof(ts_claQ1_1, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),$r2,$r1] --> [~p(Sk5(V0)),~Ts1(V0)], inference(leftForall, [status(thm), 0, $fot(V0)], [ts_cla1])).
 fof(ts_clb1, plain, [(Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),$r2,$r1] --> [p(V0),~Ts1(V0)], inference(clausify, [status(thm), 0], [])).
 fof(ts_clbQ1_1, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),$r2,$r1] --> [p(V0),~Ts1(V0)], inference(leftForall, [status(thm), 0, $fot(V0)], [ts_clb1])).
-fof(ts_ax_just1, plain, [(Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),$r2,$r1] --> [Ts1(V0)], inference(rightSubstIff, [status(thm), 0, 0, $fof(HOLE), 'HOLE'], [neg_conjecture_V0])).
+fof(ts_ax_just1, plain, [(Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),$r2,$r1] --> [Ts1(V0)], inference(rightSubstIff, [status(thm), 0, 1, $fof(HOLE), 'HOLE'], [neg_conjecture_V0])).
 fof(ts_axQ1_1, plain, [! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0))),$r2,$r1] --> [Ts1(V0)], inference(leftForall, [status(thm), 0, $fot(V0)], [ts_ax_just1])).
 fof(r3, let, ! [V0]: (Ts1(V0) <=> (~p(Sk5(V0)) & p(V0)))).
 fof(ts_claQ1_1_p9r, plain, [$r3,$r2,$r1] --> [~p(Sk5(V0)),~Ts1(V0)], inference(instMult, [status(thm), [tuple3('V0', $fot(V0), [])]], [ts_claQ1_1])).
@@ -36,5 +36,5 @@ fof(sko_sp9, plain, [$r2,$r1] --> [], inference(elimIffRefl, [status(thm), 0], [
 fof(sko_inst9, plain, [! [X]: # [Y]: ((~p(Y) & p(X))) = # [Y]: ((~p(Y) & p(X))),$r1] --> [], inference(instFun, [status(thm), 'Sk5', $fot(# [Y]: ((~p(Y) & p(X)))), ['X']], [sko_sp9])).
 fof(sp_neg_conj, plain, [$r1] --> [], inference(elimEqRefl, [status(thm), 0], [sko_inst9])).
 fof(nc_elim_1, assumption, [? [X]: ! [Y]: (p(Y) | ~p(X))] --> [? [X]: ! [Y]: (p(Y) | ~p(X))], inference(hyp, [status(thm), 0], [])).
-fof(nc_elim_2, plain, [] --> [~? [X]: ! [Y]: (p(Y) | ~p(X)),? [X]: ! [Y]: (p(Y) | ~p(X))], inference(rightNot, [status(thm), 1], [nc_elim_1])).
-fof(nc_elim_3, plain, [] --> [? [X]: ! [Y]: (p(Y) | ~p(X))], inference(cut, [status(thm), 0], [nc_elim_2, sp_neg_conj])).
+fof(nc_elim_2, plain, [] --> [? [X]: ! [Y]: (p(Y) | ~p(X)), ~? [X]: ! [Y]: (p(Y) | ~p(X))], inference(rightNot, [status(thm), 1], [nc_elim_1])).
+fof(nc_elim_3, plain, [] --> [? [X]: ! [Y]: (p(Y) | ~p(X))], inference(cut, [status(thm), 1], [nc_elim_2, sp_neg_conj])).

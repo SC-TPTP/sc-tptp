@@ -303,7 +303,8 @@ object SequentCalculus {
     def renamePremises(map: Map[String, String]): SCProofStep = this
     def checkCorrectness(premises: String => Sequent) = 
       val fi = bot.left(i)
-      if bot.right.exists(isSame(_, fi)) then StepCheckOK else StepCheckError(s"${fi} is not in the right-hand side of the conclusion.")
+      if bot.right.exists(isSame(_, fi)) then StepCheckOK 
+      else StepCheckError(s"Hyp error: Formula ${fi} is not present in the right-hand side of the conclusion.")
   }
 
 
@@ -327,8 +328,8 @@ object SequentCalculus {
       if isSameSet(A +: premises(t1).left, bot.left) then
         if isSameSet(premises(t1).right, bot.right) then
           StepCheckOK
-        else StepCheckError(s"Right-hand side of premise is not the same as the right-hand side of the conclusion.")
-      else StepCheckError(s"Left-hand side of premise is not the same as the left-hand side of the conclusion.")
+        else StepCheckError(s"LeftWeaken error: The right-hand side of the conclusion does not match the right-hand side of the premise.")
+      else StepCheckError(s"LeftWeaken error: The left-hand side of the conclusion should match the left-hand side of the premise with formula ${A} added.")
       
   }
 
@@ -353,8 +354,8 @@ object SequentCalculus {
       if isSameSet(A +: premises(t1).right, bot.right) then
         if isSameSet(premises(t1).left, bot.left) then
           StepCheckOK
-        else StepCheckError(s"Left-hand side of premise is not the same as the left-hand side of the conclusion.")
-      else StepCheckError(s"Right-hand side of premise is not the same as the right-hand side of the conclusion.")
+        else StepCheckError(s"RightWeaken error: The left-hand side of the conclusion does not match the left-hand side of the premise.")
+      else StepCheckError(s"RightWeaken error: The right-hand side of the conclusion should match the right-hand side of the premise with formula ${A} added.")
       
   }
 
@@ -380,10 +381,10 @@ object SequentCalculus {
           if (contains(premises(t2).left, A)) then
             if (contains(premises(t1).right, A)) then
               StepCheckOK
-            else StepCheckError(s"Right-hand side of first premise does not contain A as claimed.")
-          else StepCheckError(s"Left-hand side of second premise does not contain A as claimed.")
-        else StepCheckError(s"Right-hand side of conclusion :+ A is not the union of the right-hand sides of the premises.")
-      else StepCheckError(s"Left-hand side of conclusion :+ A is not the union of the left-hand sides of the premises.")
+            else StepCheckError(s"Cut error: The right-hand side of the first premise does not contain the formula ${A} as expected.")
+          else StepCheckError(s"Cut error: The left-hand side of the second premise does not contain the formula ${A} as expected.")
+        else StepCheckError(s"Cut error: The right-hand side of the conclusion with ${A} added is not the union of the right-hand sides of the premises.")
+      else StepCheckError(s"Cut error: The left-hand side of the conclusion with ${A} added is not the union of the left-hand sides of the premises.")
   }
 
   /**
@@ -408,13 +409,9 @@ object SequentCalculus {
           if isSameSet(bot.right, premises(t1).right) then
             if isSameSet(bot.left :+ a :+ b, premises(t1).left :+ AB) then
               StepCheckOK
-            else 
-              println()
-              println("bot + a + b: " + (bot.left :+ a :+ b))
-              println("premises(t1).left + AB: " + (premises(t1).left :+ AB))
-              StepCheckError("Left-hand side of premise :+ A∧B must be same as left-hand side of premise :+ A, B")
-          else StepCheckError("Right-hand sides of the premise and the conclusion must be the same.")
-        case _ => StepCheckError(s"$AB is not a conjunction")
+            else StepCheckError("LeftAnd error: The left-hand side of the conclusion with A and B added must match the left-hand side of the premise with A ∧ B.")
+          else StepCheckError("LeftAnd error: The right-hand side of the conclusion must match the right-hand side of the premise.")
+        case _ => StepCheckError(s"LeftAnd error: ${AB} is not a conjunction.")
   }
 
   /**
@@ -439,9 +436,9 @@ object SequentCalculus {
           if (isSameSet(bot.right, premises(t1).right `concat` premises(t2).right))
             if (isSameSet(bot.left :+ a :+ b, premises(t1).left `concat` premises(t2).left :+ AB))
               StepCheckOK
-            else StepCheckError(s"Left-hand side of conclusion must be identical to `concat` of left-hand sides of premisces :+ A ∨ B.")
-          else StepCheckError(s"Right-hand side of conclusion :+ A :+ B must be identical to `concat` of right-hand sides of premisces.")
-        case _ => StepCheckError(s"$AB is not a disjunction")
+            else StepCheckError("LeftOr error: The left-hand side of the conclusion must match the concatenation of the left-hand sides of the premises with A ∨ B.")
+          else StepCheckError("LeftOr error: The right-hand side of the conclusion must match the concatenation of the right-hand sides of the premises.")
+        case _ => StepCheckError(s"LeftOr error: ${AB} is not a disjunction.")
   }
 
 
@@ -464,12 +461,12 @@ object SequentCalculus {
       val AB = bot.left(i)
       AB match
         case ConnectorFormula(Implies, Seq(a, b)) =>
-            if (isSameSet(bot.right :+ a, premises(t1).right `concat` premises(t2).right))
-              if (isSameSet(bot.left :+ b, premises(t1).left `concat` premises(t2).left :+ AB))
-                StepCheckOK
-              else StepCheckError(s"Left-hand side of conclusion :+ B must be identical to `concat` of left-hand sides of premisces :+ A⇒B.")
-            else StepCheckError(s"Right-hand side of conclusion :+ A must be identical to `concat` of right-hand sides of premisces.")
-        case _ => StepCheckError(s"$AB is not an implication")
+          if (isSameSet(bot.right :+ a, premises(t1).right `concat` premises(t2).right))
+            if (isSameSet(bot.left :+ b, premises(t1).left `concat` premises(t2).left :+ AB))
+              StepCheckOK
+            else StepCheckError("LeftImplies error: The left-hand side of the conclusion with B added must match the concatenation of the left-hand sides of the premises with A ⇒ B.")
+          else StepCheckError("LeftImplies error: The right-hand side of the conclusion with A added must match the concatenation of the right-hand sides of the premises.")
+        case _ => StepCheckError(s"LeftImplies error: ${AB} is not an implication.")
   }
 
 
@@ -491,16 +488,16 @@ object SequentCalculus {
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent) = 
       val AB = bot.left(i)
-      bot.left(i) match
-        case a_b @ ConnectorFormula(Iff, Seq(a, b)) =>
+      AB match
+        case ConnectorFormula(Iff, Seq(a, b)) =>
           val AimpB = ConnectorFormula(Implies, Seq(a, b))
           val BimpA = ConnectorFormula(Implies, Seq(b, a))
           if (isSameSet(premises(t1).right, bot.right))
             if isSameSet(bot.left :+ AimpB :+ BimpA, premises(t1).left :+ AB) then
               StepCheckOK
-            else StepCheckError("Left-hand side of conclusion :+ A⇔B must be same as left-hand side of premise :+ either A⇒B, B⇒A or both.")
-          else StepCheckError("Right-hand sides of premise and conclusion must be the same.")
-        case _ => StepCheckError(s"$AB is not a biconditional")
+            else StepCheckError("LeftIff error: The left-hand side of the conclusion with A ⇔ B must match the left-hand side of the premise with A ⇒ B and B ⇒ A.")
+          else StepCheckError("LeftIff error: The right-hand sides of the premise and the conclusion must match.")
+        case _ => StepCheckError(s"LeftIff error: ${AB} is not a biconditional.")
   }
 
   /**
@@ -520,14 +517,14 @@ object SequentCalculus {
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent) = 
       val nA = bot.left(i)
-      bot.left(i) match
+      nA match
         case ConnectorFormula(Neg, Seq(a)) => 
           if (isSameSet(bot.left, premises(t1).left :+ nA)) then
             if (isSameSet(bot.right :+ a, premises(t1).right)) then
               StepCheckOK
-            else StepCheckError("Right-hand side of conclusion :+ A must be the same as right-hand side of premise")
-          else StepCheckError("Left-hand side of conclusion must be the same as left-hand side of premise :+ ¬A")
-        case _ => StepCheckError(s"$nA is not a negation")
+            else StepCheckError("LeftNot error: The right-hand side of the conclusion with A must match the right-hand side of the premise.")
+          else StepCheckError("LeftNot error: The left-hand side of the conclusion must match the left-hand side of the premise with ¬A.")
+        case _ => StepCheckError(s"LeftNot error: ${nA} is not a negation.")
   }
 
   /**
@@ -548,17 +545,17 @@ object SequentCalculus {
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent) = 
       val eA = bot.left(i)
-      bot.left(i) match
-        case  BinderFormula(Exists, x, a) => 
+      eA match
+        case BinderFormula(Exists, x, a) => 
           val inst = substituteVariablesInFormula(a, Map(x -> y()))
           if (isSameSet(bot.right, premises(t1).right)) then
             if (isSameSet(bot.left :+ inst, premises(t1).left :+ eA)) then
               if ((bot.left `concat` bot.right).forall(f => !f.freeVariables.contains(y))) then
                 StepCheckOK
-              else StepCheckError(s"The variable $y must not be free in the resulting sequent.")
-            else StepCheckError("Left-hand side of conclusion :+ A must be the same as left-hand side of premise :+ ∃x. A")
-          else StepCheckError("Right-hand side of conclusion must be the same as right-hand side of premise")
-        case _ => StepCheckError(s"$eA is not an existential quantification")
+              else StepCheckError(s"LeftExists error: The variable ${y} must not be free in the resulting sequent.")
+            else StepCheckError("LeftExists error: The left-hand side of the conclusion with A must match the left-hand side of the premise with ∃x. A.")
+          else StepCheckError("LeftExists error: The right-hand side of the conclusion must match the right-hand side of the premise.")
+        case _ => StepCheckError(s"LeftExists error: ${eA} is not an existential quantification.")
   }
 
   /**
@@ -579,15 +576,15 @@ object SequentCalculus {
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent) = 
       val fa = bot.left(i)
-      bot.left(i) match
-        case all @ BinderFormula(Forall, x, a) => 
+      fa match
+        case BinderFormula(Forall, x, a) => 
           val inst = substituteVariablesInFormula(a, Map(x -> t))
           if (isSameSet(bot.right, premises(t1).right))
             if (isSameSet(bot.left :+ inst, premises(t1).left :+ fa))
               StepCheckOK
-            else StepCheckError("Left-hand side of conclusion :+ A[t/x] must be the same as left-hand side of premise :+ ∀x. A")
-          else StepCheckError("Right-hand side of conclusion must be the same as right-hand side of premise")
-        case _ => StepCheckError(s"$fa is not a universal quantification")
+            else StepCheckError("LeftForall error: The left-hand side of the conclusion with A[t/x] must match the left-hand side of the premise with ∀x. A.")
+          else StepCheckError("LeftForall error: The right-hand side of the conclusion must match the right-hand side of the premise.")
+        case _ => StepCheckError(s"LeftForall error: ${fa} is not a universal quantification.")
   }
 
   /**
@@ -616,10 +613,9 @@ object SequentCalculus {
               isSubset(bot.right, premises(t1).right `concat` premises(t2).right :+ AB)
               ) then 
               StepCheckOK
-            else StepCheckError(s"Right-hand side of conclusion + a + b is not the same as the union of the right-hand sides of the premises A, B.")
-          else StepCheckError("Left-hand side of conclusion must be the same as left-hand side of premise")
-        case _ => StepCheckError(s"$AB is not a conjunction")
-
+            else StepCheckError("RightAnd error: The right-hand side of the conclusion with A and B must match the union of the right-hand sides of the premises.")
+          else StepCheckError("RightAnd error: The left-hand side of the conclusion must match the left-hand side of the premises.")
+        case _ => StepCheckError(s"RightAnd error: ${AB} is not a conjunction.")
   }
 
 
@@ -645,9 +641,9 @@ object SequentCalculus {
           if (isSameSet(bot.left, premises(t1).left))
             if (isSameSet(bot.right :+ a :+ b, premises(t1).right :+ AB))
               StepCheckOK
-            else StepCheckError("Right-hand side of conclusion  :+ A, B must be the same as right-hand side of premise :+ A ∨ B")
-          else StepCheckError("Left-hand side of conclusion must be the same as left-hand side of premise")
-        case _ => StepCheckError(s"$AB is not a disjunction")
+            else StepCheckError("RightOr error: The right-hand side of the conclusion with A and B must match the right-hand side of the premise with A ∨ B.")
+          else StepCheckError("RightOr error: The left-hand side of the conclusion must match the left-hand side of the premise.")
+        case _ => StepCheckError(s"RightOr error: ${AB} is not a disjunction.")
   }
 
   /**
@@ -711,7 +707,7 @@ object SequentCalculus {
   }
 
   /**
-   *    Γ, A |- Δ
+   *    Γ |- A, Δ
    * ----------------
    *   Γ |- ¬A, Δ
    *
@@ -733,7 +729,7 @@ object SequentCalculus {
             if (isSameSet(bot.right, premises(t1).right :+ nA))
               StepCheckOK
             else StepCheckError("Right-hand side of conclusion :+ A must be the same as right-hand side of premise")
-          else StepCheckError("Left-hand side of conclusion must be the same as left-hand side of premise :+ A")
+          else StepCheckError("Left-hand side of conclusion :+ A must be the same as left-hand side of premise")
         case _ => StepCheckError(s"$nA is not a negation")
   }
 
@@ -808,7 +804,7 @@ object SequentCalculus {
     val premises = Seq()
     override def toString: String = SCProofStep.outputSingleIndex(name, RightReflRuleName, "plain", bot, i, premises)
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
-    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def mapBot(f: Sequent => Sequent): RightRefl = this
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = this
     def checkCorrectness(premises: String => Sequent) =
@@ -820,14 +816,14 @@ object SequentCalculus {
   }
 
   /**
-   *   Γ, P[x:=t] |- Δ
+   *   Γ, R[A:=A] |- Δ
    * ----------------
-   *   Γ, t = u, P[x:=u] |- Δ
+   *   Γ, A <=> B, R[A:=B] |- Δ
    *
    * @param bot Resulting formula
-   * @param i Index of t = u on the left
-   * @param P Shape of the formula in which the substitution occurs
-   * @param x Variable indicating where in P the substitution occurs
+   * @param i Index of A <=> B on the left
+   * @param R Shape of the formula in which the substitution occurs
+   * @param A Formula Variable indicating where in P the substitution occurs
    */
   case class LeftSubst(name: String, bot: Sequent, i: Int, flip: Boolean, P: Formula, x: VariableSymbol, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
@@ -894,7 +890,7 @@ object SequentCalculus {
   /**
    *   Γ, R[A:=A] |- Δ
    * ----------------
-   *  Γ, A <=> B, R[A:=B] |- Δ
+   *   Γ, A <=> B, R[A:=B] |- Δ
    *
    * @param bot Resulting formula
    * @param i Index of A <=> B on the left
@@ -962,6 +958,7 @@ object SequentCalculus {
         else StepCheckError("Right-hand side is not correct.")
       else StepCheckError("Left-hand side is not correct.")
   }
+
 
   /**
    *   Γ[F(Xi)] |- Δ[F(Xi)]

@@ -7,6 +7,9 @@ import java.io.File
 import SequentCalculus.checkProof
 
 import leo.modules.input.TPTPParser
+import sctptp.SequentCalculus.StepCheckError
+import sctptp.SequentCalculus.StepCheckOK
+import sctptp.SequentCalculus.StepCheckUnknown
 
 class LVL1Test extends AnyFunSuite {
 
@@ -53,12 +56,13 @@ class LVL1Test extends AnyFunSuite {
       try {
         val res = Parser.reconstructProof(File(s"$sources/${p._1}"))
         checkProof(res) match
-          case Some((msg, step)) =>
+          case StepCheckError(msg) =>
             println(s"Error: $msg")
-            println(s"Step: $step")
             fail()
-          case None =>
-            println("Proof is correct")
+          case StepCheckOK =>
+            println("Proof is correct.")
+          case StepCheckUnknown =>
+            println("Proof is probably correct, but some steps could not be checked (missing step checking implementation).")
         
         println(s"Parsed ${p._1}")
       } catch {

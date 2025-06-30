@@ -74,9 +74,9 @@ object LVL2 {
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = this
     def checkCorrectness(premises: String => Sequent) = 
-      val fi = premises(name).left(i)
-      if premises(name).left.contains(~i) then StepCheckOK
-      else StepCheckError(s"${fi} and ${~fi} are not the same")
+      val fi = bot.left(i)
+      if bot.left.contains(~fi) then StepCheckOK
+      else StepCheckError(s"${~fi} is not present in the left hand side")
   }
   
   /**
@@ -337,7 +337,7 @@ object LVL2 {
           premises(t1).left(i) match
             case AtomicFormula(`equality`, Seq(l, r)) => Some(l :: list1, r :: list2)
             case _ => None
-        case (StepCheckOK, _) => None
+        case (None, _) => None
       } match
         case Some((ls, rs)) => (ls.reverse, rs.reverse)
         case None => return StepCheckError("Right substitution failed: equality not found")
@@ -618,7 +618,7 @@ object LVL2 {
       s"fof(${name}, plain, ${bot}, inference(instMult, [status(thm), " +
       s"[" +
         terms.map((label, t, varsl) => s"tuple3('${label.toString()}', $$fot(${t.toString()}), [${varsl.mkString(", ")}])").mkString(", ") +
-      "]], [${t1}]))."
+      s"]], [${t1}]))."
 
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))

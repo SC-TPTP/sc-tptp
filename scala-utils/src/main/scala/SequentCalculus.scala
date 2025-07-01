@@ -62,9 +62,13 @@ object SequentCalculus {
   
   
   sealed trait StepCheck
-  case object StepCheckOK extends StepCheck
-  case class StepCheckError(msg: String) extends StepCheck
-  case object StepCheckUnknown extends StepCheck
+  case object StepCheckOK extends StepCheck :
+    override def toString(): String = "% SZS status Verified"
+  case class StepCheckError(msg: String) extends StepCheck :
+    override def toString(): String = "% SZS status FailedVerified\n" + msg
+  case object StepCheckUnknown extends StepCheck :
+    override def toString(): String = "% SZS status NotVerified\n" +
+      "% This proof contains level 3 proof steps that have not been checked, but the proof is otherwise correct.\n"
 
   trait SCProofStep {
     val name: String

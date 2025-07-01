@@ -910,7 +910,7 @@ object Parser {
             }     
         }
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instantiateMult", Seq(_, StrOrNum(i), Sequence(terms: Seq[GeneralTerm])), Seq(t1)), _) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("instantiateMult", Seq(_, _, Sequence(terms: Seq[GeneralTerm])), Seq(t1)), _) =>
             val termsAsList: Seq[(String, GeneralTerm)] = terms.foldLeft(Seq[(String, GeneralTerm)]()) { 
               (acc, x) => {
                 x.list match 
@@ -924,7 +924,7 @@ object Parser {
               }
             }
 
-            Some(LVL2.InstantiateMultP9(name, convertSequentToFol(sequent), i.toInt, buildSeqTerm(termsAsList), t1))
+            Some(LVL2.InstantiateMultP9(name, convertSequentToFol(sequent), buildSeqTerm(termsAsList), t1))
           case _ => None
         }
     }

@@ -93,6 +93,8 @@ object Prover9 {
       step.mapBot(bot => newbot) match
         case Axiom(name, bot) => Axiom(namemap(name), bot)
         case LVL2.LeftWeakenRes(name, bot, i, t1) => RightWeaken(name, bot, i, namemap.getOrElse(t1, t1))
+        case LVL2.InstantiateMultP9(name, bot, terms, t1) => 
+          InstMult(name, bot, terms.map((s, t) => (s, t, List())), namemap.getOrElse(t1, t1))
         case step => step.renamePremises(namemap.toMap)
     )
 
@@ -245,7 +247,7 @@ object Prover9 {
         )
       )
       val newclause = clause.map(lit => substituteVariablesInFormula(lit, mmap.toMap))
-      val inst = InstMult(ax.name+"_p9r", () |- newclause, mmap.toSeq.map((fv, t) => (fv, t, Nil)), ax.name)
+      val inst = InstMult(ax.name+"_p9_rename_var", () |- newclause, mmap.toSeq.map((fv, t) => (fv, t, Nil)), ax.name)
       inst
     )
     val newAxs = insts.map(inst => Axiom(inst.t1, inst.bot))

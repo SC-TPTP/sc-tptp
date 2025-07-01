@@ -21,19 +21,19 @@ fof(ts_clb2weak3_4, plain, [(Ts3 <=> (Ts1 | Ts2)),$r3,$r2,$r1] --> [~Ts2,~t_a0],
 fof(ts_clac3, plain, [(Ts3 <=> (Ts1 | Ts2)),$r3,$r2,$r1] --> [~Ts3,Ts1,Ts2], inference(clausify, [status(thm), 0], [])).
 fof(ts_ax_just3, plain, [(Ts3 <=> (Ts1 | Ts2)),$r3,$r2,$r1] --> [Ts3], inference(rightSubstIff, [status(thm), 0, 1, $fof(HOLE), 'HOLE'], [ts_ax_just2])).
 fof(r4, let, (Ts3 <=> (Ts1 | Ts2))).
-fof(ts_cla1_p9r, plain, [$r4,$r3,$r2,$r1] --> [~Ts1,t_a0], inference(instMult, [status(thm), []], [ts_cla1weak3_1])).
-fof(ts_clb1_p9r, plain, [$r4,$r3,$r2,$r1] --> [~Ts1,~t_a0], inference(instMult, [status(thm), []], [ts_clb1weak3_2])).
-fof(ts_cla2_p9r, plain, [$r4,$r3,$r2,$r1] --> [~Ts2,t_a0], inference(instMult, [status(thm), []], [ts_cla2weak3_3])).
-fof(ts_clb2_p9r, plain, [$r4,$r3,$r2,$r1] --> [~Ts2,~t_a0], inference(instMult, [status(thm), []], [ts_clb2weak3_4])).
-fof(ts_clac3_p9r, plain, [$r4,$r3,$r2,$r1] --> [~Ts3,Ts1,Ts2], inference(instMult, [status(thm), []], [ts_clac3])).
-fof(ts_ax_just3_p9r, plain, [$r4,$r3,$r2,$r1] --> [Ts3], inference(instMult, [status(thm), []], [ts_ax_just3])).
-fof(8, plain, [$r4,$r3,$r2,$r1] --> [Ts1,Ts2], inference(res, [status(thm), 0], [ts_ax_just3_p9r, ts_clac3_p9r])).
-fof(9, plain, [$r4,$r3,$r2,$r1] --> [Ts1,t_a0], inference(res, [status(thm), 1], [8, ts_cla2_p9r])).
-fof(10, plain, [$r4,$r3,$r2,$r1] --> [Ts1,~Ts2], inference(res, [status(thm), 1], [9, ts_clb2_p9r])).
+fof(ts_cla1_p9_rename_var, plain, [$r4,$r3,$r2,$r1] --> [~Ts1,t_a0], inference(instMult, [status(thm), []], [ts_cla1weak3_1])).
+fof(ts_clb1_p9_rename_var, plain, [$r4,$r3,$r2,$r1] --> [~Ts1,~t_a0], inference(instMult, [status(thm), []], [ts_clb1weak3_2])).
+fof(ts_cla2_p9_rename_var, plain, [$r4,$r3,$r2,$r1] --> [~Ts2,t_a0], inference(instMult, [status(thm), []], [ts_cla2weak3_3])).
+fof(ts_clb2_p9_rename_var, plain, [$r4,$r3,$r2,$r1] --> [~Ts2,~t_a0], inference(instMult, [status(thm), []], [ts_clb2weak3_4])).
+fof(ts_clac3_p9_rename_var, plain, [$r4,$r3,$r2,$r1] --> [~Ts3,Ts1,Ts2], inference(instMult, [status(thm), []], [ts_clac3])).
+fof(ts_ax_just3_p9_rename_var, plain, [$r4,$r3,$r2,$r1] --> [Ts3], inference(instMult, [status(thm), []], [ts_ax_just3])).
+fof(8, plain, [$r4,$r3,$r2,$r1] --> [Ts1,Ts2], inference(res, [status(thm), 0], [ts_ax_just3_p9_rename_var, ts_clac3_p9_rename_var])).
+fof(9, plain, [$r4,$r3,$r2,$r1] --> [Ts1,t_a0], inference(res, [status(thm), 1], [8, ts_cla2_p9_rename_var])).
+fof(10, plain, [$r4,$r3,$r2,$r1] --> [Ts1,~Ts2], inference(res, [status(thm), 1], [9, ts_clb2_p9_rename_var])).
 fof(a011, plain, [$r4,$r3,$r2,$r1] --> [Ts1,Ts1], inference(res, [status(thm), 1], [8, 10])).
 fof(11, plain, [$r4,$r3,$r2,$r1] --> [Ts1], inference(rightWeaken, [status(thm), 0], [a011])).
-fof(12, plain, [$r4,$r3,$r2,$r1] --> [~t_a0], inference(res, [status(thm), 0], [11, ts_clb1_p9r])).
-fof(a013, plain, [$r4,$r3,$r2,$r1] --> [t_a0], inference(res, [status(thm), 0], [11, ts_cla1_p9r])).
+fof(12, plain, [$r4,$r3,$r2,$r1] --> [~t_a0], inference(res, [status(thm), 0], [11, ts_clb1_p9_rename_var])).
+fof(a013, plain, [$r4,$r3,$r2,$r1] --> [t_a0], inference(res, [status(thm), 0], [11, ts_cla1_p9_rename_var])).
 fof(ts_sp3, plain, [$r4,$r3,$r2,$r1] --> [], inference(res, [status(thm), 0], [a013, 12])).
 fof(ts_inst3, plain, [((Ts1 | Ts2) <=> (Ts1 | Ts2)),$r3,$r2,$r1] --> [], inference(instPred, [status(thm), 'Ts3', $fof((Ts1 | Ts2)), []], [ts_sp3])).
 fof(ts_sp2, plain, [$r3,$r2,$r1] --> [], inference(elimIffRefl, [status(thm), 0], [ts_inst3])).

@@ -377,7 +377,7 @@ object LVL2 {
           premises(t1).left(i) match
             case AtomicFormula(`equality`, Seq(l, r)) => Some(l :: list1, r :: list2)
             case _ => None
-        case (StepCheckOK, _) => None
+        case (None, _) => None
       } match
         case Some((ls, rs)) => (ls.reverse, rs.reverse)
         case None => return StepCheckError("Left substitution failed: equality not found")
@@ -817,26 +817,26 @@ object LVL2 {
    * @param (i, x) List of pair (index, term)
    * @param t term in place of x
    */
-  case class InstantiateMultP9(name: String, bot: Sequent, i: Int, terms: Seq[(VariableSymbol, Term)], t1: String) extends StrictLVL2ProofStep {
+  case class InstantiateMultP9(name: String, bot: Sequent, terms: Seq[(VariableSymbol, Term)], t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
 
-    override def toString: String = s"fof(${name}, plain, ${bot}, inference(instantiateMultP9, [status(thm), " +
-      s"[${terms.foldLeft(("", 0))((acc, x) => {(acc._1 ++ s"tuple3('${x(0).toString()}', $$fot(${x(1).toString()}), [])" ++ (if (acc._2 != terms.length - 1) then ", " else ""), acc._2 + 1)})._1}]], [${t1}])).";
+    override def toString: String = s"fof(${name}, plain, ${bot}, inference(instantiateMult, [status(thm), " +
+      s"[${terms.foldLeft(("", 0))((acc, x) => {(acc._1 ++ ("[$fot" + s"(${x(0).toString()}), $$fot(${x(1).toString()})]") ++ (if (acc._2 != terms.length - 1) then ", " else ""), acc._2 + 1)})._1}]], [${t1}])).";
 
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): SCProofStep = copy(t1 = map.getOrElse(t1, t1))
     def checkCorrectness(premises: String => Sequent) = 
-      val map = terms.foldLeft(Map[sctptp.FOL.VariableSymbol, sctptp.FOL.Term]())((acc, x) => acc + (x._1 -> x._2))
-      val new_p =  substituteVariablesInFormula(premises(t1).left(i), map)
-      if isSameSet(premises(t1).left(i) +: bot.left, new_p +: premises(t1).left) then
-        if isSameSet(bot.right, premises(t1).right) then
+      val map = terms.foldLeft(Map[VariableSymbol, Term]())((acc, x) => acc + (x._1 -> x._2))
+      val new_right = premises(t1).right.map(f => substituteVariablesInFormula(f, map))
+      if isSameSet(bot.right, new_right) then
+        if isSameSet(bot.left, premises(t1).left) then
           StepCheckOK
         else
-          StepCheckError("right sides is not the same")
+          StepCheckError("left sides are not the same")
       else
-        StepCheckError("left sides is not correct")
+        StepCheckError("right side (with instantiation) is not correct")
   }
 
 

@@ -642,10 +642,9 @@ object Parser {
     object LeftNotAll {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotAll", Seq(_, StrOrNum(n), GenTerm(xl)), Seq(t1)), _) => // x has to be a GeneralTerm representinf a variable, i.e. $fot(x)
-            val x = xl match
-              case FunctionTerm(x: VariableSymbol, Seq()) => x
-              case _ => throw new Exception(s"Expected a variable, but got $xl")
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotAll", Seq(_, StrOrNum(n), String(xl)), Seq(t1)), _) => // x has to be a GeneralTerm representinf a variable, i.e. $fot(x)
+
+            val x =  VariableSymbol(xl)
             Some(LVL2.LeftNotAll(name, convertSequentToFol(sequent), n.toInt, x, t1))
           case _ => None
         }

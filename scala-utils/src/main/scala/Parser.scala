@@ -601,7 +601,7 @@ object Parser {
     object LeftNotImp {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotImp", Seq(_, StrOrNum(n)), Seq(t1)), _) =>
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotImplies", Seq(_, StrOrNum(n)), Seq(t1)), _) =>
             Some(LVL2.LeftNotImp(name, convertSequentToFol(sequent), n.toInt, t1))
           case _ => None
         }
@@ -642,7 +642,7 @@ object Parser {
     object LeftNotAll {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] =
         ann_seq match {
-          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotForall", Seq(_, StrOrNum(n), GenTerm(xl)), Seq(t1)), _) => // x has to be a GeneralTerm representinf a variable, i.e. $fot(x)
+          case FOFAnnotated(name, role, sequent: FOF.Sequent, Inference("leftNotAll", Seq(_, StrOrNum(n), GenTerm(xl)), Seq(t1)), _) => // x has to be a GeneralTerm representinf a variable, i.e. $fot(x)
             val x = xl match
               case FunctionTerm(x: VariableSymbol, Seq()) => x
               case _ => throw new Exception(s"Expected a variable, but got $xl")

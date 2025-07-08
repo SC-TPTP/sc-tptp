@@ -25,9 +25,9 @@ object FOL {
     require(no >= -1, "Variable index must be positive")
     require(Identifier.isValidIdentifier(name), "Identifier " + name + "is not valid.")
     override def toString(): String = if (no == 0) name else name + Identifier.counterSeparator + no
-
+    def isValid: Boolean = no >= 0 && Identifier.isValidIdentifier(name)
     def isUpper: Boolean = name(0).isUpper
-
+    def isInternal: Boolean = name.startsWith("%")
 
   }
   object Identifier {
@@ -70,6 +70,8 @@ object FOL {
 
   /** Variable symbols. To be TPTP-compliant, must start with a capital letter. Variables with empty names are not TSPT-valid, and are used internally to compute alpha-equivalence. */
   case class VariableSymbol(id: Identifier) extends TermSymbol {
+    require(id.isValid, "Variable name cannot be empty")
+    require(id.isUpper | id.isInternal, "Variable name must start with a capital letter: " + id)
     val name: Identifier = id
     val arity = 0
 

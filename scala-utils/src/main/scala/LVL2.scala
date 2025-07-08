@@ -53,7 +53,7 @@ object LVL2 {
   val LeftHypRuleName = "leftHyp"
   val LeftNotAndRuleName = "leftNotAnd"
   val LeftNotOrRuleName = "leftNotOr"
-  val LeftNotImpRuleName = "leftNotImp"
+  val LeftNotImpRuleName = "leftNotImplies"
   val LeftNotIffRuleName = "leftNotIff"
   val LeftNotNotRuleName = "leftNotNot"
   val LeftNotExRuleName = "leftNotEx"

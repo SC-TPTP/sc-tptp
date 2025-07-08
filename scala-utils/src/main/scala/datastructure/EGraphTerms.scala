@@ -181,7 +181,7 @@ class EGraphTerms() {
             // needs to output a proof of id1 === right
             else
               val x =
-                VariableSymbol(freshId(id1.freeVariables.map(_.name), "x"))
+                VariableSymbol(freshId(id1.freeVariables.map(_.name), "X"))
               val leftIndex = ctx1.indexWhere(f =>
                 f == (left === right) || f == (right === left)
               )

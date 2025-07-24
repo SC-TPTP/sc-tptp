@@ -17,9 +17,4 @@
 
 % Comments : This problem, was printed from a statement in a proof of a theorem by the Lisa theorem prover for submission to proof-producing ATPs.
 %--------------------------------------------------------------------------
-fof(div_one, axiom, ! [X]: d(X, t1) = X).
-fof(cancel_denominator, axiom, ! [X, Y]: (m(d(X, Y), Y) = X)).
-fof(invert_div, axiom, ! [X, Y]: d(X, Y) = d(t1, d(Y, X))).
-
-fof(c, conjecture, d(m(d(t2, t3), d(t3, t2)), t1) = t1).
-
+fof(c1, conjecture, [! [Xx]: (Xx = sf(Xx))] --> [('c∅' = sf('c∅'))]).

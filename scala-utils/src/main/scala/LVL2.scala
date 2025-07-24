@@ -272,7 +272,7 @@ object LVL2 {
           if (isSameSet(bot.right, premises(t1).right))
             if (isSameSet(bot.left :+ ~inst, premises(t1).left :+ neA))
               StepCheckOK
-            else StepCheckError("Left-hand side of conclusion + A[t/x] must be the same as left-hand side of premise + ∀x. A")
+            else StepCheckError("Left-hand side of conclusion + A[t/x] must be the same as left-hand side of premise + ~∃x. A")
           else StepCheckError("Right-hand side of conclusion must be the same as right-hand side of premise")
         case _ => StepCheckError("The formula is not a negated existential quantification")
   }
@@ -299,11 +299,11 @@ object LVL2 {
         case nall @ ConnectorFormula(Neg, Seq(BinderFormula(Forall, x, a))) => 
           val inst = substituteVariablesInFormula(a, Map(x -> y()))
           if (isSameSet(bot.right, premises(t1).right))
-            if (isSameSet(bot.left :+ inst, premises(t1).left :+ nfA))
+            if (isSameSet(bot.left :+ ~inst, premises(t1).left :+ nfA))
               if ((bot.left `concat` bot.right).forall(f => !f.freeVariables.contains(x)))
                 StepCheckOK
               else StepCheckError("The variable x must not be free in the resulting sequent.")
-            else StepCheckError("Left-hand side of conclusion + A must be the same as left-hand side of premise + ∃x. A")
+            else StepCheckError("Left-hand side of conclusion + A must be the same as left-hand side of premise + ~∀x. A")
           else StepCheckError("Right-hand side of conclusion must be the same as right-hand side of premise")
         case _ => StepCheckError("The formula is not a negated universal quantification")
   }

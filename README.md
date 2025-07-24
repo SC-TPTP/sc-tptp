@@ -12,7 +12,7 @@ Executable available [here](goeland/)
 
 ### Egg
 
-Executable and sources available ([here])(egg-sc-tptp/)
+Executable and sources available [here](egg-sc-tptp/)
 
 
 ### Prover 9

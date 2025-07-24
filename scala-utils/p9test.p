@@ -1,1 +1,1 @@
-fof(c, conjecture, (t_a0 <=> t_a0)).
+fof(conj, conjecture, [] --> [? [X]: ! [Y]: (p(Y) | ~p(X))]).

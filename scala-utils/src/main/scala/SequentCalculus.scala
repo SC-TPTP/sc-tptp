@@ -102,7 +102,7 @@ object SequentCalculus {
       s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${i}, ${if flip then 1 else 0}, $$fof(${term}), '${subterm}'], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
 
     def outputWithSubstIff(name: String, rule: String, bot: Sequent, i: Int, flip: Boolean, term: String, subterm: String, premises: Seq[String]): String = 
-      s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), ${i}, ${if flip then 1 else 0}, $$fof(${term})) $$fof(${subterm})], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
+      outputWithSubst(name, rule, bot, i, flip, term, subterm, premises)
 
     def outputWithSubstMany(name: String, rule: String, bot: Sequent, is: Seq[Int], term: String, subterms: Seq[String], premises: Seq[String]): String = 
       s"fof(${name}, plain, ${bot}, inference(${rule}, [status(thm), [${is.mkString(", ")}], $$fof(${term}), [${subterms.map(st => s"$$fot(${st})").mkString(",")}]], [${premises.foldLeft("", 0)((acc, e) => (acc._1 + e.toString() + (if (acc._2 != premises.length - 1) then ", " else ""), acc._2 + 1))._1}]))."
@@ -225,6 +225,112 @@ object SequentCalculus {
   }
 
 
+  type LVL3ProofStep = LVL2ProofStep | RightSubstIffForall
+  case class LVL3Proof(steps: IndexedSeq[LVL3ProofStep], thmName: String) extends SCProof[LVL3ProofStep] {
+    override def addStepLVL1After(s: LVL1ProofStep) = copy(steps = steps :+ s)
+    override def addStepLVL2After(s: LVL2ProofStep) = copy(steps = steps :+ s)
+    override def addStepsLVL1After(ss: Seq[LVL1ProofStep]) = copy(steps = steps ++ ss)
+    override def addStepsLVL2After(ss: Seq[LVL2ProofStep]) = copy(steps = steps ++ ss)
+    override def addStepLVL1Before(s: LVL1ProofStep) = copy(steps = s +: steps)
+    override def addStepLVL2Before(s: LVL2ProofStep) = copy(steps = s +: steps)
+    override def addStepsLVL1Before(ss: Seq[LVL1ProofStep]) = copy(steps = ss ++: steps)
+    override def addStepsLVL2Before(ss: Seq[LVL2ProofStep]) = copy(steps = ss ++: steps)
+  }
+
+  /** Rewrite a marked formula on the right using a universally quantified equivalence in the second premise. */
+  case class RightSubstIffForall(name: String, bot: Sequent, i: Int, context: Formula, hole: AtomicSymbol,
+      source: String, comparison: String) extends SCProofStep {
+    val premises = Seq(source, comparison)
+    override def toString: String =
+      s"fof($name, plain, $bot, inference(rightSubstIffForall, [status(thm), $i, $$fof($context), '${hole.id}'], [$source, $comparison]))."
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]) =
+      copy(source = map.getOrElse(source, source), comparison = map.getOrElse(comparison, comparison))
+
+    def checkCorrectness(premises: String => Sequent): StepCheck = {
+      val from = premises(source)
+      val eq = premises(comparison)
+      def strip(f: Formula, params: Set[VariableSymbol]): Option[(Set[VariableSymbol], Formula, Formula)] = f match {
+        case BinderFormula(Forall, x, inner) => strip(inner, params + x)
+        case ConnectorFormula(Iff, Seq(a, b)) => Some((params, a, b))
+        case _ => None
+      }
+      if hole.arity != 0 || !hole.id.isUpper then StepCheckError("Expected a formula variable marking the rewrite site")
+      else if !isSameSet(bot.left, from.left ++ eq.left) then StepCheckError("Incorrect antecedent for rightSubstIffForall")
+      else eq.right.lift(i).flatMap(strip(_, Set.empty)) match {
+        case None => StepCheckError("Expected a universally quantified biconditional at the comparison index")
+        case Some((params, lhs, rhs)) =>
+          val equivalence = eq.right(i)
+          val otherComparisons = eq.right.patch(i, Nil, 1)
+          val valid = from.right.indices.exists { j =>
+            val before = from.right(j)
+            val residual = from.right.patch(j, Nil, 1) ++ otherComparisons
+            isSubset(residual, bot.right) && bot.right.exists { after =>
+              // Set contexts can retain either principal formula by contraction.
+              isSubset(bot.right, residual ++ Seq(before, after, equivalence)) &&
+                QuantifiedRewrite.matches(context, hole, before, after, params, lhs, rhs)
+            }
+          }
+          if valid then StepCheckOK else StepCheckError("No instance of the equivalence rewrites the marked succedent with the stated context")
+      }
+    }
+  }
+
+  private object QuantifiedRewrite {
+    /** Match FOL syntax modulo alpha-renaming. Formula holes record sites, term holes infer universal instances. */
+    private class Matcher(fresh: Int => VariableSymbol, hole: Option[AtomicSymbol], params: Set[VariableSymbol]) {
+      val sites = scala.collection.mutable.ArrayBuffer.empty[Formula]
+      private val instances = scala.collection.mutable.Map.empty[VariableSymbol, Term]
+
+      private def under(x: VariableSymbol, a: Formula, y: VariableSymbol, b: Formula, bound: Set[VariableSymbol]): Boolean = {
+        val v = fresh(bound.size)
+        def open(body: Formula, binder: VariableSymbol) = substituteVariablesInFormula(body, Map(binder -> Variable(v)))
+        formula(open(a, x), open(b, y), bound + v)
+      }
+      private def term(p: Term, t: Term, bound: Set[VariableSymbol]): Boolean = (p, t) match {
+        case (FunctionTerm(x: VariableSymbol, _), _) if params(x) =>
+          // A witness may use a surrounding context binder, but cannot escape a binder inside the equivalence.
+          if t.freeVariables.exists(bound) then false
+          else instances.get(x) match {
+            case Some(u) => t == u || isSame(equality(Seq(t, t)), equality(Seq(u, u)))
+            case None =>
+              instances(x) = t
+              true
+          }
+        case (FunctionTerm(f, xs), FunctionTerm(g, ys)) =>
+          f == g && xs.corresponds(ys)((a, b) => term(a, b, bound))
+        case (EpsilonTerm(x, a), EpsilonTerm(y, b)) => under(x, a, y, b, bound)
+        case _ => false
+      }
+      def formula(p: Formula, f: Formula, bound: Set[VariableSymbol] = Set.empty): Boolean = (p, f) match {
+        case (AtomicFormula(label, Nil), _) if hole.contains(label) =>
+          sites += f
+          true
+        case (AtomicFormula(a, xs), AtomicFormula(b, ys)) => a == b && xs.corresponds(ys)((s, t) => term(s, t, bound))
+        case (ConnectorFormula(a, xs), ConnectorFormula(b, ys)) => a == b && xs.corresponds(ys)((s, t) => formula(s, t, bound))
+        case (BinderFormula(a, x, s), BinderFormula(b, y, t)) if a == b => under(x, s, y, t, bound)
+        case _ => false
+      }
+    }
+
+    def matches(context: Formula, hole: AtomicSymbol, before: Formula, after: Formula,
+        params: Set[VariableSymbol], lhs: Formula, rhs: Formula): Boolean = {
+      val avoid = (Seq(context, before, after, lhs, rhs).flatMap(_.freeVariables) ++ params).map(_.id)
+      def freshFamily(name: String): Int => VariableSymbol = {
+        val base = freshId(avoid, Identifier(name))
+        depth => VariableSymbol(Identifier(base.name, base.no + depth))
+      }
+      val outer = freshFamily("ScContext")
+      val source = new Matcher(outer, Some(hole), Set.empty)
+      val target = new Matcher(outer, Some(hole), Set.empty)
+      val instance = new Matcher(freshFamily("ScComparison"), None, params)
+      source.formula(context, before) && target.formula(context, after) && source.sites.nonEmpty &&
+        source.sites.corresponds(target.sites)((a, b) => instance.formula(lhs, a) && instance.formula(rhs, b))
+    }
+  }
+
   sealed trait LVL1ProofStep extends SCProofStep
 
   case class LVL1Proof(steps: IndexedSeq[LVL1ProofStep], thmName: String) extends SCProof[LVL1ProofStep] {
@@ -254,7 +360,7 @@ object SequentCalculus {
   }
 
 
-  private def contains(seq: Seq[Formula], f: Formula): Boolean = seq.contains(f)
+  private def contains(seq: Seq[Formula], f: Formula): Boolean = seq.exists(isSame(_, f))
 
   /**
    * --------------
@@ -290,6 +396,19 @@ object SequentCalculus {
     def checkCorrectness(premises: String => Sequent) = StepCheckOK
   }
 
+
+  /** Introduce truth on the right, at index i, with no premises. */
+  case class RightTrue(name: String, bot: Sequent, i: Int) extends LVL1ProofStep {
+    val premises = Seq.empty[String]
+    override def toString: String = SCProofStep.outputSingleIndex(name, "assumption", RightTrueRuleName, bot, i, premises)
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]): SCProofStep = this
+    def checkCorrectness(premises: String => Sequent): StepCheck =
+      if bot.right.lift(i).contains(AtomicFormula(top, Nil)) then StepCheckOK
+      else StepCheckError(s"RightTrue expects truth at index $i on the right.")
+  }
 
   /**
    * -----------------
@@ -401,7 +520,7 @@ object SequentCalculus {
    */
   case class LeftAnd(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, LeftAndRuleName, "plain", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", LeftAndRuleName, bot, i, premises)
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
@@ -428,7 +547,7 @@ object SequentCalculus {
    */
   case class LeftOr(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputSingleIndex(name, LeftOrRuleName, "plain", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", LeftOrRuleName, bot, i, premises)
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
@@ -438,7 +557,9 @@ object SequentCalculus {
       AB match
         case ConnectorFormula(Or, Seq(a, b)) =>
           if (isSameSet(bot.right, premises(t1).right `concat` premises(t2).right))
-            if (isSameSet(bot.left :+ a :+ b, premises(t1).left `concat` premises(t2).left :+ AB))
+            if (isSubset(premises(t1).left, bot.left :+ a) &&
+                isSubset(premises(t2).left, bot.left :+ b) &&
+                isSameSet(bot.left :+ a :+ b, premises(t1).left `concat` premises(t2).left :+ AB))
               StepCheckOK
             else StepCheckError("LeftOr error: The left-hand side of the conclusion must match the concatenation of the left-hand sides of the premises with A ∨ B.")
           else StepCheckError("LeftOr error: The right-hand side of the conclusion must match the concatenation of the right-hand sides of the premises.")
@@ -456,7 +577,7 @@ object SequentCalculus {
    */
   case class LeftImplies(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputSingleIndex(name, LeftImpliesRuleName, "plain", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", LeftImpliesRuleName, bot, i, premises)
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
@@ -465,7 +586,8 @@ object SequentCalculus {
       val AB = bot.left(i)
       AB match
         case ConnectorFormula(Implies, Seq(a, b)) =>
-          if (isSameSet(bot.right :+ a, premises(t1).right `concat` premises(t2).right))
+          if (isSubset(premises(t1).left, bot.left) && isSubset(premises(t2).right, bot.right) &&
+              isSameSet(bot.right :+ a, premises(t1).right `concat` premises(t2).right))
             if (isSameSet(bot.left :+ b, premises(t1).left `concat` premises(t2).left :+ AB))
               StepCheckOK
             else StepCheckError("LeftImplies error: The left-hand side of the conclusion with B added must match the concatenation of the left-hand sides of the premises with A ⇒ B.")
@@ -485,7 +607,7 @@ object SequentCalculus {
    */
   case class LeftIff(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, LeftIffRuleName, "plain", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", LeftIffRuleName, bot, i, premises)
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
@@ -514,7 +636,7 @@ object SequentCalculus {
    */
   case class LeftNot(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, LeftNotRuleName, "plain", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", LeftNotRuleName, bot, i, premises)
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
@@ -542,7 +664,7 @@ object SequentCalculus {
    */
   case class LeftExists(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithTerm(name, LeftExistsRuleName, bot, i, y.toString(), premises)
+    override def toString: String = s"fof($name, plain, $bot, inference(${LeftExistsRuleName}, [status(thm), $i, '$y'], [$t1]))."
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
@@ -601,7 +723,7 @@ object SequentCalculus {
    */
   case class RightAnd(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep { //inverse of LeftOr
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputSingleIndex(name,RightAndRuleName, "plain", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", RightAndRuleName, bot, i, premises)
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
@@ -633,7 +755,7 @@ object SequentCalculus {
    */
   case class RightOr(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, RightOrRuleName, "plain", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", RightOrRuleName, bot, i, premises)
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
@@ -660,7 +782,7 @@ object SequentCalculus {
    */
   case class RightImplies(name: String, bot: Sequent, i: Int, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputSingleIndex(name, RightImpliesRuleName, "plain", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", RightImpliesRuleName, bot, i, premises)
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
@@ -687,7 +809,7 @@ object SequentCalculus {
    */
   case class RightIff(name: String, bot: Sequent, i: Int, t1: String, t2: String) extends LVL1ProofStep {
     val premises = Seq(t1, t2)
-    override def toString: String = SCProofStep.outputSingleIndex(name, RightIffRuleName, "plain", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, "plain", RightIffRuleName, bot, i, premises)
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
@@ -777,7 +899,7 @@ object SequentCalculus {
    */
   case class RightForall(name: String, bot: Sequent, i: Int, y: VariableSymbol, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithTerm(name, RightForallRuleName, bot, i, y.toString(), premises)
+    override def toString: String = s"fof($name, plain, $bot, inference(${RightForallRuleName}, [status(thm), $i, '$y'], [$t1]))."
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
@@ -806,7 +928,7 @@ object SequentCalculus {
    */
   case class RightRefl(name: String, bot: Sequent, i: Int) extends LVL1ProofStep {
     val premises = Seq()
-    override def toString: String = SCProofStep.outputSingleIndex(name, RightReflRuleName, "plain", bot, i, premises)
+    override def toString: String = SCProofStep.outputSingleIndex(name, "assumption", RightReflRuleName, bot, i, premises)
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent): RightRefl = this
     def rename(newName: String) = copy(name = newName)
@@ -1054,7 +1176,7 @@ object SequentCalculus {
    */
   case class RightEpsilon(name: String, bot: Sequent, i: Int, phi: Formula, x: VariableSymbol, t: Term, t1: String) extends LVL1ProofStep {
     val premises = Seq(t1)
-    override def toString: String = SCProofStep.outputWithTerm(name, RightExistsRuleName, bot, i, t.toString(), premises)
+    override def toString: String = s"fof($name, plain, $bot, inference(rightEpsilon, [status(thm), $$fof($phi), '$x', $$fot($t)], [$t1]))."
     def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)

@@ -175,8 +175,9 @@ object Parser {
       case _ => throw new Exception("Only FOF statements are supported")
     }
     if steps.forall(_.isInstanceOf[LVL1ProofStep]) then LVL1Proof(steps.reverse.toIndexedSeq.asInstanceOf[IndexedSeq[LVL1ProofStep]], file.getName().replace(".", "_"))
-    if steps.forall(_.isInstanceOf[LVL2ProofStep]) then LVL2Proof(steps.reverse.toIndexedSeq.asInstanceOf[IndexedSeq[LVL2ProofStep]], file.getName().replace(".", "_"))
-     else throw new Exception("Some proof steps could not be reconstructed")
+    else if steps.forall(_.isInstanceOf[LVL2ProofStep]) then LVL2Proof(steps.reverse.toIndexedSeq.asInstanceOf[IndexedSeq[LVL2ProofStep]], file.getName().replace(".", "_"))
+    else if steps.forall(_.isInstanceOf[LVL3ProofStep]) then LVL3Proof(steps.reverse.toIndexedSeq.asInstanceOf[IndexedSeq[LVL3ProofStep]], file.getName().replace(".", "_"))
+    else throw new Exception("Some proof steps could not be reconstructed")
   }
 
   def annotatedStatementToProofStep(ann: FOFAnnotated, sequentmap: String => Sequent, context : DefContext): Option[SCProofStep] = {
@@ -185,6 +186,7 @@ object Parser {
     val r: Option[SequentCalculus.SCProofStep] = ann match {
       case Inference.Hyp(step) => Some(step)
       case Inference.LeftFalse(step) => Some(step)
+      case Inference.RightTrue(step) => Some(step)
       case Inference.ElimIffRefl(step) => Some(step)
       case Inference.ElimEqRefl(step) => Some(step)
       case Inference.LeftWeaken(step) => Some(step)
@@ -206,12 +208,14 @@ object Parser {
       case Inference.RightImp(step) => Some(step)
       case Inference.RightIff(step) => Some(step)
       case Inference.RightExists(step) => Some(step)
+      case Inference.RightEpsilon(step) => Some(step)
       case Inference.RightForall(step) => Some(step)
       case Inference.RightRefl(step) => Some(step)
       case Inference.LeftSubst(step) => Some(step)
       case Inference.RightSubst(step) => Some(step)
       case Inference.LeftSubstIff(step) => Some(step)
       case Inference.RightSubstIff(step) => Some(step)
+      case Inference.RightSubstIffForall(step) => Some(step)
       case Inference.InstFun(step) => Some(step)
       case Inference.InstPred(step) => Some(step)
 
@@ -373,6 +377,15 @@ object Parser {
         }
     }
     
+    object RightTrue {
+      def unapply(ann: FOFAnnotated)(using context: DefContext): Option[SCProofStep] =
+        ann match {
+          case FOFAnnotated(name, _, sequent: FOF.Sequent, Inference("rightTrue", Seq(_, StrOrNum(n)), Seq()), _) =>
+            n.toIntOption.map(i => SC.RightTrue(name, convertSequentToFol(sequent), i))
+          case _ => None
+        }
+    }
+
     object LeftHyp {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] =
         ann_seq match {
@@ -565,6 +578,19 @@ object Parser {
         }
     }
 
+    object RightEpsilon {
+      def unapply(ann: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] =
+        ann match {
+          case FOFAnnotated(name, _, seq: FOF.Sequent, Inference("rightEpsilon", Seq(_, GenFormula(phi), String(v), GenTerm(t)), Seq(p)), _) =>
+            val bot = convertSequentToFol(seq)
+            val x = VariableSymbol(v)
+            val principal = substituteVariablesInFormula(phi, Map(x -> EpsilonTerm(x, phi)))
+            val index = bot.right.indexWhere(isSame(_, principal))
+            Option.when(index >= 0)(SC.RightEpsilon(name, bot, index, phi, x, t, p))
+          case _ => None
+        }
+    }
+
     object RightForall {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 
         ann_seq match {
@@ -703,6 +729,15 @@ object Parser {
         }
     }
  
+
+    object RightSubstIffForall {
+      def unapply(ann: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = ann match {
+        case FOFAnnotated(name, _, s: FOF.Sequent,
+              Inference("rightSubstIffForall", Seq(_, StrOrNum(i), GenFormula(shape), String(hole)), Seq(source, comparison)), _) =>
+          Some(SC.RightSubstIffForall(name, convertSequentToFol(s), i.toInt, shape, AtomicSymbol(hole, 0), source, comparison))
+        case _ => None
+      }
+    }
 
     object InstFun {
       def unapply(ann_seq: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = 

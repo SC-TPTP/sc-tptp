@@ -41,7 +41,7 @@
 
 
 # Level 2 Proof Steps
-Proof steps for which there is an available elimination algorithm implemented in the library.
+A Level 2 inference can be translated into Level 1 inferences.
 
 
 | Rule Name | Premises | Rule       | Parameters   | Comments  |
@@ -55,11 +55,11 @@ Proof steps for which there is an available elimination algorithm implemented in
 | `leftNotNot` | 1    | $$\frac{\Gamma, A \vdash \Delta}{\Gamma, \neg \neg A \vdash \Delta}$$ | `i:Int`: Index of $\neg \neg A$ on the left | |
 | `leftNotEx` | 1     | $$\frac{\Gamma, \neg A[x := t] \vdash \Delta}{\Gamma, \neg\exists x. A  \vdash \Delta}$$ | `i:Int`: Index of $\neg \exists x. A$ on the left <br> `t:Term`: Term in place of $x$ in the premise | |
 | `leftNotAll` | 1    | $$\frac{\Gamma, \neg A \vdash \Delta}{\Gamma, \neg \forall x. A \vdash \Delta}$$ | `i:Int`: Index of $\neg \forall x. A$ on the left <br> `y:String`: Variable in place of $x$ in the premise | |
+| `rightSubstIffForall` | 2 | $$\frac{\Gamma \vdash R(\phi(t)), \Delta \quad \Sigma \vdash \forall x. \phi(x) \Leftrightarrow \psi(x), \Pi}{\Gamma, \Sigma \vdash  R(\psi(t)), \Delta, \Pi}$$ | `i:Int`: Index of $\forall x. \phi(x) \Leftrightarrow \psi(x)$ on the right of the second premise <br> `R(Z):Var`: Shape of the predicate on the right <br> `Z:FormVar`: marks the formula occurrence to rewrite | |
 
 
 
-# Level 3 Proof Steps
-Proof steps for which there is no elimination procedure, but which are precisely defined and checkable, and usually implemented in some way or another in proof systems.
+# Additional Proof Steps
 
 | Rule Name | Premises | Rule       | Parameters   | Comments  |
 | :--       | :--      | :--        | :--          | :--       |
@@ -69,7 +69,6 @@ Proof steps for which there is no elimination procedure, but which are precisely
 | `rightSubstEqForallLocal` | 1 | $$\frac{\Gamma, \forall x_1,...,x_n. \phi(x_1,...,x_n) = \psi(x_1,...,x_n) \vdash R(\phi(t_1,...,t_n)), \Delta}{\Gamma, \forall x_1,...,x_n. \phi(x_1,...,x_n) = \psi(x_1,...,x_n) \vdash R(\psi(t_1,...,t_n)), \Delta}$$ | `i:Int`: Index of $\forall x_1,...,x_n. \phi(x_1,...,x_n) = \psi(x_1,...,x_n)$ on the left <br> `R(Z):Var`: Shape of the predicate on the right <br> `Z:Form`: unifiable sub-term in the predicate | |
 | `rightSubstEqForall` | 2 | $$\frac{\Gamma \vdash R(\phi(t)), \Delta \quad \Sigma \vdash \forall x. \phi(x) = \psi(x), \Pi}{\Gamma, \Sigma \vdash  R(\psi(t)), \Delta, \Pi}$$ | `i:Int`: Index of $\forall x. \phi(x) = \psi(x)$ on the right of the second premisce <br> `R(Z):Var`: Shape of the predicate on the right <br> `Z:Var`: unifiable sub-term in the predicate | |
 | `rightSubstIffForallLocal` | 1 | $$\frac{\Gamma, \forall x_1,...,x_n. \phi(x_1,...,x_n) \Leftrightarrow \psi(x_1,...,x_n) \vdash R(\phi(t_1,...,t_n)), \Delta}{\Gamma, \forall x_1,...,x_n. \phi(x_1,...,x_n) \Leftrightarrow \psi(x_1,...,x_n) \vdash R(\psi(t_1,...,t_n)), \Delta}$$ | `i:Int`: Index of $\forall x_1,...,x_n. \phi(x_1,...,x_n) \Leftrightarrow \psi(x_1,...,x_n)$ on the left <br> `R(Z):Var`: Shape of the predicate on the right <br> `Z:FormVar`: unifiable sub-term in the predicate | |
-| `rightSubstIffForall` | 2 | $$\frac{\Gamma \vdash R(\phi(t)), \Delta \quad \Sigma \vdash \forall x. \phi(x) \Leftrightarrow \psi(x), \Pi}{\Gamma, \Sigma \vdash  R(\psi(t)), \Delta, \Pi}$$ | `i:Int`: Index of $\forall x. \phi(x) \Leftrightarrow \psi(x)$ on the right of the second premisce <br> `R(Z):Var`: Shape of the predicate on the right <br> `Z:Var`: unifiable sub-term in the predicate | |
 | `rightNnf` | 1           | $$\frac{\Gamma \vdash \phi, \Delta}{\Gamma \vdash \phi', \Delta}$$ | `i:Int`: Index of $\phi$ on the right of the premise <br> `j:Int`: Index of $\phi'$ on the right of the conclusion | $\phi$ and $\phi'$ have the same negation normal form |
 | `rightPrenex` | 1        | $$\frac{\Gamma \vdash \phi, \Delta}{\Gamma \vdash \phi', \Delta}$$ | `i:Int`: Index of $\phi$ on the right of the premise <br> `j:Int`: Index of $\phi'$ on the right of the conclusion| $\phi$ and $\phi'$ have the same prenex normal form |
 | `clausify` | 0      | $$\frac{}{\Gamma, a \iff b \circ c \vdash \Delta}$$ | `i:Int`: Index of $a \iff b \circ c$ on the left | $\Delta$ is a clause resulting from the inequality $a \iff b \circ c$|

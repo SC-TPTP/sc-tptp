@@ -2,6 +2,7 @@ package sctptp
 
 import FOL.{*, given}
 import SequentCalculus.*
+import LVL2.{LVL2Proof, RightSubstIffForall}
 import org.scalatest.funsuite.AnyFunSuite
 
 class RightSubstIffForallTest extends AnyFunSuite {
@@ -38,6 +39,32 @@ class RightSubstIffForallTest extends AnyFunSuite {
     assert(check(hole(), Exists(y, rel(Variable(y), Variable(y))), q(t), inner).isInstanceOf[StepCheckError])
   }
 
+  test("a rewrite beneath an existential has a Level 1 derivation from the same premises") {
+    val witness = Variable(z)
+    val px = p(witness)
+    val qx = q(witness)
+    val before = Exists(y, p(Variable(y)))
+    val after = Exists(y, q(Variable(y)))
+    val equivalence = Forall(x, p(Variable(x)) <=> q(Variable(x)))
+    val source = Axiom("src", Sequent(Nil, Seq(before)))
+    val comparison = Axiom("equiv", Sequent(Nil, Seq(equivalence)))
+    val goal = Sequent(Nil, Seq(after))
+    val rewrite = RightSubstIffForall("out", goal, 0, Exists(y, hole()), hole, source.name, comparison.name)
+    assert(checkProof(LVL2Proof(Vector(source, comparison, rewrite), "rewrite")) == StepCheckOK)
+
+    val derivation = LVL1Proof(Vector(source, comparison,
+      Hyp("hyp", Sequent(Seq(px), Seq(px)), 0),
+      RightSubstIff("instance", Sequent(Seq(px, px <=> qx), Seq(qx)), 1, false, hole(), hole, "hyp"),
+      LeftForall("all", Sequent(Seq(px, equivalence), Seq(qx)), 1, witness, "instance"),
+      RightExists("right", Sequent(Seq(px, equivalence), Seq(after)), 0, witness, "all"),
+      LeftExists("left", Sequent(Seq(before, equivalence), Seq(after)), 0, z, "right"),
+      Cut("use_src", Sequent(Seq(equivalence), Seq(after)), 0, source.name, "left"),
+      Cut("out", goal, 0, comparison.name, "use_src")
+    ), "expanded")
+    assert(checkProof(derivation) == StepCheckOK)
+    assert(derivation.conclusion == rewrite.bot)
+  }
+
   test("check the selected equivalence and preserve side formulas from both premises") {
     val eq = Forall(x, p(Variable(x)) <=> q(Variable(x)))
     val source = Sequent(Seq(p(u)), Seq(p(t), p(u)))
@@ -69,12 +96,13 @@ class RightSubstIffForallTest extends AnyFunSuite {
     val source = Axiom("src", Sequent(Seq(assumption), Seq(first(t))))
     val definition = Axiom("defn", Sequent(Nil, Seq(Forall(x, first(Variable(x)) <=> second(Variable(x))))))
     val rewrite = RightSubstIffForall("out", Sequent(Seq(assumption), Seq(second(t))), 0, marker(), marker, source.name, definition.name)
-    val proof = LVL3Proof(Vector(source, definition, rewrite), "indexed")
+    val proof = LVL2Proof(Vector(source, definition, rewrite), "indexed")
     assert(checkProof(proof) == StepCheckOK)
     val file = java.nio.file.Files.createTempFile("quantified-rewrite", ".p")
     try {
       java.nio.file.Files.writeString(file, ProofToString(proof))
       val parsed = Parser.reconstructProof(file.toFile)
+      assert(parsed.isInstanceOf[LVL2Proof])
       assert(parsed.steps == proof.steps)
       assert(checkProof(parsed) == StepCheckOK)
     } finally java.nio.file.Files.delete(file)

@@ -176,7 +176,6 @@ object Parser {
     }
     if steps.forall(_.isInstanceOf[LVL1ProofStep]) then LVL1Proof(steps.reverse.toIndexedSeq.asInstanceOf[IndexedSeq[LVL1ProofStep]], file.getName().replace(".", "_"))
     else if steps.forall(_.isInstanceOf[LVL2ProofStep]) then LVL2Proof(steps.reverse.toIndexedSeq.asInstanceOf[IndexedSeq[LVL2ProofStep]], file.getName().replace(".", "_"))
-    else if steps.forall(_.isInstanceOf[LVL3ProofStep]) then LVL3Proof(steps.reverse.toIndexedSeq.asInstanceOf[IndexedSeq[LVL3ProofStep]], file.getName().replace(".", "_"))
     else throw new Exception("Some proof steps could not be reconstructed")
   }
 
@@ -734,7 +733,7 @@ object Parser {
       def unapply(ann: FOFAnnotated)(using sequentmap: String => Sequent, context: DefContext): Option[SCProofStep] = ann match {
         case FOFAnnotated(name, _, s: FOF.Sequent,
               Inference("rightSubstIffForall", Seq(_, StrOrNum(i), GenFormula(shape), String(hole)), Seq(source, comparison)), _) =>
-          Some(SC.RightSubstIffForall(name, convertSequentToFol(s), i.toInt, shape, AtomicSymbol(hole, 0), source, comparison))
+          Some(LVL2.RightSubstIffForall(name, convertSequentToFol(s), i.toInt, shape, AtomicSymbol(hole, 0), source, comparison))
         case _ => None
       }
     }

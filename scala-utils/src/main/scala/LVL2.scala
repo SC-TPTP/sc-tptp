@@ -713,6 +713,100 @@ object LVL2 {
 
 
 
+  /** Rewrite a marked formula on the right using a universally quantified equivalence in the second premise. */
+  case class RightSubstIffForall(name: String, bot: Sequent, i: Int, context: Formula, hole: AtomicSymbol,
+      source: String, comparison: String) extends StrictLVL2ProofStep {
+    val premises = Seq(source, comparison)
+    override def toString: String =
+      s"fof($name, plain, $bot, inference(rightSubstIffForall, [status(thm), $i, $$fof($context), '${hole.id}'], [$source, $comparison]))."
+    def addAssumptions(fs: Seq[Formula]) = copy(bot = bot ++<< fs)
+    def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
+    def rename(newName: String) = copy(name = newName)
+    def renamePremises(map: Map[String, String]) =
+      copy(source = map.getOrElse(source, source), comparison = map.getOrElse(comparison, comparison))
+
+    def checkCorrectness(premises: String => Sequent): StepCheck = {
+      val from = premises(source)
+      val eq = premises(comparison)
+      def strip(f: Formula, params: Set[VariableSymbol]): Option[(Set[VariableSymbol], Formula, Formula)] = f match {
+        case BinderFormula(Forall, x, inner) => strip(inner, params + x)
+        case ConnectorFormula(Iff, Seq(a, b)) => Some((params, a, b))
+        case _ => None
+      }
+      if hole.arity != 0 || !hole.id.isUpper then StepCheckError("Expected a formula variable marking the rewrite site")
+      else if !isSameSet(bot.left, from.left ++ eq.left) then StepCheckError("Incorrect antecedent for rightSubstIffForall")
+      else eq.right.lift(i).flatMap(strip(_, Set.empty)) match {
+        case None => StepCheckError("Expected a universally quantified biconditional at the comparison index")
+        case Some((params, lhs, rhs)) =>
+          val equivalence = eq.right(i)
+          val otherComparisons = eq.right.patch(i, Nil, 1)
+          val valid = from.right.indices.exists { j =>
+            val before = from.right(j)
+            val residual = from.right.patch(j, Nil, 1) ++ otherComparisons
+            isSubset(residual, bot.right) && bot.right.exists { after =>
+              // Set contexts can retain either principal formula by contraction.
+              isSubset(bot.right, residual ++ Seq(before, after, equivalence)) &&
+                QuantifiedRewrite.matches(context, hole, before, after, params, lhs, rhs)
+            }
+          }
+          if valid then StepCheckOK else StepCheckError("No instance of the equivalence rewrites the marked succedent with the stated context")
+      }
+    }
+  }
+
+  private object QuantifiedRewrite {
+    /** Match FOL syntax modulo alpha-renaming. Formula holes record sites, term holes infer universal instances. */
+    private class Matcher(fresh: Int => VariableSymbol, hole: Option[AtomicSymbol], params: Set[VariableSymbol]) {
+      val sites = scala.collection.mutable.ArrayBuffer.empty[Formula]
+      private val instances = scala.collection.mutable.Map.empty[VariableSymbol, Term]
+
+      private def under(x: VariableSymbol, a: Formula, y: VariableSymbol, b: Formula, bound: Set[VariableSymbol]): Boolean = {
+        val v = fresh(bound.size)
+        def open(body: Formula, binder: VariableSymbol) = substituteVariablesInFormula(body, Map(binder -> Variable(v)))
+        formula(open(a, x), open(b, y), bound + v)
+      }
+      private def term(p: Term, t: Term, bound: Set[VariableSymbol]): Boolean = (p, t) match {
+        case (FunctionTerm(x: VariableSymbol, _), _) if params(x) =>
+          // A witness may use a surrounding context binder, but cannot escape a binder inside the equivalence.
+          if t.freeVariables.exists(bound) then false
+          else instances.get(x) match {
+            case Some(u) => t == u || isSame(equality(Seq(t, t)), equality(Seq(u, u)))
+            case None =>
+              instances(x) = t
+              true
+          }
+        case (FunctionTerm(f, xs), FunctionTerm(g, ys)) =>
+          f == g && xs.corresponds(ys)((a, b) => term(a, b, bound))
+        case (EpsilonTerm(x, a), EpsilonTerm(y, b)) => under(x, a, y, b, bound)
+        case _ => false
+      }
+      def formula(p: Formula, f: Formula, bound: Set[VariableSymbol] = Set.empty): Boolean = (p, f) match {
+        case (AtomicFormula(label, Nil), _) if hole.contains(label) =>
+          sites += f
+          true
+        case (AtomicFormula(a, xs), AtomicFormula(b, ys)) => a == b && xs.corresponds(ys)((s, t) => term(s, t, bound))
+        case (ConnectorFormula(a, xs), ConnectorFormula(b, ys)) => a == b && xs.corresponds(ys)((s, t) => formula(s, t, bound))
+        case (BinderFormula(a, x, s), BinderFormula(b, y, t)) if a == b => under(x, s, y, t, bound)
+        case _ => false
+      }
+    }
+
+    def matches(context: Formula, hole: AtomicSymbol, before: Formula, after: Formula,
+        params: Set[VariableSymbol], lhs: Formula, rhs: Formula): Boolean = {
+      val avoid = (Seq(context, before, after, lhs, rhs).flatMap(_.freeVariables) ++ params).map(_.id)
+      def freshFamily(name: String): Int => VariableSymbol = {
+        val base = freshId(avoid, Identifier(name))
+        depth => VariableSymbol(Identifier(base.name, base.no + depth))
+      }
+      val outer = freshFamily("ScContext")
+      val source = new Matcher(outer, Some(hole), Set.empty)
+      val target = new Matcher(outer, Some(hole), Set.empty)
+      val instance = new Matcher(freshFamily("ScComparison"), None, params)
+      source.formula(context, before) && target.formula(context, after) && source.sites.nonEmpty &&
+        source.sites.corresponds(target.sites)((a, b) => instance.formula(lhs, a) && instance.formula(rhs, b))
+    }
+  }
+
   case class RightSubstFun(name: String, bot: Sequent, i: Int, flip:Boolean, phi: Formula, F:FunctionSymbol,  t1: String) extends StrictLVL2ProofStep {
     val premises = Seq(t1)
     override def toString: String = 

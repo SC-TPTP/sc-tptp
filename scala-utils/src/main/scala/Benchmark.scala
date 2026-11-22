@@ -59,7 +59,7 @@ object Benchmark {
         case SequentCalculus.StepCheckOK =>
           println(s"Proof is correct")
         case SequentCalculus.StepCheckUnknown =>
-          println(s"Proof seems correct but contains level 3 proof steps that have not been checked.")
+          println("Some proof steps could not be checked.")
       }
     }
   }

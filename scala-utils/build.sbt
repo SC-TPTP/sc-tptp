@@ -1,7 +1,6 @@
-val scala3Version = "3.4.0"
+val scala3Version = "3.10.1"
 
-ThisBuild / version := "0.1.0"
-ThisBuild / homepage := Some(url("https://github.com/SC-TPTP/sc-tptp"))
+ThisBuild / homepage := Some(uri("https://github.com/SC-TPTP/sc-tptp"))
 ThisBuild / startYear := Some(2024)
 ThisBuild / scalacOptions ++= Seq(
   "-feature",
@@ -13,15 +12,6 @@ ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 ThisBuild / scalafixDependencies += "com.github.liancheng" %% "organize-imports" % "0.6.0"
 
-def githubProject(repo: String, commitHash: String) = RootProject(
-  uri(s"$repo#$commitHash")
-)
-
-lazy val customTstpParser = githubProject(
-  "https://github.com/SC-TPTP/scala-tptp-parser.git",
-  "851338c4175036279279835d9f58895aed2f37ba"
-)
-
 lazy val root = project
   .in(file("."))
   .settings(
@@ -30,11 +20,13 @@ lazy val root = project
     scalacOptions ++= Seq(
       "-language:implicitConversions"
     ),
-    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.10" % "test",
-    libraryDependencies += "io.github.leoprover" % "scala-tptp-parser_2.13" % "1.4",
-    libraryDependencies += "com.lihaoyi" %% "mainargs"% "0.7.6"
+    // The proof fixture tests open classpath resources as files.
+    Test / exportJars := false,
+    resolvers += "jitpack" at "https://jitpack.io",
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.20" % Test,
+    libraryDependencies += "com.github.SC-TPTP" % "scala-tptp-parser_2.13" % "0b4ffa55c71415e925080608707c78ada1d750e5",
+    libraryDependencies += "com.lihaoyi" %% "mainargs" % "0.7.6"
   )
-  .dependsOn(customTstpParser)
 
 name := "Utils"
 
@@ -42,9 +34,6 @@ version := "0.1"
 
 enablePlugins(AssemblyPlugin)
 
-assembly/mainClass := Some("sctptp.Main")
-assembly/assemblyJarName := "sctptpUtils.jar"
+assembly / mainClass := Some("sctptp.Main")
+assembly / assemblyJarName := "sctptpUtils.jar"
 assembly / assemblyOutputPath := baseDirectory.value / (assembly / assemblyJarName).value
-
-// Ensures resources are included in the classpath
-unmanagedResourceDirectories in Compile += baseDirectory.value / "src" / "main" / "resources"

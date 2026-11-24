@@ -815,7 +815,29 @@ object LVL2 {
     def mapBot(f: Sequent => Sequent) = copy(bot = f(bot))
     def rename(newName: String) = copy(name = newName)
     def renamePremises(map: Map[String, String]): RightSubstFun = copy(t1 = map.getOrElse(t1, t1))
-    def checkCorrectness(premises: String => Sequent) = StepCheckUnknown
+    def checkCorrectness(premises: String => Sequent): StepCheck = {
+      def open(formula: Formula, params: Vector[VariableSymbol]): Option[(Vector[VariableSymbol], Term, Term)] = formula match {
+        case BinderFormula(Forall, x, inner) => open(inner, params :+ x)
+        case AtomicFormula(`equality`, Seq(lhs, rhs)) => Some((params, lhs, rhs))
+        case _ => None
+      }
+
+      val from = premises(t1)
+      bot.left.lift(i) match {
+        case Some(eq) if isSameSet(bot.left, from.left :+ eq) =>
+          open(eq, Vector.empty) match {
+            case Some((params, lhs, rhs)) if F.id.isUpper && params.size == F.arity =>
+              def fill(term: Term) = substituteFunctionsInFormula(phi, Map(F -> (term, params)))
+              val before = fill(if flip then rhs else lhs)
+              val after = fill(if flip then lhs else rhs)
+              if from.right.exists(isSame(_, before)) && bot.right.exists(isSame(_, after)) &&
+                  isSameSet(from.right :+ after, bot.right :+ before) then StepCheckOK
+              else StepCheckError("The marked function substitution does not match the succedents")
+            case _ => StepCheckError("Expected a universally quantified equality with one parameter per function argument")
+          }
+        case _ => StepCheckError("Expected the comparison at the given index and the source antecedent")
+      }
+    }
   }
 
   case class RightSubstPred(name:String, bot: Sequent, i: Int, flip:Boolean, phi: Formula, P:AtomicSymbol,  t1: String) extends StrictLVL2ProofStep {

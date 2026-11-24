@@ -80,7 +80,7 @@ object Parser {
   }
 
   def parseProblem(file:File): Problem = {
-    val problem = TPTPParser.problem(io.Source.fromFile(file)) 
+    val problem = scala.util.Using.resource(io.Source.fromFile(file))(source => TPTPParser.problem(source))
     val nameMap = scala.collection.mutable.Map[String, Sequent]()
     var steps = List[Axiom]()
     var conjecture = Option.empty[Conjecture]
@@ -127,7 +127,7 @@ object Parser {
   }
 
   def reconstructProof(file: File): SCProof[?] = {
-    val problem = TPTPParser.problem(io.Source.fromFile(file)) 
+    val problem = scala.util.Using.resource(io.Source.fromFile(file))(source => TPTPParser.problem(source))
     val nameMap = scala.collection.mutable.Map[String, Sequent]()
     var steps = List[SCProofStep]()
     var contextFormula = scala.collection.mutable.Map[String, Formula]()
